@@ -1,5 +1,5 @@
 import type { Request, Response } from 'express';
-import type { Currency } from '../../generated/prisma/client.js';
+import type { Currency } from '@prisma/client/index.js';
 import prisma from '../db/prisma.js';
 
 

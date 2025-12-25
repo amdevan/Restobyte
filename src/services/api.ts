@@ -1,6 +1,7 @@
 import type { MenuItem, Variation } from '@/types';
+import { API_BASE_URL } from '../config';
 
-const API_BASE = 'http://localhost:3000/api';
+const API_BASE = API_BASE_URL;
 
 type BackendVariation = {
   name: string;

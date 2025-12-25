@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect, useContext, useCallback, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User } from '../types';
+import { API_BASE_URL } from '../config';
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -13,7 +14,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const API_URL = 'http://localhost:3000/api/auth';
+const API_URL = `${API_BASE_URL}/auth`;
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);

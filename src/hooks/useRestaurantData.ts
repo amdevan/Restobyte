@@ -10,6 +10,7 @@ import {
     Plan, AddonGroup, PayrollRecord, SaaSSettings, SoundSettings
 } from '../types';
 import { INITIAL_TABLES_COUNT } from '../constants';
+import { API_BASE_URL } from '../config';
 
 const RestaurantDataContext = createContext<RestaurantDataContextType | undefined>(undefined);
 
@@ -200,14 +201,20 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
     const [currencies, setCurrencies] = useState<Currency[]>(initialCurrencies);
 
     useEffect(() => {
-        fetch('http://localhost:3000/api/currencies')
-            .then(res => res.json())
-            .then(data => {
-                if (Array.isArray(data)) {
-                    setCurrencies(data);
+        const fetchCurrencies = async () => {
+            try {
+                const res = await fetch(`${API_BASE_URL}/currencies`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (Array.isArray(data)) {
+                        setCurrencies(data);
+                    }
                 }
-            })
-            .catch(err => console.error('Failed to fetch currencies:', err));
+            } catch (err) {
+                console.error('Failed to fetch currencies:', err);
+            }
+        };
+        fetchCurrencies();
     }, []);
 
     const [denominations, setDenominations] = useLocalStorage<Denomination[]>('denominations', initialDenominations);
@@ -388,7 +395,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         currencies,
         addCurrency: async (currencyData) => {
             try {
-                const res = await fetch('http://localhost:3000/api/currencies', {
+                const res = await fetch(`${API_BASE_URL}/currencies`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(currencyData),
@@ -404,7 +411,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         },
         updateCurrency: async (currency) => {
             try {
-                const res = await fetch(`http://localhost:3000/api/currencies/${currency.id}`, {
+                const res = await fetch(`${API_BASE_URL}/currencies/${currency.id}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(currency),
@@ -419,7 +426,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         },
         deleteCurrency: async (currencyId) => {
             try {
-                const res = await fetch(`http://localhost:3000/api/currencies/${currencyId}`, {
+                const res = await fetch(`${API_BASE_URL}/currencies/${currencyId}`, {
                     method: 'DELETE',
                 });
                 if (res.ok) {
@@ -434,13 +441,13 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         },
         setDefaultCurrency: async (currencyId) => {
              try {
-                const res = await fetch(`http://localhost:3000/api/currencies/${currencyId}/set-default`, {
+                const res = await fetch(`${API_BASE_URL}/currencies/${currencyId}/set-default`, {
                     method: 'POST',
                 });
                 if (res.ok) {
                     const updatedCurrency = await res.json();
                      // Since setting default changes other currencies (isDefault=false), we should reload all
-                     const allRes = await fetch('http://localhost:3000/api/currencies');
+                     const allRes = await fetch(`${API_BASE_URL}/currencies`);
                      const allData = await allRes.json();
                      if (Array.isArray(allData)) {
                         setCurrencies(allData);

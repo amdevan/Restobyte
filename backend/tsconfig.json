@@ -44,5 +44,5 @@
     "skipLibCheck": true,
   }
   ,
-  "include": ["src", "prisma", "generated"]
+  "include": ["src", "prisma"]
 }

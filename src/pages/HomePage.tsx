@@ -10,6 +10,7 @@ import UpcomingReservationsCard from '@/components/dashboard/UpcomingReservation
 import Card from '@/components/common/Card';
 import { FiShoppingCart, FiList, FiGrid, FiSettings, FiArrowRight, FiGlobe } from 'react-icons/fi';
 import { useRestaurantData } from '../hooks/useRestaurantData';
+import { API_BASE_URL } from '../config';
 
 
 interface IconProps {
@@ -49,7 +50,7 @@ const HomePage: React.FC = () => {
 
     const fetchHello = async () => {
         try {
-            const response = await fetch('http://localhost:3000/api/hello');
+            const response = await fetch(`${API_BASE_URL}/hello`);
             const data = await response.json();
             setMessage(data.message);
         } catch (error) {

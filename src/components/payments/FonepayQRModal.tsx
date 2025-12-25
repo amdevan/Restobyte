@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import Modal from '../common/Modal';
 import Button from '../common/Button';
+import { API_BASE_URL } from '../../config';
 
 interface FonepayQRModalProps {
   isOpen: boolean;
@@ -39,7 +40,7 @@ const FonepayQRModal: React.FC<FonepayQRModalProps> = ({ isOpen, onClose, amount
       setLoading(true);
       setError('');
       try {
-        const res = await fetch('http://localhost:3000/api/fonepay/create-qr', {
+        const res = await fetch(`${API_BASE_URL}/fonepay/create-qr`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ amount, currency, merchantCode, terminalId }),

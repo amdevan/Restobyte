@@ -22,7 +22,7 @@ RestoByte is a comprehensive SaaS-based Restaurant Management System designed to
 
 ## 📦 Prerequisites
 
-*   Node.js (v22 or higher recommended; v20.19+ minimum for Prisma 7)
+*   Node.js (v22.12+ recommended; v20.19+ minimum for Prisma 7)
 *   npm or yarn
 *   Docker & Docker Compose (for the database)
 
@@ -90,6 +90,22 @@ The backend handles the API and database connections.
   ```ts
   import { PrismaPg } from '@prisma/adapter-pg';
   ```
+
+### Node Version
+
+This repo includes `.nvmrc` and `.node-version` set to `22.12.0`. If you use a version manager:
+
+```bash
+nvm use
+# or
+fnm use
+```
+
+Alternatively, set your shell to use `fnm` globally:
+```bash
+eval \"$(fnm env --shell=zsh)\"
+fnm default 22.12.0
+```
 
 ### 3. Frontend Setup
 

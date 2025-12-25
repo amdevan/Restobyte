@@ -108,7 +108,7 @@ When deploying to platforms like Railway, Render, or Coolify:
 *   **Start Command:** `npm start`
 *   **Port:** `3000`
 *   **Environment Variables:**
-    *   `DATABASE_URL`: Connection string for your production PostgreSQL database (PostgreSQL 17 recommended).
+    *   `DATABASE_URL`: Connection string for your production PostgreSQL database.
     *   `JWT_SECRET`: A secure random string for authentication.
 
 ### Frontend (React/Vite)

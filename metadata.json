@@ -1,0 +1,6 @@
+{
+  "name": "RestoByte - Restaurant Management",
+  "description": "A comprehensive restaurant management application to handle menu items, table statuses, and reservations, featuring AI-powered suggestions for daily specials and item descriptions.",
+  "requestFramePermissions": [],
+  "prompt": ""
+}

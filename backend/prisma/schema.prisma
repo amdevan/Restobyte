@@ -1,0 +1,96 @@
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Category {
+  id        String     @id @default(uuid())
+  name      String
+  menuItems MenuItem[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+model MenuItem {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  price       Float
+  categoryId  String
+  category    Category @relation(fields: [categoryId], references: [id])
+  imageUrl    String?
+  isAvailable Boolean  @default(true)
+  isVegetarian Boolean @default(false)
+  variations  Variation[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  OrderItem   OrderItem[]
+}
+
+model Variation {
+  id         String   @id @default(uuid())
+  name       String
+  price      Float
+  menuItemId String
+  menuItem   MenuItem @relation(fields: [menuItemId], references: [id])
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model Customer {
+  id        String   @id @default(uuid())
+  name      String
+  email     String?  @unique
+  phone     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  orders    Order[]
+}
+
+model Order {
+  id         String      @id @default(uuid())
+  createdAt  DateTime    @default(now())
+  customerId String?
+  customer   Customer?   @relation(fields: [customerId], references: [id])
+  items      OrderItem[]
+  total      Float       @default(0)
+  status     String      @default("PENDING") // PENDING, COMPLETED, CANCELLED
+}
+
+model OrderItem {
+  id         String   @id @default(uuid())
+  orderId    String
+  order      Order   @relation(fields: [orderId], references: [id])
+  menuItemId String
+  menuItem   MenuItem @relation(fields: [menuItemId], references: [id])
+  quantity   Int
+  unitPrice  Float
+}
+
+model User {
+  id           String   @id @default(uuid())
+  username     String   @unique
+  password     String
+  roleId       String?
+  outletId     String?
+  isActive     Boolean  @default(true)
+  isSuperAdmin Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Currency {
+  id           String   @id @default(uuid())
+  name         String
+  code         String   @unique
+  symbol       String
+  exchangeRate Float
+  isDefault    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}

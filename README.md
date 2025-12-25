@@ -96,6 +96,30 @@ The frontend is a React application built with Vite.
 *   `src/`: React frontend source code.
 *   `docker-compose.yml`: Docker configuration for PostgreSQL.
 
+## 🚀 Deployment
+
+### Backend (Node.js/Express)
+
+When deploying to platforms like Railway, Render, or Coolify:
+
+*   **Build Pack:** `Nixpacks` (Recommended)
+*   **Base Directory:** `backend`
+*   **Build Command:** `npm run build`
+*   **Start Command:** `npm start`
+*   **Port:** `3000`
+*   **Environment Variables:**
+    *   `DATABASE_URL`: Connection string for your production PostgreSQL database.
+    *   `JWT_SECRET`: A secure random string for authentication.
+
+### Frontend (React/Vite)
+
+*   **Build Pack:** `Static` or `Nixpacks`
+*   **Base Directory:** `/` (Root)
+*   **Build Command:** `npm run build`
+*   **Output Directory:** `dist`
+*   **Environment Variables:**
+    *   `VITE_API_URL`: URL of your deployed backend (e.g., `https://api.yourdomain.com`).
+
 ## 🤝 Contributing
 
 Contributions are welcome! Please fork the repository and submit a pull request.

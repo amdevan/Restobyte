@@ -17,7 +17,7 @@ RestoByte is a comprehensive SaaS-based Restaurant Management System designed to
 
 *   **Frontend:** React, TypeScript, Vite, Tailwind CSS
 *   **Backend:** Node.js, Express.js, TypeScript
-*   **Database:** PostgreSQL (via Docker), Prisma ORM
+*   **Database:** PostgreSQL 17 (via Docker), Prisma ORM
 *   **Tools:** Docker, ESLint, Prettier
 
 ## 📦 Prerequisites

@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import type { Currency } from '@prisma/client';
+import prisma from '../db/prisma.js';
 
-const prisma = new PrismaClient();
 
 export const getCurrencies = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -45,7 +45,11 @@ export const createCurrency = async (req: Request, res: Response): Promise<void>
 };
 
 export const updateCurrency = async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
+  const { id } = req.params as { id?: string };
+  if (!id) {
+    res.status(400).json({ message: 'Missing currency id' });
+    return;
+  }
   const { name, code, symbol, exchangeRate, isDefault } = req.body;
 
   try {
@@ -75,7 +79,11 @@ export const updateCurrency = async (req: Request, res: Response): Promise<void>
 };
 
 export const deleteCurrency = async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
+  const { id } = req.params as { id?: string };
+  if (!id) {
+    res.status(400).json({ message: 'Missing currency id' });
+    return;
+  }
 
   try {
     const currency = await prisma.currency.findUnique({ where: { id } });
@@ -93,7 +101,11 @@ export const deleteCurrency = async (req: Request, res: Response): Promise<void>
 };
 
 export const setDefaultCurrency = async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
+  const { id } = req.params as { id?: string };
+  if (!id) {
+    res.status(400).json({ message: 'Missing currency id' });
+    return;
+  }
 
   try {
     const newDefault = await prisma.currency.findUnique({ where: { id } });
@@ -111,7 +123,7 @@ export const setDefaultCurrency = async (req: Request, res: Response): Promise<v
     const allCurrencies = await prisma.currency.findMany();
 
     // Prepare updates to recalculate all exchange rates relative to the new default
-    const updates = allCurrencies.map(currency => {
+    const updates = allCurrencies.map((currency: Currency) => {
       return prisma.currency.update({
         where: { id: currency.id },
         data: {

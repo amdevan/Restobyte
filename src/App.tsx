@@ -133,6 +133,7 @@ const WhatsappOrderMenuPage = React.lazy(() => import('./pages/whatsapp/Whatsapp
 const WhatsappSettingsPage = React.lazy(() => import('./pages/whatsapp/WhatsappSettingsPage'));
 const SubscriptionPage = React.lazy(() => import('./pages/SubscriptionPage'));
 const ManageAddonsPage = React.lazy(() => import('./pages/item/ManageAddonsPage'));
+const MobileScanner = React.lazy(() => import('./components/MobileScanner'));
 const SoundSettingsPage = React.lazy(() => import('./pages/settings/SoundSettingsPage'));
 
 
@@ -151,7 +152,7 @@ const RestaurantPanelRoutes = () => {
     const { getSingleActiveOutlet } = useRestaurantData();
     const location = useLocation();
     const isFullScreenPage = location.pathname.startsWith('/app/panel/pos') || location.pathname.startsWith('/app/tables') || location.pathname.startsWith('/app/panel/kitchen-display') || location.pathname.startsWith('/app/panel/customer-display');
-    
+
     const singleActiveOutlet = getSingleActiveOutlet();
     const isAggregateView = !singleActiveOutlet;
     const isCloudKitchen = singleActiveOutlet?.outletType === 'CloudKitchen';
@@ -187,23 +188,23 @@ const RestaurantPanelRoutes = () => {
             <Route path="settings/list-payment-method" element={<ListPaymentMethodPage />} />
             <Route path="settings/list-denomination" element={<ManageDenominationsPage />} />
             <Route path="settings/list-delivery-partner" element={<ListDeliveryPartnerPage />} />
-            <Route path="settings/list-area-floor" element={<OperationalPage page={<ManageAreasFloorsPage/>} featureName="Areas/Floors" cloudKitchenDisabled />} />
-            <Route path="settings/list-table" element={<OperationalPage page={<ManageTablesSettingsPage/>} featureName="Table Settings" cloudKitchenDisabled />} />
-            <Route path="settings/floor-area-plan-design" element={<OperationalPage page={<FloorAreaPlanDesignPage/>} featureName="Floor Plan Design" cloudKitchenDisabled />} />
+            <Route path="settings/list-area-floor" element={<OperationalPage page={<ManageAreasFloorsPage />} featureName="Areas/Floors" cloudKitchenDisabled />} />
+            <Route path="settings/list-table" element={<OperationalPage page={<ManageTablesSettingsPage />} featureName="Table Settings" cloudKitchenDisabled />} />
+            <Route path="settings/floor-area-plan-design" element={<OperationalPage page={<FloorAreaPlanDesignPage />} featureName="Floor Plan Design" cloudKitchenDisabled />} />
             <Route path="settings/kitchens" element={<ManageKitchensPage />} />
-            <Route path="settings/waiters" element={<OperationalPage page={<ManageWaitersPage/>} featureName="Waiter Management" cloudKitchenDisabled />} />
-            <Route path="tables" element={<OperationalPage page={<TablesPage/>} featureName="Table Management" cloudKitchenDisabled />} />
-            <Route path="reservations" element={<OperationalPage page={<ReservationsPage/>} featureName="Reservations" cloudKitchenDisabled />} />
+            <Route path="settings/waiters" element={<OperationalPage page={<ManageWaitersPage />} featureName="Waiter Management" cloudKitchenDisabled />} />
+            <Route path="tables" element={<OperationalPage page={<TablesPage />} featureName="Table Management" cloudKitchenDisabled />} />
+            <Route path="reservations" element={<OperationalPage page={<ReservationsPage />} featureName="Reservations" cloudKitchenDisabled />} />
             <Route path="pricing" element={<PricingPage />} />
-            <Route path="panel/pos" element={<OperationalPage page={<PosPage/>} featureName="Point of Sale" />} />
-            <Route path="panel/pos/:tableId" element={<OperationalPage page={<PosPage/>} featureName="Point of Sale" />} />
-            <Route path="panel/kitchen-display" element={<OperationalPage page={<KitchenDisplayPage/>} featureName="Kitchen Display" />} />
-            <Route path="panel/customer-display" element={<OperationalPage page={<CustomerDisplayPage/>} featureName="Customer Display" />} />
+            <Route path="panel/pos" element={<OperationalPage page={<PosPage />} featureName="Point of Sale" />} />
+            <Route path="panel/pos/:tableId" element={<OperationalPage page={<PosPage />} featureName="Point of Sale" />} />
+            <Route path="panel/kitchen-display" element={<OperationalPage page={<KitchenDisplayPage />} featureName="Kitchen Display" />} />
+            <Route path="panel/customer-display" element={<OperationalPage page={<CustomerDisplayPage />} featureName="Customer Display" />} />
             <Route path="whatsapp/order-menu" element={<WhatsappOrderMenuPage />} />
             <Route path="whatsapp/settings" element={<OperationalPage page={<WhatsappSettingsPage />} featureName="WhatsApp Settings" />} />
-            <Route path="self-order/enable-disable" element={<OperationalPage page={<EnableDisableSelfOrderPage/>} featureName="Self-Order" />} />
-            <Route path="self-order/qr-generator" element={<OperationalPage page={<TableQrCodeGeneratorPage/>} featureName="Table QR Generator" cloudKitchenDisabled />} />
-            <Route path="self-order/receiving-user" element={<OperationalPage page={<OrderReceivingUserPage/>} featureName="Self-Order" />} />
+            <Route path="self-order/enable-disable" element={<OperationalPage page={<EnableDisableSelfOrderPage />} featureName="Self-Order" />} />
+            <Route path="self-order/qr-generator" element={<OperationalPage page={<TableQrCodeGeneratorPage />} featureName="Table QR Generator" cloudKitchenDisabled />} />
+            <Route path="self-order/receiving-user" element={<OperationalPage page={<OrderReceivingUserPage />} featureName="Self-Order" />} />
             <Route path="website-settings/order-enable-disable" element={<OrderEnableDisablePage />} />
             <Route path="website-settings/order-receiving-user" element={<OrderReceivingUserPage />} />
             <Route path="website-settings/website-white-label" element={<WebsiteWhiteLabelPage />} />
@@ -225,7 +226,7 @@ const RestaurantPanelRoutes = () => {
             <Route path="reservation-settings/enable-disable" element={<EnableDisableReservationOrderPage />} />
             <Route path="reservation-settings/receiving-user" element={<ReservationOrderReceivingUserPage />} />
             <Route path="outlet-setting" element={<OutletSettingPage />} />
-            <Route path="subscription" element={<OperationalPage page={<SubscriptionPage/>} featureName="Subscription"/>}/>
+            <Route path="subscription" element={<OperationalPage page={<SubscriptionPage />} featureName="Subscription" />} />
             <Route path="stock/levels" element={<ViewStockLevelsActualPage />} />
             <Route path="stock/add-entry" element={<AddStockEntryActualPage />} />
             <Route path="stock/adjustments" element={<StockAdjustmentsActualPage />} />
@@ -272,6 +273,7 @@ const RestaurantPanelRoutes = () => {
             <Route path="reports/waste-report" element={<WasteReportPage />} />
             <Route path="production" element={<ProductionPage />} />
             <Route path="send-sms" element={<SendSmsPage />} />
+            <Route path="mobile-scanner" element={<MobileScanner />} />
             <Route path="*" element={<Navigate to="/app/home" replace />} />
         </Routes>
     );
@@ -296,7 +298,7 @@ const SaaSPanelRoutes = () => {
                 <Route path="dashboard" element={<SaaSDashboardPage />} />
                 <Route path="tenants" element={<ManageTenantsPage />} />
                 <Route path="plans" element={<ManagePlansPage />} />
-                
+
                 <Route path="cms">
                     <Route index element={<Navigate to="home" replace />} />
                     <Route path="home" element={<HomePageContentPage />} />
@@ -305,7 +307,7 @@ const SaaSPanelRoutes = () => {
                     <Route path="blogs" element={<BlogsPage />} />
                     <Route path="seo" element={<SeoPage />} />
                 </Route>
-                
+
                 <Route path="settings" element={<SaaSSettingsPage />} />
                 <Route path="*" element={<Navigate to="/saas/dashboard" replace />} />
             </Routes>
@@ -315,7 +317,7 @@ const SaaSPanelRoutes = () => {
 
 const AppContent: React.FC = () => {
     const { isAuthenticated, isLoading, user } = useAuth();
-    
+
     if (isLoading) {
         return <div className="flex h-screen w-screen items-center justify-center bg-gray-100"><Spinner size="lg" /></div>;
     }
@@ -328,22 +330,22 @@ const AppContent: React.FC = () => {
             {/* Public restaurant website (tenant-facing) */}
             <Route path="/public/restaurant" element={<RestaurantWebsitePage />} />
             <Route path="/public/restaurant/:outletId" element={<RestaurantWebsitePage />} />
-            
-            <Route 
-                path="/app/*" 
+
+            <Route
+                path="/app/*"
                 element={
-                    isAuthenticated && !user?.isSuperAdmin 
-                    ? <RestaurantPanelRoutes /> 
-                    : <Navigate to="/" replace />
-                } 
+                    isAuthenticated && !user?.isSuperAdmin
+                        ? <RestaurantPanelRoutes />
+                        : <Navigate to="/" replace />
+                }
             />
-            <Route 
-                path="/saas/*" 
+            <Route
+                path="/saas/*"
                 element={
-                    isAuthenticated && user?.isSuperAdmin 
-                    ? <SaaSPanelRoutes /> 
-                    : <Navigate to="/" replace />
-                } 
+                    isAuthenticated && user?.isSuperAdmin
+                        ? <SaaSPanelRoutes />
+                        : <Navigate to="/" replace />
+                }
             />
 
             <Route path="*" element={<Navigate to="/" replace />} />
@@ -352,15 +354,15 @@ const AppContent: React.FC = () => {
 }
 
 const App: React.FC = () => {
-  return (
-    <HashRouter>
-      <RestaurantDataProvider>
-        <AuthProvider>
-          <AppContent />
-        </AuthProvider>
-      </RestaurantDataProvider>
-    </HashRouter>
-  );
+    return (
+        <HashRouter>
+            <RestaurantDataProvider>
+                <AuthProvider>
+                    <AppContent />
+                </AuthProvider>
+            </RestaurantDataProvider>
+        </HashRouter>
+    );
 };
 
 export default App;

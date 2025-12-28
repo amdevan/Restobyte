@@ -37,10 +37,22 @@ app.get('/api/health', async (req: Request, res: Response) => {
     await prisma.$queryRaw`SELECT 1`;
     const duration = Date.now() - start;
 
+    // Deep check
+    let userCount = -1;
+    try {
+      userCount = await prisma.user.count();
+    } catch (e) {
+      console.warn("User table check failed", e);
+    }
+
     res.json({
       status: 'healthy',
       database: 'connected',
       latency: `${duration}ms`,
+      data: {
+        user_table_exists: userCount !== -1,
+        user_count: userCount
+      },
       env: {
         node_env: process.env.NODE_ENV,
         has_db_url: !!process.env.DATABASE_URL
@@ -54,6 +66,16 @@ app.get('/api/health', async (req: Request, res: Response) => {
       error: error instanceof Error ? error.message : String(error),
       hint: 'Verify DATABASE_URL and network access to database in Coolify.'
     });
+  }
+});
+
+app.get('/api/seed-trigger', async (req: Request, res: Response) => {
+  try {
+    const { execSync } = await import('child_process');
+    const output = execSync('npx tsx prisma/seed.ts').toString();
+    res.json({ message: 'Seed triggered successfully', output });
+  } catch (error) {
+    res.status(500).json({ message: 'Seed failed', error: error instanceof Error ? error.message : String(error) });
   }
 });
 

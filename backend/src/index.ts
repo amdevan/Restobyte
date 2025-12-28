@@ -71,10 +71,11 @@ app.get('/api/health', async (req: Request, res: Response) => {
 
 app.get('/api/seed-trigger', async (req: Request, res: Response) => {
   try {
-    const { execSync } = await import('child_process');
-    const output = execSync('npx tsx prisma/seed.ts').toString();
-    res.json({ message: 'Seed triggered successfully', output });
+    const { seed } = await import('../prisma/seed.js');
+    const result = await seed();
+    res.json(result);
   } catch (error) {
+    console.error('Seed trigger failed:', error);
     res.status(500).json({ message: 'Seed failed', error: error instanceof Error ? error.message : String(error) });
   }
 });

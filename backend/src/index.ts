@@ -2,20 +2,9 @@ import express from 'express';
 import type { Express, Request, Response } from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
+import prisma from './db/prisma.js';
 
-dotenv.config();
-
-const app: Express = express();
-const port = process.env.PORT || 3000;
-
-app.use(cors());
-// For production, use specific origin:
-// app.use(cors({
-//   origin: process.env.FRONTEND_URL || 'http://localhost:5173',
-//   credentials: true
-// }));
-app.use(express.json());
-
+// Import routes
 import helloRoutes from './routes/helloRoutes.js';
 import categoryRoutes from './routes/categoryRoutes.js';
 import menuItemRoutes from './routes/menuItemRoutes.js';
@@ -24,8 +13,16 @@ import orderRoutes from './routes/orderRoutes.js';
 import fonepayRoutes from './routes/fonepayRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import currencyRoutes from './routes/currencyRoutes.js';
-import prisma from './db/prisma.js';
 
+dotenv.config();
+
+const app: Express = express();
+const port = process.env.PORT || 3000;
+
+app.use(cors());
+app.use(express.json());
+
+// Basic connectivity routes
 app.get('/', (req: Request, res: Response) => {
   res.send('RestoByte Backend is running!');
 });
@@ -55,11 +52,12 @@ app.get('/api/health', async (req: Request, res: Response) => {
       status: 'unhealthy',
       database: 'disconnected',
       error: error instanceof Error ? error.message : String(error),
-      hint: 'Verify DATABASE_URL and network access to database.'
+      hint: 'Verify DATABASE_URL and network access to database in Coolify.'
     });
   }
 });
 
+// API Routes
 app.use('/api', helloRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/menu-items', menuItemRoutes);

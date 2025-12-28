@@ -69,6 +69,18 @@ app.get('/api/health', async (req: Request, res: Response) => {
   }
 });
 
+app.get('/api/db-push', async (req: Request, res: Response) => {
+  try {
+    const { execSync } = await import('child_process');
+    console.log('Running prisma db push...');
+    const output = execSync('npx prisma db push --accept-data-loss').toString();
+    res.json({ message: 'DB Push completed', output });
+  } catch (error) {
+    console.error('DB Push failed:', error);
+    res.status(500).json({ message: 'DB Push failed', error: error instanceof Error ? error.message : String(error) });
+  }
+});
+
 app.get('/api/seed-trigger', async (req: Request, res: Response) => {
   try {
     const { seed } = await import('../prisma/seed.js');

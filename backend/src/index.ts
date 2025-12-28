@@ -22,74 +22,8 @@ const port = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// Basic connectivity routes
 app.get('/', (req: Request, res: Response) => {
   res.send('RestoByte Backend is running!');
-});
-
-app.get('/health', (req: Request, res: Response) => {
-  res.json({ status: 'ok', message: 'Backend is reachable at root /health' });
-});
-
-app.get('/api/health', async (req: Request, res: Response) => {
-  try {
-    const start = Date.now();
-    await prisma.$queryRaw`SELECT 1`;
-    const duration = Date.now() - start;
-
-    // Deep check
-    let userCount = -1;
-    try {
-      userCount = await prisma.user.count();
-    } catch (e) {
-      console.warn("User table check failed", e);
-    }
-
-    res.json({
-      status: 'healthy',
-      database: 'connected',
-      latency: `${duration}ms`,
-      data: {
-        user_table_exists: userCount !== -1,
-        user_count: userCount
-      },
-      env: {
-        node_env: process.env.NODE_ENV,
-        has_db_url: !!process.env.DATABASE_URL
-      }
-    });
-  } catch (error) {
-    console.error('Health Check Failed:', error);
-    res.status(503).json({
-      status: 'unhealthy',
-      database: 'disconnected',
-      error: error instanceof Error ? error.message : String(error),
-      hint: 'Verify DATABASE_URL and network access to database in Coolify.'
-    });
-  }
-});
-
-app.get('/api/db-push', async (req: Request, res: Response) => {
-  try {
-    const { execSync } = await import('child_process');
-    console.log('Running prisma db push...');
-    const output = execSync('npx prisma db push --accept-data-loss').toString();
-    res.json({ message: 'DB Push completed', output });
-  } catch (error) {
-    console.error('DB Push failed:', error);
-    res.status(500).json({ message: 'DB Push failed', error: error instanceof Error ? error.message : String(error) });
-  }
-});
-
-app.get('/api/seed-trigger', async (req: Request, res: Response) => {
-  try {
-    const { seed } = await import('../prisma/seed.js');
-    const result = await seed();
-    res.json(result);
-  } catch (error) {
-    console.error('Seed trigger failed:', error);
-    res.status(500).json({ message: 'Seed failed', error: error instanceof Error ? error.message : String(error) });
-  }
 });
 
 // API Routes

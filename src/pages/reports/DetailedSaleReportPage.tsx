@@ -2,7 +2,6 @@
 
 
 import React, { useState, useMemo } from 'react';
-// FIX: Refactored to use named imports for react-router-dom for consistency.
 import { useNavigate } from 'react-router-dom';
 import { useRestaurantData } from '@/hooks/useRestaurantData';
 import { Sale } from '@/types';
@@ -169,8 +168,7 @@ const DetailedSaleReportPage: React.FC = () => {
              <div className="text-right">
                 <p className="text-sm text-gray-600">Total Value (Filtered)</p>
                 <p className="text-xl font-bold text-sky-600">
-                    <FiDollarSign className="inline h-5 w-5 mr-0.5 relative -top-0.5" />
-                    {totalSalesValue.toFixed(2)}
+                    <Money amount={totalSalesValue} />
                 </p>
              </div>
         </div>

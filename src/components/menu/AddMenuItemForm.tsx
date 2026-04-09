@@ -33,10 +33,15 @@ const AddMenuItemForm: React.FC<AddMenuItemFormProps> = ({ onSubmit, onUpdate, i
       setName(initialData.name);
       setDescription(initialData.description);
       setVariations(initialData.variations.map((v, i) => ({...v, id: i})));
-      const categoryExists = categories.some(c => c.name === initialData.category);
-      setCategory(categoryExists ? initialData.category : (categories[0]?.name || ''));
+      
+      const initialCategoryName = typeof initialData.category === 'object' && initialData.category !== null 
+        ? (initialData.category as any).name 
+        : initialData.category;
+
+      const categoryExists = categories.some(c => c.name === initialCategoryName);
+      setCategory(categoryExists ? initialCategoryName : (categories[0]?.name || ''));
       setImageUrl(initialData.imageUrl || '');
-      setIsVeg(initialData.isVeg === undefined ? true : initialData.isVeg);
+      setIsVeg(initialData.isVegetarian === undefined ? true : initialData.isVegetarian);
       setSelectedAddonGroupIds(initialData.addonGroupIds || []);
     } else {
       setName('');
@@ -99,17 +104,29 @@ const AddMenuItemForm: React.FC<AddMenuItemFormProps> = ({ onSubmit, onUpdate, i
             alert(`Invalid price for variation "${v.name}". Please enter a valid price.`);
             return;
         }
-        finalVariations.push({name: v.name, price: numericPrice});
+        finalVariations.push({ name: v.name, price: numericPrice });
     }
 
-    const itemData = { name, description, variations: finalVariations, category, isVeg, addonGroupIds: selectedAddonGroupIds };
+    const categoryObj = categories.find(c => c.name === category);
+
+    const commonData = {
+        name,
+        description,
+        variations: finalVariations,
+        category,
+        categoryId: categoryObj?.id,
+        imageUrl,
+        isVegetarian: isVeg,
+        addonGroupIds: selectedAddonGroupIds,
+        price: finalVariations[0].price
+    };
 
     if (initialData && onUpdate) {
-      onUpdate({ ...initialData, ...itemData, imageUrl: imageUrl || initialData.imageUrl });
+        onUpdate({ ...initialData, ...commonData });
     } else {
-      onSubmit(itemData, imageUrl, isVeg);
+        onSubmit(commonData, imageUrl, isVeg);
     }
-    onClose(); 
+    onClose();
   };
 
   return (

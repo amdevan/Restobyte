@@ -1,8 +1,15 @@
 import type { Request, Response } from 'express';
 import prisma from '../db/prisma.js';
+import { AuthRequest } from '../middleware/authMiddleware.js';
 
-export const getOrders = async (_req: Request, res: Response) => {
+export const getOrders = async (req: Request, res: Response) => {
+  const user = (req as AuthRequest).user;
+  if (!user || !user.outletId) {
+    res.status(403).json({ message: 'Unauthorized' });
+    return;
+  }
   const orders = await prisma.order.findMany({
+    where: { outletId: user.outletId },
     include: { customer: true, items: { include: { menuItem: true } } },
     orderBy: { createdAt: 'desc' },
   });
@@ -10,9 +17,14 @@ export const getOrders = async (_req: Request, res: Response) => {
 };
 
 export const getOrder = async (req: Request, res: Response) => {
+  const user = (req as AuthRequest).user;
+  if (!user || !user.outletId) {
+    res.status(403).json({ message: 'Unauthorized' });
+    return;
+  }
   const id = req.params.id as string;
-  const order = await prisma.order.findUnique({
-    where: { id },
+  const order = await prisma.order.findFirst({
+    where: { id, outletId: user.outletId },
     include: { customer: true, items: { include: { menuItem: true } } },
   });
   if (!order) return res.status(404).json({ error: 'Order not found' });
@@ -20,11 +32,17 @@ export const getOrder = async (req: Request, res: Response) => {
 };
 
 export const createOrder = async (req: Request, res: Response) => {
+  const user = (req as AuthRequest).user;
+  if (!user || !user.outletId) {
+    res.status(403).json({ message: 'Unauthorized' });
+    return;
+  }
   const { customerId, items, status } = req.body;
   const statusValue = (status ? String(status).toUpperCase() : 'PENDING');
   const order = await prisma.order.create({
     data: {
       customerId,
+      outletId: user.outletId,
       status: statusValue as any,
       items: {
         create: items.map((it: any) => ({

@@ -3,6 +3,7 @@ import { Sale } from '../../types';
 import Button from '../common/Button';
 import { FiXCircle, FiPrinter, FiUser, FiGrid, FiClock, FiTag, FiDollarSign, FiList, FiTruck } from 'react-icons/fi';
 import { IconBaseProps } from 'react-icons'; // Import IconBaseProps
+import Money from '../common/Money';
 
 interface SaleDetailsModalProps {
   isOpen: boolean;
@@ -10,7 +11,7 @@ interface SaleDetailsModalProps {
   sale: Sale | null;
 }
 
-const DetailRow: React.FC<{ label: string; value?: string | number | null; icon?: React.ReactElement<IconBaseProps>; className?: string }> = ({ label, value, icon, className = '' }) => (
+const DetailRow: React.FC<{ label: string; value?: React.ReactNode; icon?: React.ReactElement<IconBaseProps>; className?: string }> = ({ label, value, icon, className = '' }) => (
   <div className={`flex items-start py-1.5 ${className}`}>
     {icon && <span className="mr-2 text-sky-600 mt-0.5">{React.cloneElement(icon, { size: icon.props.size || 15 })}</span>}
     <span className="font-medium text-gray-600 w-32">{label}:</span>
@@ -64,21 +65,21 @@ const SaleDetailsModal: React.FC<SaleDetailsModalProps> = ({ isOpen, onClose, sa
                     <div>
                         <p className="font-medium text-gray-800">{item.name}</p>
                         <p className="text-xs text-gray-500">
-                        {item.quantity} x ${item.price.toFixed(2)}
+                        {item.quantity} x <Money amount={item.price} />
                         </p>
                     </div>
-                    <p className="font-medium text-gray-700">${(item.price * item.quantity).toFixed(2)}</p>
+                    <p className="font-medium text-gray-700"><Money amount={item.price * item.quantity} /></p>
                 </li>
             ))}
             </ul>
         </div>
         
         <div className="mt-4 pt-4 border-t space-y-1">
-            <DetailRow label="Subtotal" value={`$${sale.subTotal.toFixed(2)}`} className="font-medium"/>
+            <DetailRow label="Subtotal" value={<Money amount={sale.subTotal} />} className="font-medium"/>
             {sale.taxDetails.map(tax => (
-                <DetailRow key={tax.id} label={`${tax.name} (${tax.rate}%)`} value={`$${tax.amount.toFixed(2)}`} />
+                <DetailRow key={tax.id} label={`${tax.name} (${tax.rate}%)`} value={<Money amount={tax.amount} />} />
             ))}
-            <DetailRow label="Grand Total" value={`$${sale.totalAmount.toFixed(2)}`} className="text-lg font-bold text-sky-700" icon={<FiDollarSign size={16}/>}/>
+            <DetailRow label="Grand Total" value={<Money amount={sale.totalAmount} />} className="text-lg font-bold text-sky-700" icon={<FiDollarSign size={16}/>}/>
         </div>
       </div>
 

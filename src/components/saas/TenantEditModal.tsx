@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Outlet } from '../../types';
+import { Outlet, User } from '../../types';
 import Input from '../common/Input';
 import Button from '../common/Button';
 import { FiSave, FiXCircle } from 'react-icons/fi';
@@ -7,7 +7,9 @@ import { useRestaurantData } from '../../hooks/useRestaurantData';
 
 interface TenantEditModalProps {
   initialData: Outlet | null;
+  adminUser: User | undefined;
   onUpdate: (data: Outlet) => void;
+  onUpdateUser: (data: User) => void;
   onClose: () => void;
 }
 
@@ -16,12 +18,16 @@ type Status = 'active' | 'inactive' | 'trialing';
 const STATUS_OPTIONS: Status[] = ['active', 'inactive', 'trialing'];
 
 
-const TenantEditModal: React.FC<TenantEditModalProps> = ({ initialData, onUpdate, onClose }) => {
+const TenantEditModal: React.FC<TenantEditModalProps> = ({ initialData, adminUser, onUpdate, onUpdateUser, onClose }) => {
     const { plans } = useRestaurantData();
     const [name, setName] = useState('');
     const [plan, setPlan] = useState<string>('');
     const [status, setStatus] = useState<Status>('inactive');
     const [planExpiryDate, setPlanExpiryDate] = useState('');
+    
+    // User credentials
+    const [username, setUsername] = useState('');
+    const [password, setPassword] = useState('');
 
     const PLAN_OPTIONS = useMemo(() => plans.filter(p => p.isActive).map(p => p.name), [plans]);
 
@@ -32,7 +38,11 @@ const TenantEditModal: React.FC<TenantEditModalProps> = ({ initialData, onUpdate
             setStatus(initialData.subscriptionStatus || 'inactive');
             setPlanExpiryDate(initialData.planExpiryDate ? initialData.planExpiryDate.split('T')[0] : '');
         }
-    }, [initialData, PLAN_OPTIONS]);
+        if (adminUser) {
+            setUsername(adminUser.username);
+            setPassword(adminUser.passwordHash);
+        }
+    }, [initialData, adminUser, PLAN_OPTIONS]);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -46,6 +56,16 @@ const TenantEditModal: React.FC<TenantEditModalProps> = ({ initialData, onUpdate
             planExpiryDate: planExpiryDate || undefined,
         };
         onUpdate(updatedData);
+
+        if (adminUser) {
+            const updatedUser: User = {
+                ...adminUser,
+                username,
+                passwordHash: password
+            };
+            onUpdateUser(updatedUser);
+        }
+
         onClose();
     };
 
@@ -53,6 +73,7 @@ const TenantEditModal: React.FC<TenantEditModalProps> = ({ initialData, onUpdate
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
+            <h3 className="font-semibold text-gray-700 border-b pb-2">Restaurant Details</h3>
             <Input
                 label="Restaurant Name *"
                 value={name}
@@ -97,6 +118,21 @@ const TenantEditModal: React.FC<TenantEditModalProps> = ({ initialData, onUpdate
                 onChange={e => setPlanExpiryDate(e.target.value)}
             />
             
+            <h3 className="font-semibold text-gray-700 border-b pb-2 pt-4">Admin Credentials</h3>
+            <Input
+                label="Username"
+                value={username}
+                onChange={e => setUsername(e.target.value)}
+                required
+            />
+             <Input
+                label="Password"
+                type="text" // Show as text for easier editing in admin panel
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                required
+            />
+
             <div className="flex justify-end space-x-3 pt-4 border-t">
                 <Button type="button" variant="secondary" onClick={onClose} leftIcon={<FiXCircle/>}>
                     Cancel

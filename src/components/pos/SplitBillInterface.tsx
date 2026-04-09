@@ -6,6 +6,7 @@ import { FiClipboard, FiPlusCircle, FiCheckCircle, FiDivideSquare } from 'react-
 import ItemSplitView from './split-views/ItemSplitView';
 import EqualSplitView from './split-views/EqualSplitView';
 import CustomSplitView from './split-views/CustomSplitView';
+import Money from '../common/Money';
 
 interface SplitBillInterfaceProps {
     orderItems: SaleItem[];
@@ -73,7 +74,7 @@ const SplitBillInterface: React.FC<SplitBillInterfaceProps> = (props) => {
           <div className="mt-auto pt-4 border-t space-y-2 text-sm">
             <div className="flex justify-between font-medium">
               <span className="text-gray-600">Total Bill</span>
-              <span className="text-gray-800">${totalBill.toFixed(2)}</span>
+              <span className="text-gray-800"><Money amount={totalBill} /></span>
             </div>
           </div>
           

@@ -13,6 +13,15 @@ import orderRoutes from './routes/orderRoutes.js';
 import fonepayRoutes from './routes/fonepayRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import currencyRoutes from './routes/currencyRoutes.js';
+import tenantRoutes from './routes/tenantRoutes.js';
+import tableRoutes from './routes/tableRoutes.js';
+import analyticsRoutes from './routes/analyticsRoutes.js';
+import crmRoutes from './routes/crmRoutes.js';
+import emailRoutes from './routes/emailRoutes.js';
+import paymentRoutes from './routes/paymentRoutes.js';
+import meRoutes from './routes/meRoutes.js';
+import saasWebsiteContentRoutes from './routes/saasWebsiteContentRoutes.js';
+import saasWebsiteContentAdminRoutes from './routes/saasWebsiteContentAdminRoutes.js';
 
 dotenv.config();
 
@@ -35,6 +44,15 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/fonepay', fonepayRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/currencies', currencyRoutes);
+app.use('/api/tenants', tenantRoutes);
+app.use('/api/tables', tableRoutes);
+app.use('/api/analytics', analyticsRoutes);
+app.use('/api/crm', crmRoutes);
+app.use('/api/email', emailRoutes);
+app.use('/api/payments', paymentRoutes);
+app.use('/api/me', meRoutes);
+app.use('/api/public', saasWebsiteContentRoutes);
+app.use('/api/saas', saasWebsiteContentAdminRoutes);
 
 app.listen(port, async () => {
   console.log(`[server]: Server is running at http://localhost:${port}`);

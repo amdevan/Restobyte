@@ -7,18 +7,25 @@ import { useRestaurantData } from '@/hooks/useRestaurantData';
 import { SaasWebsiteContent } from '@/types';
 import CMSHeaderForm from '@/components/saas/CMSHeaderForm';
 import CMSFooterForm from '@/components/saas/CMSFooterForm';
-import { FiSave, FiCheckCircle } from 'react-icons/fi';
+import { FiSave, FiCheckCircle, FiRefreshCcw } from 'react-icons/fi';
 
 const HeaderFooterPage: React.FC = () => {
-    const { saasWebsiteContent, updateSaasWebsiteContent } = useRestaurantData();
+    const { saasWebsiteContent, updateSaasWebsiteContent, fetchSaasWebsiteContent } = useRestaurantData();
     const [localHeader, setLocalHeader] = useState(saasWebsiteContent.header);
     const [localFooter, setLocalFooter] = useState(saasWebsiteContent.footer);
     const [showSavedMessage, setShowSavedMessage] = useState(false);
+    const [isRefreshing, setIsRefreshing] = useState(false);
 
     useEffect(() => {
         setLocalHeader(saasWebsiteContent.header);
         setLocalFooter(saasWebsiteContent.footer);
     }, [saasWebsiteContent]);
+
+    const handleRefresh = async () => {
+        setIsRefreshing(true);
+        await fetchSaasWebsiteContent();
+        setIsRefreshing(false);
+    };
 
     const handleSave = () => {
         updateSaasWebsiteContent(prev => ({
@@ -38,6 +45,14 @@ const HeaderFooterPage: React.FC = () => {
              <div className="flex justify-between items-center bg-white p-4 rounded-lg shadow-sm sticky top-0 z-10">
                 <h1 className="text-2xl font-bold text-gray-800">Header & Footer Management</h1>
                 <div className="flex items-center space-x-3">
+                    <Button 
+                        variant="secondary" 
+                        onClick={handleRefresh} 
+                        disabled={isRefreshing}
+                        leftIcon={<FiRefreshCcw className={isRefreshing ? 'animate-spin' : ''}/>}
+                    >
+                        {isRefreshing ? 'Refreshing...' : 'Refresh from Server'}
+                    </Button>
                     {showSavedMessage && <span className="text-green-600 flex items-center text-sm"><FiCheckCircle className="mr-1.5"/>Saved!</span>}
                     <Button onClick={handleSave} disabled={!isDirty} leftIcon={<FiSave/>}>
                         Save All Changes

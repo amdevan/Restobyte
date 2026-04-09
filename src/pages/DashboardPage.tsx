@@ -216,11 +216,55 @@ const DashboardPage: React.FC = () => {
     const cur = getDefaultCurrency(currencies);
     if (cur) return formatMoney(amount, cur, applicationSettings);
     const decimals = applicationSettings?.decimalPlaces ?? 2;
-    const symbol = applicationSettings?.currencySymbol ?? '$';
+    const symbol = '$';
     const position = applicationSettings?.currencySymbolPosition ?? 'before';
     const fixed = amount.toFixed(decimals);
     return position === 'before' ? `${symbol}${fixed}` : `${fixed}${symbol}`;
   };
+
+  // Period label for cards
+  const periodLabel = useMemo(() => {
+    if (activeFilter === 'today') return 'Today';
+    if (activeFilter === '7d') return 'Last 7 days';
+    if (activeFilter === '30d') return 'Last 30 days';
+    return customDateDisplay;
+  }, [activeFilter, customDateDisplay]);
+
+  // Compute simple deltas for Income, Orders, AOV vs previous same-length range
+  const deltas = useMemo(() => {
+    const s = new Date(startDate + 'T00:00:00');
+    const e = new Date(endDate + 'T00:00:00');
+    const msPerDay = 24 * 3600 * 1000;
+    const days = Math.max(1, Math.round((e.getTime() - s.getTime()) / msPerDay) + 1);
+    const prevEnd = new Date(s.getTime() - msPerDay);
+    const prevStart = new Date(prevEnd.getTime() - (days - 1) * msPerDay);
+    const prevS = prevStart.toISOString().slice(0,10);
+    const prevE = prevEnd.toISOString().slice(0,10);
+
+    const inRange = (dateStr: string, a: string, b: string) => dateStr >= a && dateStr <= b;
+    const prevSales = sales.filter(sale => {
+      const d = sale.saleDate.split('T')[0];
+      return inRange(d, prevS, prevE) && activeOutletIds.includes(sale.outletId);
+    });
+
+    const curIncome = keyMetrics.totalIncome;
+    const prevIncome = prevSales.reduce((sum, s) => sum + s.totalAmount, 0);
+    const curOrders = keyMetrics.totalOrders;
+    const prevOrders = prevSales.length;
+    const curAov = curOrders > 0 ? curIncome / curOrders : 0;
+    const prevAov = prevOrders > 0 ? prevIncome / prevOrders : 0;
+
+    const pct = (cur: number, prev: number) => {
+      if (prev === 0) return cur > 0 ? 100 : 0;
+      return ((cur - prev) / prev) * 100;
+    };
+
+    return {
+      income: pct(curIncome, prevIncome),
+      orders: pct(curOrders, prevOrders),
+      aov: pct(curAov, prevAov)
+    };
+  }, [startDate, endDate, keyMetrics.totalIncome, keyMetrics.totalOrders, sales, activeOutletIds]);
   
   return (
     <div className="p-4 md:p-6 space-y-6 bg-gray-50 min-h-full">
@@ -282,20 +326,20 @@ const DashboardPage: React.FC = () => {
             </div>
       </div>
       
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
         
         <div className="xl:col-span-2 space-y-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            <DashboardStatCard title="Total Income" value={formatAmount(keyMetrics.totalIncome)} icon={<FiTrendingUp />} path="/app/sale" />
-            <DashboardStatCard title="Cash in Hand" value={formatAmount(keyMetrics.cashInHand)} icon={<FiDollarSign />} path="/app/sale" />
-            <DashboardStatCard title="Cash at Bank" value={formatAmount(keyMetrics.cashAtBank)} icon={<FiCreditCard />} path="/app/sale" />
-            <DashboardStatCard title="Total Orders" value={keyMetrics.totalOrders.toString()} icon={<FiShoppingCart />} path="/app/sale" />
-            <DashboardStatCard title="Total Receivable" value={formatAmount(keyMetrics.totalReceivable)} icon={<FiUsers />} path="/app/customer-due-receive" />
-            <DashboardStatCard title="Total Payable" value={formatAmount(keyMetrics.totalPayable)} icon={<FiTrendingDown />} path="/app/supplier-due-payment" />
-            <DashboardStatCard title="Avg. Order Value" value={formatAmount(keyMetrics.averageOrderValue)} icon={<FiCreditCard />} path="/app/sale" />
-            <DashboardStatCard title="Total Purchases" value={formatAmount(keyMetrics.totalPurchases)} icon={<FiArchive />} path="/app/purchase" />
-            <DashboardStatCard title="Total Expenses" value={formatAmount(keyMetrics.totalExpenses)} icon={<FiTrendingDown />} path="/app/expense" />
-            <DashboardStatCard title="Low Stock Items" value={lowStockAlertsCount.toString()} icon={<FiAlertTriangle />} path="/app/stock/low-stock-report" />
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            <DashboardStatCard size="sm" title="Total Income" subtitle={periodLabel} deltaPercent={deltas.income} value={formatAmount(keyMetrics.totalIncome)} icon={<FiTrendingUp />} path="/app/sale" />
+            <DashboardStatCard size="sm" title="Cash in Hand" subtitle={periodLabel} value={formatAmount(keyMetrics.cashInHand)} icon={<FiDollarSign />} path="/app/sale" />
+            <DashboardStatCard size="sm" title="Cash at Bank" subtitle={periodLabel} value={formatAmount(keyMetrics.cashAtBank)} icon={<FiCreditCard />} path="/app/sale" />
+            <DashboardStatCard size="sm" title="Total Orders" subtitle={periodLabel} deltaPercent={deltas.orders} value={keyMetrics.totalOrders.toString()} icon={<FiShoppingCart />} path="/app/sale" />
+            <DashboardStatCard size="sm" title="Total Receivable" subtitle={periodLabel} value={formatAmount(keyMetrics.totalReceivable)} icon={<FiUsers />} path="/app/customer-due-receive" />
+            <DashboardStatCard size="sm" title="Total Payable" subtitle={periodLabel} value={formatAmount(keyMetrics.totalPayable)} icon={<FiTrendingDown />} path="/app/supplier-due-payment" />
+            <DashboardStatCard size="sm" title="Avg. Order Value" subtitle={periodLabel} deltaPercent={deltas.aov} value={formatAmount(keyMetrics.averageOrderValue)} icon={<FiCreditCard />} path="/app/sale" />
+            <DashboardStatCard size="sm" title="Total Purchases" subtitle={periodLabel} value={formatAmount(keyMetrics.totalPurchases)} icon={<FiArchive />} path="/app/purchase" />
+            <DashboardStatCard size="sm" title="Total Expenses" subtitle={periodLabel} value={formatAmount(keyMetrics.totalExpenses)} icon={<FiTrendingDown />} path="/app/expense" />
+            <DashboardStatCard size="sm" title="Low Stock Items" subtitle={periodLabel} value={lowStockAlertsCount.toString()} icon={<FiAlertTriangle />} path="/app/stock/low-stock-report" />
           </div>
 
           <Card title="Sales Trend" icon={<FiTrendingUp className="text-sky-600"/>}>

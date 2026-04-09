@@ -6,6 +6,7 @@ import Card from '../common/Card';
 import Button from '../common/Button';
 import { FiShoppingCart, FiTruck, FiShoppingBag, FiArrowRight, FiActivity } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
+import Money from '../common/Money';
 
 const timeSince = (dateString: string) => {
     const seconds = Math.floor((new Date().getTime() - new Date(dateString).getTime()) / 1000);
@@ -55,7 +56,7 @@ const RecentActivityCard: React.FC<RecentActivityCardProps> = ({ sales }) => {
                                     </p>
                                 </div>
                                 <span className="text-sm font-semibold text-green-600">
-                                    +${sale.totalAmount.toFixed(2)}
+                                    +<Money amount={sale.totalAmount} />
                                 </span>
                             </li>
                         ))}

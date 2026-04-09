@@ -3,6 +3,8 @@ import { Sale, SaleItem } from '../../types';
 import Button from '../common/Button';
 import { FiPrinter, FiXCircle } from 'react-icons/fi';
 import { useRestaurantData } from '../../hooks/useRestaurantData';
+import Money from '../common/Money';
+import { formatMoney, getDefaultCurrency } from '../../utils/currency';
 
 interface ReceiptModalProps {
   onClose: () => void;
@@ -10,8 +12,9 @@ interface ReceiptModalProps {
 }
 
 const ReceiptModal: React.FC<ReceiptModalProps> = ({ onClose, sale }) => {
-  const { websiteSettings, getSingleActiveOutlet } = useRestaurantData();
+  const { websiteSettings, getSingleActiveOutlet, currencies, applicationSettings } = useRestaurantData();
   const currentOutlet = getSingleActiveOutlet();
+  const defaultCurrency = getDefaultCurrency(currencies);
 
   if (!sale) return null;
 
@@ -85,48 +88,48 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ onClose, sale }) => {
                 <tr key={`${item.id}-${index}`}>
                 <td className="py-0.5">{item.name}</td>
                 <td className="qty py-0.5">{item.quantity}</td>
-                <td className="price py-0.5">${item.price.toFixed(2)}</td>
-                <td className="total py-0.5">${(item.price * item.quantity).toFixed(2)}</td>
+                <td className="price py-0.5"><Money amount={item.price} /></td>
+                <td className="total py-0.5"><Money amount={item.price * item.quantity} /></td>
                 </tr>
             ))}
             </tbody>
         </table>
 
         <div className="summary border-t border-dashed pt-2 space-y-0.5 text-xs">
-            <div className="flex justify-between"><span>Subtotal:</span><span>${sale.subTotal.toFixed(2)}</span></div>
+            <div className="flex justify-between"><span>Subtotal:</span><span><Money amount={sale.subTotal} /></span></div>
             {sale.discountAmount && sale.discountAmount > 0 && (
-            <div className="flex justify-between"><span>Discount:</span><span>-${(sale.discountType === 'percentage' ? (sale.subTotal * sale.discountAmount / 100) : sale.discountAmount).toFixed(2)}</span></div>
+            <div className="flex justify-between"><span>Discount:</span><span>-<Money amount={sale.discountType === 'percentage' ? (sale.subTotal * sale.discountAmount / 100) : sale.discountAmount} /></span></div>
             )}
             {sale.taxDetails.map(tax => (
-            <div className="flex justify-between" key={tax.id}><span>{tax.name} ({tax.rate}%):</span><span>${tax.amount.toFixed(2)}</span></div>
+            <div className="flex justify-between" key={tax.id}><span>{tax.name} ({tax.rate}%):</span><span><Money amount={tax.amount} /></span></div>
             ))}
              {sale.tipAmount && sale.tipAmount > 0 && (
-                <div className="flex justify-between"><span>Tip:</span><span>${sale.tipAmount.toFixed(2)}</span></div>
+                <div className="flex justify-between"><span>Tip:</span><span><Money amount={sale.tipAmount} /></span></div>
             )}
-            <div className="grand-total flex justify-between font-bold text-sm pt-1 mt-1"><span>GRAND TOTAL:</span><span>${sale.totalAmount.toFixed(2)}</span></div>
+            <div className="grand-total flex justify-between font-bold text-sm pt-1 mt-1"><span>GRAND TOTAL:</span><span><Money amount={sale.totalAmount} /></span></div>
         </div>
         
         <div className="payment-details border-t border-dashed pt-2 mt-2 text-xs space-y-0.5">
             {sale.partialPayments?.map((payment, index) => (
                 <div className="flex justify-between" key={index}>
                     <span>Paid ({payment.method}):</span>
-                    <span>${payment.amount.toFixed(2)}</span>
+                    <span><Money amount={payment.amount} /></span>
                 </div>
             ))}
              <div className="flex justify-between font-semibold mt-1 pt-1 border-t border-dotted">
                 <span>Total Paid:</span>
-                <span>${totalPaid.toFixed(2)}</span>
+                <span><Money amount={totalPaid} /></span>
             </div>
             {balance > 0 && (
                 <div className="flex justify-between font-bold">
                     <span>Return Amount:</span>
-                    <span>${balance.toFixed(2)}</span>
+                    <span><Money amount={balance} /></span>
                 </div>
             )}
             {!sale.isSettled && balance < 0 && (
                 <div className="flex justify-between font-bold">
                     <span>Amount Due:</span>
-                    <span>${Math.abs(balance).toFixed(2)}</span>
+                    <span><Money amount={Math.abs(balance)} /></span>
                 </div>
             )}
         </div>

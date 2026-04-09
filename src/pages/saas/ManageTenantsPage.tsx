@@ -1,142 +1,328 @@
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Card from '@/components/common/Card';
-import Input from '@/components/common/Input';
 import Button from '@/components/common/Button';
+import Input from '@/components/common/Input';
 import Modal from '@/components/common/Modal';
-import TenantEditModal from '@/components/saas/TenantEditModal';
-import OutletForm from '@/components/settings/OutletForm';
-import { useRestaurantData } from '@/hooks/useRestaurantData';
-import { Outlet } from '@/types';
-import { FiUsers, FiSearch, FiEdit, FiToggleLeft, FiToggleRight, FiPlusCircle } from 'react-icons/fi';
+import ServerTenantEditModal from '@/components/saas/ServerTenantEditModal';
+import { API_BASE_URL } from '@/config';
+import { FiUsers, FiSearch, FiRefreshCw, FiEdit, FiTrash2, FiLogIn, FiPlus, FiCheckCircle, FiPauseCircle, FiDownload, FiCalendar } from 'react-icons/fi';
+import { useAuth } from '@/hooks/useAuth';
+import AddTenantModal from '@/components/saas/AddTenantModal';
+import TenantDetailsDrawer from '@/components/saas/TenantDetailsDrawer';
 
 const ManageTenantsPage: React.FC = () => {
-    const { outlets, users, addOutlet, updateOutlet } = useRestaurantData();
-    const [searchTerm, setSearchTerm] = useState('');
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-    const [editingTenant, setEditingTenant] = useState<Outlet | null>(null);
+  const [tenants, setTenants] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  
+  const [selectedTenant, setSelectedTenant] = useState<any>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [detailsTenantId, setDetailsTenantId] = useState<string | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
+  const { user } = useAuth();
+  const [planFilter, setPlanFilter] = useState<string>('all');
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [selectAll, setSelectAll] = useState<boolean>(false);
+  const [dateFrom, setDateFrom] = useState<string>('');
+  const [dateTo, setDateTo] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
 
-    const getTenantAdmin = (outletId: string) => {
-        return users.find(u => u.outletId === outletId && !u.isSuperAdmin);
-    };
+  const fetchTenants = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await fetch(`${API_BASE_URL}/tenants`);
+      const data = await res.json();
+      setTenants(data.tenants || []);
+    } catch {
+      setError('Failed to load tenants');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    const enrichedTenants = useMemo(() => {
-        return outlets.map(outlet => ({
-            ...outlet,
-            adminUser: getTenantAdmin(outlet.id)
-        })).sort((a,b) => new Date(b.registrationDate || 0).getTime() - new Date(a.registrationDate || 0).getTime());
-    }, [outlets, users]);
+  useEffect(() => {
+    fetchTenants();
+  }, []);
 
-    const filteredTenants = useMemo(() => {
-        if (!searchTerm) {
-            return enrichedTenants;
+  const handleDelete = async (id: string) => {
+      if (!window.confirm('Are you sure you want to delete this tenant? This action cannot be undone.')) return;
+      
+      setActionLoading(true);
+      try {
+          const res = await fetch(`${API_BASE_URL}/tenants/${id}`, {
+              method: 'DELETE'
+          });
+          if (res.ok) {
+              setTenants(prev => prev.filter(t => t.id !== id));
+          } else {
+              alert('Failed to delete tenant');
+          }
+      } catch (error) {
+          alert('Error deleting tenant');
+      } finally {
+          setActionLoading(false);
+      }
+  };
+
+  const handleEditClick = (tenant: any) => {
+      setSelectedTenant(tenant);
+      setIsEditModalOpen(true);
+  };
+
+  const handleImpersonate = async (tenant: any) => {
+      try {
+        const token = localStorage.getItem('authToken');
+        if (!token) return;
+        const res = await fetch(`${API_BASE_URL}/auth/impersonate/${tenant.id}`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        if (!res.ok) {
+            alert('Impersonation failed');
+            return;
         }
-        const lowercasedFilter = searchTerm.toLowerCase();
-        return enrichedTenants.filter(tenant =>
-            tenant.restaurantName.toLowerCase().includes(lowercasedFilter) ||
-            (tenant.adminUser && tenant.adminUser.username.toLowerCase().includes(lowercasedFilter))
-        );
-    }, [enrichedTenants, searchTerm]);
+        const data = await res.json();
+        localStorage.setItem('authUser', JSON.stringify(data.user));
+        localStorage.setItem('authToken', data.token);
+        window.location.href = '/app/home';
+      } catch {
+        alert('Network error');
+      }
+  };
+  const handleUpdate = async (updatedData: any) => {
+      if (!selectedTenant) return;
+      setActionLoading(true);
+      try {
+          const res = await fetch(`${API_BASE_URL}/tenants/${selectedTenant.id}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(updatedData)
+          });
+          
+          if (res.ok) {
+              setIsEditModalOpen(false);
+              fetchTenants(); // Refresh list to get updated data
+          } else {
+              alert('Failed to update tenant');
+          }
+      } catch (error) {
+          alert('Error updating tenant');
+      } finally {
+          setActionLoading(false);
+      }
+  };
 
-    const handleOpenModal = (tenant: Outlet) => {
-        setEditingTenant(tenant);
-        setIsModalOpen(true);
-    };
+  const planOptions = useMemo(() => ['all', ...Array.from(new Set((tenants || []).map((t: any) => t.plan).filter(Boolean)))], [tenants]);
+  const statusOptions = useMemo(() => ['all', 'active', 'inactive', 'trialing'], []);
 
-    const handleCloseModal = () => {
-        setEditingTenant(null);
-        setIsModalOpen(false);
-    };
+  const filtered = tenants.filter((t) => {
+    const q = searchTerm.toLowerCase();
+    const matchesQuery = t.name?.toLowerCase().includes(q) || t.phone?.toLowerCase().includes(q);
+    const matchesPlan = planFilter === 'all' || t.plan === planFilter;
+    const matchesStatus = statusFilter === 'all' || t.subscriptionStatus === statusFilter;
+    const createdOk =
+      (!dateFrom || new Date(t.createdAt) >= new Date(dateFrom)) &&
+      (!dateTo || new Date(t.createdAt) <= new Date(dateTo));
+    return matchesQuery && matchesPlan && matchesStatus && createdOk;
+  });
 
-    const handleOpenAddModal = () => {
-        setIsAddModalOpen(true);
-    };
+  const toggleSelectAll = () => {
+    if (selectAll) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(filtered.map(t => t.id));
+    }
+    setSelectAll(!selectAll);
+  };
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+  };
 
-    const handleCloseAddModal = () => {
-        setIsAddModalOpen(false);
-    };
-
-    const handleToggleStatus = (tenant: Outlet) => {
-        const newStatus = tenant.subscriptionStatus === 'active' ? 'inactive' : 'active';
-        updateOutlet({ ...tenant, subscriptionStatus: newStatus });
-    };
-
-    return (
-        <div className="space-y-6">
-            <div className="flex justify-between items-center">
-                <h1 className="text-2xl font-bold text-gray-800 flex items-center">
-                    <FiUsers className="mr-3" /> Tenant Management ({filteredTenants.length})
-                </h1>
-                <div className="flex items-center space-x-3 w-1/3">
-                    <Input
-                        placeholder="Search by restaurant or admin..."
-                        leftIcon={<FiSearch />}
-                        containerClassName="mb-0"
-                        value={searchTerm}
-                        onChange={e => setSearchTerm(e.target.value)}
-                    />
-                    <Button variant="primary" onClick={handleOpenAddModal} leftIcon={<FiPlusCircle />}>
-                        Add Tenant
-                    </Button>
-                </div>
-            </div>
-
-            <Card className="overflow-x-auto">
-                {filteredTenants.length > 0 ? (
-                    <table className="w-full min-w-max">
-                        <thead className="bg-gray-100">
-                            <tr>
-                                <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase">Restaurant</th>
-                                <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase">Admin User</th>
-                                <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase">Plan</th>
-                                <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase">Register Date</th>
-                                <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                                <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-                            </tr>
-                        </thead>
-                         <tbody className="bg-white divide-y divide-gray-200">
-                            {filteredTenants.map(tenant => (
-                                <tr key={tenant.id}>
-                                    <td className="py-3 px-4 font-medium">{tenant.restaurantName}</td>
-                                    <td className="py-3 px-4 text-sm text-gray-600">{tenant.adminUser?.username || 'N/A'}</td>
-                                    <td className="py-3 px-4 text-sm"><span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-sky-100 text-sky-800">{tenant.plan}</span></td>
-                                    <td className="py-3 px-4 text-sm text-gray-600">{tenant.registrationDate ? new Date(tenant.registrationDate).toLocaleDateString() : 'N/A'}</td>
-                                    <td className="py-3 px-4 text-sm">
-                                        <button onClick={() => handleToggleStatus(tenant)} className={`flex items-center text-xs p-1 rounded-full ${tenant.subscriptionStatus === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                            {tenant.subscriptionStatus === 'active' ? <FiToggleRight size={18} className="mr-1"/> : <FiToggleLeft size={18} className="mr-1"/>}
-                                            <span className="capitalize">{tenant.subscriptionStatus}</span>
-                                        </button>
-                                    </td>
-                                    <td className="py-3 px-4">
-                                        <Button variant="outline" size="sm" onClick={() => handleOpenModal(tenant)} leftIcon={<FiEdit size={14}/>}>
-                                            Edit
-                                        </Button>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                ) : (
-                    <div className="text-center py-10 text-gray-500">
-                        <p>No tenants found.</p>
-                    </div>
-                )}
-            </Card>
-
-            <Modal isOpen={isModalOpen} onClose={handleCloseModal} title={`Edit Tenant: ${editingTenant?.restaurantName}`}>
-                <TenantEditModal initialData={editingTenant} onUpdate={updateOutlet} onClose={handleCloseModal} />
-            </Modal>
-
-            <Modal isOpen={isAddModalOpen} onClose={handleCloseAddModal} title="Add New Tenant" size="xl">
-                <OutletForm
-                    initialData={null}
-                    onSubmit={addOutlet}
-                    onUpdate={updateOutlet}
-                    onClose={handleCloseAddModal}
-                />
-            </Modal>
+  return (
+    <div className="space-y-6">
+      <div className="space-y-3">
+        <div className="flex items-center justify-start">
+          <h1 className="text-2xl font-bold text-gray-800 flex items-center">
+            <FiUsers className="mr-3" /> Tenants ({filtered.length})
+          </h1>
         </div>
-    );
+        <div className="flex items-center justify-center flex-wrap gap-3 w-full">
+          <Input
+            placeholder="Search..."
+            leftIcon={<FiSearch />}
+            containerClassName="mb-0"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+          <select
+            value={planFilter}
+            onChange={(e) => setPlanFilter(e.target.value)}
+            className="px-3 py-2 border rounded-md text-sm"
+            title="Filter by Plan"
+          >
+            {planOptions.map(p => <option key={p} value={p}>{p === 'all' ? 'All Plans' : p}</option>)}
+          </select>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="px-3 py-2 border rounded-md text-sm"
+            title="Filter by Status"
+          >
+            {statusOptions.map(s => <option key={s} value={s}>{s === 'all' ? 'All Statuses' : s}</option>)}
+          </select>
+          <div className="flex items-center gap-2">
+            <FiCalendar className="text-gray-500" />
+            <input type="date" className="border rounded px-2 py-1 text-sm" value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
+            <span className="text-gray-400 text-sm">to</span>
+            <input type="date" className="border rounded px-2 py-1 text-sm" value={dateTo} onChange={e => setDateTo(e.target.value)} />
+          </div>
+          <Button variant="outline" onClick={fetchTenants} leftIcon={<FiRefreshCw />}>
+            Refresh
+          </Button>
+          <Button onClick={() => setIsAddModalOpen(true)} leftIcon={<FiPlus />}>
+            Add Tenant
+          </Button>
+        </div>
+      </div>
+      <Card>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button size="sm" leftIcon={<FiCheckCircle />} onClick={async () => {
+            for (const id of selectedIds) {
+              await fetch(`${API_BASE_URL}/tenants/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subscriptionStatus: 'active' }) });
+            }
+            fetchTenants();
+          }} disabled={selectedIds.length === 0}>Activate Selected</Button>
+          <Button size="sm" variant="secondary" leftIcon={<FiPauseCircle />} onClick={async () => {
+            for (const id of selectedIds) {
+              await fetch(`${API_BASE_URL}/tenants/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subscriptionStatus: 'inactive' }) });
+            }
+            fetchTenants();
+          }} disabled={selectedIds.length === 0}>Deactivate Selected</Button>
+          <Button size="sm" variant="danger" leftIcon={<FiTrash2 />} onClick={async () => {
+            if (!window.confirm('Delete selected tenants?')) return;
+            for (const id of selectedIds) {
+              await fetch(`${API_BASE_URL}/tenants/${id}`, { method: 'DELETE' });
+            }
+            setSelectedIds([]);
+            setSelectAll(false);
+            fetchTenants();
+          }} disabled={selectedIds.length === 0}>Delete Selected</Button>
+          <Button size="sm" variant="secondary" leftIcon={<FiDownload />} onClick={() => {
+            const headers = ['Name', 'Phone', 'Plan', 'Status', 'Created'];
+            const rows = filtered.map(t => [
+              t.name ?? '',
+              t.phone ?? '',
+              t.plan ?? '',
+              t.subscriptionStatus ?? '',
+              new Date(t.createdAt).toISOString()
+            ]);
+            const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'tenants_filtered.csv';
+            link.click();
+            URL.revokeObjectURL(url);
+          }}>Export Filtered</Button>
+          <div className="text-sm text-gray-500 ml-auto">{selectedIds.length} selected</div>
+        </div>
+      </Card>
+      <Card className="overflow-x-auto">
+        {error && <div className="text-red-600 text-sm p-2">{error}</div>}
+        {loading ? (
+          <div className="p-4">Loading...</div>
+        ) : filtered.length > 0 ? (
+          <table className="w-full min-w-max">
+            <thead className="bg-gray-100">
+              <tr>
+                <th className="py-3 px-4">
+                  <input type="checkbox" checked={selectAll} onChange={toggleSelectAll} />
+                </th>
+                <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase">Phone</th>
+                <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase">Plan</th>
+                <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase">Created</th>
+                <th className="py-3 px-4 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((t) => (
+                <tr key={t.id} className="border-b hover:bg-gray-50 cursor-pointer" onClick={() => setDetailsTenantId(t.id)}>
+                  <td className="py-3 px-4">
+                    <input type="checkbox" checked={selectedIds.includes(t.id)} onChange={() => toggleSelect(t.id)} />
+                  </td>
+                  <td className="py-3 px-4 font-medium">{t.name}</td>
+                  <td className="py-3 px-4">{t.phone || '-'}</td>
+                  <td className="py-3 px-4">
+                      <span className="px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
+                        {t.plan}
+                      </span>
+                  </td>
+                  <td className="py-3 px-4">
+                      <span className={`px-2 py-1 rounded-full text-xs ${
+                          t.subscriptionStatus === 'active' ? 'bg-green-100 text-green-800' : 
+                          t.subscriptionStatus === 'trialing' ? 'bg-yellow-100 text-yellow-800' : 
+                          'bg-gray-100 text-gray-800'
+                      }`}>
+                        {t.subscriptionStatus}
+                      </span>
+                  </td>
+                  <td className="py-3 px-4 text-sm text-gray-500">{new Date(t.createdAt).toLocaleDateString()}</td>
+                  <td className="py-3 px-4 text-right">
+                      <div className="flex justify-end space-x-2">
+                          <button 
+                            onClick={() => handleEditClick(t)}
+                            className="text-blue-600 hover:text-blue-800 p-1 rounded hover:bg-blue-50"
+                            title="Edit"
+                          >
+                              <FiEdit size={18} />
+                          </button>
+                          <button 
+                            onClick={() => handleImpersonate(t)}
+                            className="text-sky-600 hover:text-sky-800 p-1 rounded hover:bg-sky-50"
+                            title="Impersonate"
+                          >
+                              <FiLogIn size={18} />
+                          </button>
+                          <button 
+                            onClick={() => handleDelete(t.id)}
+                            className="text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-50"
+                            title="Delete"
+                          >
+                              <FiTrash2 size={18} />
+                          </button>
+                      </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <div className="p-6 text-gray-500">No tenants found.</div>
+        )}
+      </Card>
+
+      <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title="Edit Tenant">
+          <ServerTenantEditModal 
+              initialData={selectedTenant}
+              onUpdate={handleUpdate}
+              onClose={() => setIsEditModalOpen(false)}
+              loading={actionLoading}
+          />
+      </Modal>
+      <Modal isOpen={isAddModalOpen} onClose={() => { setIsAddModalOpen(false); fetchTenants(); }} title="Create Tenant">
+        <AddTenantModal onClose={() => { setIsAddModalOpen(false); fetchTenants(); }} />
+      </Modal>
+      <TenantDetailsDrawer tenantId={detailsTenantId} onClose={() => setDetailsTenantId(null)} />
+    </div>
+  );
 };
 
 export default ManageTenantsPage;

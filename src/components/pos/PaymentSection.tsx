@@ -28,18 +28,23 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({ grandTotal, onFi
   const [selectedCurrencyId, setSelectedCurrencyId] = useState<string | undefined>(defaultCurrency?.id);
   const selectedCurrency = useMemo(() => currencies.find(c => c.id === selectedCurrencyId) || defaultCurrency, [currencies, selectedCurrencyId, defaultCurrency]);
 
+  // React to default currency changes from settings
+  useEffect(() => {
+    setSelectedCurrencyId(defaultCurrency?.id);
+  }, [defaultCurrency?.id]);
+
   // Calculations for display
   const totalPaidFromPartials = useMemo(() => partialPayments.reduce((sum, p) => sum + p.amount, 0), [partialPayments]);
   const remainingDueBase = useMemo(() => grandTotal - totalPaidFromPartials, [grandTotal, totalPaidFromPartials]);
   const currentTenderedValueSelected = parseFloat(amount) || 0;
-  const currentTenderedValueBase = useMemo(() => toBase(currentTenderedValueSelected, selectedCurrency!), [currentTenderedValueSelected, selectedCurrency]);
+  const currentTenderedValueBase = useMemo(() => toBase(currentTenderedValueSelected, selectedCurrency), [currentTenderedValueSelected, selectedCurrency]);
   
   const displayTotalPaidBase = totalPaidFromPartials + currentTenderedValueBase;
   const displayBalanceBase = grandTotal - displayTotalPaidBase;
   
   useEffect(() => {
       // Set the initial amount to the remaining due amount.
-      const remainingInSelected = fromBase(remainingDueBase, selectedCurrency!);
+      const remainingInSelected = fromBase(remainingDueBase, selectedCurrency);
       setAmount(remainingInSelected > 0 ? remainingInSelected.toFixed(applicationSettings.decimalPlaces || 2) : '');
       if (paymentMethod === 'Due') {
           setAmount('0.00');
@@ -52,7 +57,7 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({ grandTotal, onFi
       alert("Please enter a valid amount to pay.");
       return;
     }
-    const amountBase = toBase(numericAmountSelected, selectedCurrency!);
+    const amountBase = toBase(numericAmountSelected, selectedCurrency);
     setPartialPayments(prev => [...prev, { method: paymentMethod, amount: amountBase }]);
     // Amount will be reset by the useEffect hook when remainingDue changes
   };
@@ -62,14 +67,14 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({ grandTotal, onFi
     const numericAmountSelected = parseFloat(amount);
     
     if (paymentMethod !== 'Due' && !isNaN(numericAmountSelected) && numericAmountSelected > 0) {
-        finalPayments.push({ method: paymentMethod, amount: toBase(numericAmountSelected, selectedCurrency!) });
+        finalPayments.push({ method: paymentMethod, amount: toBase(numericAmountSelected, selectedCurrency) });
     }
 
     const finalTotalPaidBase = finalPayments.reduce((sum, p) => sum + p.amount, 0);
 
     if (paymentMethod === 'Due' || finalTotalPaidBase < grandTotal) {
-       const paidFormatted = formatMoney(finalTotalPaidBase, selectedCurrency!, applicationSettings);
-       const totalFormatted = formatMoney(grandTotal, selectedCurrency!, applicationSettings);
+       const paidFormatted = formatMoney(finalTotalPaidBase, selectedCurrency, applicationSettings);
+       const totalFormatted = formatMoney(grandTotal, selectedCurrency, applicationSettings);
        if(paymentMethod !== 'Due' && !window.confirm(`Amount paid (${paidFormatted}) is less than total (${totalFormatted}). Mark remaining as due?`)) {
           return;
       }
@@ -156,17 +161,17 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({ grandTotal, onFi
             {paymentMethod !== 'Due' && <Button size="lg" className="mt-2" onClick={handleAddPartialPayment} disabled={!amount || parseFloat(amount) <= 0}>Add Partial Payment</Button>}
 
           <div className="mt-auto pt-4 border-t text-sm space-y-1">
-            <div className="flex justify-between"><span className="text-gray-600">Total Bill</span><span>{formatMoney(grandTotal, selectedCurrency!, applicationSettings)}</span></div>
-            <div className="flex justify-between"><span className="text-gray-600">Amount Paid</span><span>{formatMoney(displayTotalPaidBase, selectedCurrency!, applicationSettings)}</span></div>
+            <div className="flex justify-between"><span className="text-gray-600">Total Bill</span><span>{formatMoney(grandTotal, selectedCurrency, applicationSettings)}</span></div>
+            <div className="flex justify-between"><span className="text-gray-600">Amount Paid</span><span>{formatMoney(displayTotalPaidBase, selectedCurrency, applicationSettings)}</span></div>
             {displayBalanceBase >= 0 ? (
                 <div className={`flex justify-between font-bold text-red-500`}>
                     <span>Due Amount</span>
-                    <span>{formatMoney(displayBalanceBase, selectedCurrency!, applicationSettings)}</span>
+                    <span>{formatMoney(displayBalanceBase, selectedCurrency, applicationSettings)}</span>
                 </div>
             ) : (
                 <div className={`flex justify-between font-bold text-green-600`}>
                     <span>Return Amount</span>
-                    <span>{formatMoney(Math.abs(displayBalanceBase), selectedCurrency!, applicationSettings)}</span>
+                    <span>{formatMoney(Math.abs(displayBalanceBase), selectedCurrency, applicationSettings)}</span>
                 </div>
             )}
           </div>
@@ -210,7 +215,7 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({ grandTotal, onFi
           amount={(function(){
             const baseToPay = currentTenderedValueBase || remainingDueBase;
             const gatewayCode = outlet.fonepayCurrency || 'NPR';
-            const gatewayCurrency = currencies.find(c => c.code === gatewayCode) || selectedCurrency!;
+            const gatewayCurrency = currencies.find(c => c.code === gatewayCode) || selectedCurrency;
             return fromBase(baseToPay, gatewayCurrency);
           })()}
           currency={outlet.fonepayCurrency || 'NPR'}

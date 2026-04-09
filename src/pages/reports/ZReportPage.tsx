@@ -3,17 +3,17 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useRestaurantData } from '@/hooks/useRestaurantData';
-import { formatMoney, getDefaultCurrency } from '@/utils/currency';
 import Card from '@/components/common/Card';
 import Input from '@/components/common/Input';
 import Button from '@/components/common/Button';
 import DownloadReportButton from '@/components/common/DownloadReportButton';
 import { FiCalendar, FiPrinter, FiDollarSign, FiCreditCard, FiHash, FiFileText, FiAlertTriangle, FiArrowLeft } from 'react-icons/fi';
 import { IconBaseProps } from 'react-icons';
+import Money from '@/components/common/Money';
 
 interface SummaryLineProps {
     label: string;
-    value: string | number;
+    value: React.ReactNode;
     icon?: React.ReactElement<IconBaseProps>;
     isTotal?: boolean;
     className?: string;
@@ -30,7 +30,7 @@ const SummaryLine: React.FC<SummaryLineProps> = ({ label, value, icon, isTotal =
 );
 
 const ZReportPage: React.FC = () => {
-    const { sales, currencies, applicationSettings } = useRestaurantData();
+    const { sales } = useRestaurantData();
     const navigate = useNavigate();
     const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
 
@@ -59,16 +59,6 @@ const ZReportPage: React.FC = () => {
             paymentMethodBreakdown
         };
     }, [selectedDate, sales]);
-
-    const formatAmount = (amount: number): string => {
-        const cur = getDefaultCurrency(currencies);
-        if (cur) return formatMoney(amount, cur, applicationSettings);
-        const decimals = applicationSettings?.decimalPlaces ?? 2;
-        const symbol = applicationSettings?.currencySymbol ?? '$';
-        const position = applicationSettings?.currencySymbolPosition ?? 'before';
-        const fixed = amount.toFixed(decimals);
-        return position === 'before' ? `${symbol}${fixed}` : `${fixed}${symbol}`;
-    };
 
     const handlePrint = () => {
         // This is a simplified print. A real implementation would use CSS print styles.
@@ -131,7 +121,7 @@ const ZReportPage: React.FC = () => {
                         <div className="space-y-1">
                              {Object.keys(dailyData.paymentMethodBreakdown).length > 0 ? (
                                 Object.entries(dailyData.paymentMethodBreakdown).map(([method, amount]) => (
-                                    <SummaryLine key={method} label={method.toUpperCase()} value={formatAmount(amount)}/>
+                                    <SummaryLine key={method} label={method.toUpperCase()} value={<Money amount={amount} />}/>
                                 ))
                              ) : (
                                 <p className="text-gray-600 text-sm py-2 text-center">-- NO SALES RECORDED --</p>
@@ -143,9 +133,9 @@ const ZReportPage: React.FC = () => {
                         <h3 className="text-lg font-semibold mb-2">TOTALS</h3>
                         <div className="space-y-1 mb-4">
                            <SummaryLine label="ORDER COUNT" value={dailyData.orderCount}/>
-                           <SummaryLine label="GROSS SALES" value={formatAmount(dailyData.subTotal)}/>
-                           <SummaryLine label="TOTAL TAX" value={formatAmount(dailyData.totalTax)}/>
-                           <SummaryLine label="NET SALES" value={formatAmount(dailyData.totalSales)} isTotal className="text-xl"/>
+                           <SummaryLine label="GROSS SALES" value={<Money amount={dailyData.subTotal} />}/>
+                           <SummaryLine label="TOTAL TAX" value={<Money amount={dailyData.totalTax} />}/>
+                           <SummaryLine label="NET SALES" value={<Money amount={dailyData.totalSales} />} isTotal className="text-xl"/>
                         </div>
                     </div>
                     

@@ -5,8 +5,8 @@ import Card from '@/components/common/Card';
 import Button from '@/components/common/Button';
 import Modal from '@/components/common/Modal';
 import { useRestaurantData } from '@/hooks/useRestaurantData';
-import { SaasPage } from '@/types';
-import { FiEdit, FiFileText, FiPlusCircle, FiTrash2 } from 'react-icons/fi';
+import { SaasPage, SaasNavLink } from '@/types';
+import { FiEdit, FiFileText, FiPlusCircle, FiTrash2, FiRefreshCcw, FiLink } from 'react-icons/fi';
 import Input from '@/components/common/Input';
 import RichTextEditor from '@/components/common/RichTextEditor';
 
@@ -69,9 +69,16 @@ const PageEditForm: React.FC<{
 }
 
 const PagesPage: React.FC = () => {
-    const { saasWebsiteContent, updateSaasWebsiteContent } = useRestaurantData();
+    const { saasWebsiteContent, updateSaasWebsiteContent, fetchSaasWebsiteContent } = useRestaurantData();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingPage, setEditingPage] = useState<SaasPage | null>(null);
+    const [isRefreshing, setIsRefreshing] = useState(false);
+
+    const handleRefresh = async () => {
+        setIsRefreshing(true);
+        await fetchSaasWebsiteContent();
+        setIsRefreshing(false);
+    };
 
     const handleEditClick = (page: SaasPage) => {
         setEditingPage(page);
@@ -121,15 +128,50 @@ const PagesPage: React.FC = () => {
         }
     };
 
+    const handleAddToMenu = (page: SaasPage) => {
+        const url = `/${page.slug}`;
+        const alreadyInMenu = saasWebsiteContent.header.navLinks.some(link => link.url === url);
+        
+        if (alreadyInMenu) {
+            alert('This page is already in the navigation menu.');
+            return;
+        }
+
+        const newLink: SaasNavLink = {
+            id: `nav-${Date.now()}`,
+            text: page.title,
+            url: url
+        };
+
+        updateSaasWebsiteContent(prev => ({
+            ...prev,
+            header: {
+                ...prev.header,
+                navLinks: [...prev.header.navLinks, newLink]
+            }
+        }));
+        alert('Page added to navigation menu successfully!');
+    };
+
     return (
         <div className="space-y-6">
              <div className="flex justify-between items-center">
                 <h1 className="text-2xl font-bold text-gray-800 flex items-center">
                     <FiFileText className="mr-3" /> Content Page Management
                 </h1>
-                <Button onClick={handleAddNew} leftIcon={<FiPlusCircle/>}>
-                    Add New Page
-                </Button>
+                <div className="flex items-center gap-3">
+                    <Button 
+                        variant="secondary" 
+                        onClick={handleRefresh} 
+                        disabled={isRefreshing}
+                        leftIcon={<FiRefreshCcw className={isRefreshing ? 'animate-spin' : ''}/>}
+                    >
+                        {isRefreshing ? 'Refreshing...' : 'Refresh from Server'}
+                    </Button>
+                    <Button onClick={handleAddNew} leftIcon={<FiPlusCircle/>}>
+                        Add New Page
+                    </Button>
+                </div>
             </div>
 
              <Card className="overflow-x-auto">
@@ -148,6 +190,7 @@ const PagesPage: React.FC = () => {
                                 <td className="p-3 text-sm text-gray-500 font-mono">/{page.slug}</td>
                                 <td className="p-3">
                                     <div className="flex gap-2">
+                                        <Button size="sm" variant="secondary" onClick={() => handleAddToMenu(page)} title="Add to navigation menu"><FiLink/></Button>
                                         <Button size="sm" variant="secondary" onClick={() => handleEditClick(page)}><FiEdit/></Button>
                                         <Button size="sm" variant="danger" onClick={() => handleDelete(page.id)}><FiTrash2/></Button>
                                     </div>

@@ -9,6 +9,7 @@ import Input from '@/components/common/Input';
 import Button from '@/components/common/Button';
 import DownloadReportButton from '@/components/common/DownloadReportButton';
 import { FiCalendar, FiDollarSign, FiSearch, FiList, FiArrowLeft } from 'react-icons/fi';
+import Money from '@/components/common/Money';
 
 interface ItemSaleData {
   id: string;
@@ -45,10 +46,15 @@ const FoodSaleReportPage: React.FC = () => {
       sale.items.forEach(saleItem => {
         if (!data[saleItem.id]) {
           const menuItem = menuItems.find(mi => mi.id === saleItem.id);
+          const rawCategory = menuItem?.category;
+          const categoryName = rawCategory 
+            ? (typeof rawCategory === 'object' ? (rawCategory as any).name : rawCategory) 
+            : 'Uncategorized';
+ 
           data[saleItem.id] = { 
               id: saleItem.id,
               name: menuItem?.name || saleItem.name, 
-              category: menuItem?.category || 'Uncategorized',
+              category: categoryName,
               quantitySold: 0, 
               totalSales: 0 
           };
@@ -109,8 +115,7 @@ const FoodSaleReportPage: React.FC = () => {
            <div className="text-right">
                 <p className="text-sm text-gray-600">Total Sales (Filtered)</p>
                 <p className="text-xl font-bold text-sky-600">
-                    <FiDollarSign className="inline h-5 w-5 mr-0.5 relative -top-0.5" />
-                    {totalValue.toFixed(2)}
+                    <Money amount={totalValue} />
                 </p>
              </div>
         </div>
@@ -133,7 +138,7 @@ const FoodSaleReportPage: React.FC = () => {
                     <td className="py-3 px-4 text-sm font-medium text-gray-800">{item.name}</td>
                     <td className="py-3 px-4 text-sm text-gray-600">{item.category}</td>
                     <td className="py-3 px-4 text-sm text-gray-600 text-right">{item.quantitySold}</td>
-                    <td className="py-3 px-4 text-sm text-gray-800 font-semibold text-right">${item.totalSales.toFixed(2)}</td>
+                    <td className="py-3 px-4 text-sm text-gray-800 font-semibold text-right"><Money amount={item.totalSales} /></td>
                   </tr>
                 ))}
               </tbody>

@@ -13,6 +13,19 @@ dist-ssr
 *.local
 .env
 
+# Local databases
+*.db
+*.sqlite
+*.sqlite3
+backend/prisma/dev.db
+backend/prisma/prisma/
+
+# Generated build artifacts
+backend/prisma/*.js
+backend/prisma/*.js.map
+backend/prisma/*.d.ts
+backend/prisma/*.d.ts.map
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

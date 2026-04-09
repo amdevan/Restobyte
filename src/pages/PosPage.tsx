@@ -333,7 +333,7 @@ const handleSendKot = useCallback(() => {
             name: itemToAdd.name,
             price: firstVariation.price,
             basePrice: firstVariation.price,
-            isVeg: itemToAdd.isVeg,
+            isVeg: itemToAdd.isVegetarian === undefined ? true : itemToAdd.isVegetarian,
             quantity: 1, 
             notes: undefined, 
             status: 'new',
@@ -387,7 +387,8 @@ const handleSendKot = useCallback(() => {
 
   const filteredMenu = useMemo(() => {
     return menuItems.filter(item => {
-      const matchesCategory = selectedCategory === 'All' || item.category === selectedCategory;
+      const categoryName = typeof item.category === 'object' && item.category !== null ? (item.category as any).name : item.category;
+      const matchesCategory = selectedCategory === 'All' || categoryName === selectedCategory;
       const matchesSearch = menuSearchTerm === '' || item.name.toLowerCase().includes(menuSearchTerm.toLowerCase());
       return matchesCategory && matchesSearch;
     });

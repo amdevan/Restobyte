@@ -3,6 +3,7 @@ import React from 'react';
 import { Split } from '../../types';
 import Button from '../common/Button';
 import { FiDollarSign, FiCheckCircle } from 'react-icons/fi';
+import Money from '../common/Money';
 
 interface SubBillCardProps {
   split: Split;
@@ -27,7 +28,7 @@ const SubBillCard: React.FC<SubBillCardProps> = ({ split, onPay }) => {
             split.items.map((item, index) => (
                 <div key={`${item.id}-${index}`} className="flex justify-between text-sm">
                     <span className="truncate pr-2">{item.quantity}x {item.name}</span>
-                    <span className="font-mono">${(item.quantity * item.price).toFixed(2)}</span>
+                    <span className="font-mono"><Money amount={item.quantity * item.price} /></span>
                 </div>
             ))
         ) : (
@@ -35,10 +36,10 @@ const SubBillCard: React.FC<SubBillCardProps> = ({ split, onPay }) => {
         )}
       </div>
       <div className="mt-2 pt-2 border-t text-sm space-y-0.5">
-        <div className="flex justify-between"><span className="text-gray-500">Subtotal:</span><span>${split.subTotal.toFixed(2)}</span></div>
-        <div className="flex justify-between"><span className="text-gray-500">Tax:</span><span>${split.taxAmount.toFixed(2)}</span></div>
-        {split.tipAmount > 0 && <div className="flex justify-between"><span className="text-gray-500">Tip:</span><span>${split.tipAmount.toFixed(2)}</span></div>}
-        <div className="flex justify-between font-bold text-md mt-1"><span>Total:</span><span>${(split.totalAmount + split.tipAmount).toFixed(2)}</span></div>
+        <div className="flex justify-between"><span className="text-gray-500">Subtotal:</span><span><Money amount={split.subTotal} /></span></div>
+        <div className="flex justify-between"><span className="text-gray-500">Tax:</span><span><Money amount={split.taxAmount} /></span></div>
+        {split.tipAmount > 0 && <div className="flex justify-between"><span className="text-gray-500">Tip:</span><span><Money amount={split.tipAmount} /></span></div>}
+        <div className="flex justify-between font-bold text-md mt-1"><span>Total:</span><span><Money amount={split.totalAmount + split.tipAmount} /></span></div>
       </div>
     </div>
   );

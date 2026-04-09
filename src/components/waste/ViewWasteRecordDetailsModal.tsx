@@ -4,19 +4,20 @@ import { WasteRecord, WasteItem } from '../../types';
 import Button from '../common/Button';
 import { FiXCircle, FiCalendar, FiUser, FiInfo, FiTag, FiDollarSign, FiEdit3, FiList } from 'react-icons/fi';
 import { IconBaseProps } from 'react-icons'; // Import IconBaseProps
+import Money from '../common/Money';
 
 interface ViewWasteRecordDetailsModalProps {
   wasteRecord: WasteRecord | null;
   onClose: () => void;
 }
 
-const DetailItem: React.FC<{ label: string; value?: string | number | null; icon?: React.ReactElement<IconBaseProps>; className?: string }> = ({ label, value, icon, className = '' }) => (
+const DetailItem: React.FC<{ label: string; value?: React.ReactNode; icon?: React.ReactElement<IconBaseProps>; className?: string }> = ({ label, value, icon, className = '' }) => (
   <div className={`py-1.5 ${className}`}>
     <span className="text-xs font-medium text-gray-500 uppercase tracking-wider flex items-center">
       {icon && React.cloneElement(icon, { size: 13, className: "mr-1.5 text-sky-600"})}
       {label}
     </span>
-    <p className="text-gray-800 text-sm mt-0.5">{value === undefined || value === null || String(value).trim() === '' ? '-' : String(value)}</p>
+    <p className="text-gray-800 text-sm mt-0.5">{value === undefined || value === null || (typeof value === 'string' && value.trim() === '') ? '-' : value}</p>
   </div>
 );
 
@@ -55,13 +56,13 @@ const ViewWasteRecordDetailsModal: React.FC<ViewWasteRecordDetailsModalProps> = 
                   <span className="font-medium text-gray-800">{item.stockItemName}</span>
                   {item.costAtTimeOfWaste !== undefined && (
                     <span className="text-xs text-red-500">
-                      Est. Item Loss: ${(item.quantityWasted * item.costAtTimeOfWaste).toFixed(2)}
+                      Est. Item Loss: <Money amount={item.quantityWasted * item.costAtTimeOfWaste} />
                     </span>
                   )}
                 </div>
                 <div className="text-xs text-gray-500 mt-0.5">
                   Qty Wasted: {item.quantityWasted} {item.unit}
-                  {item.costAtTimeOfWaste !== undefined && ` @ $${item.costAtTimeOfWaste.toFixed(2)}/${item.unit}`}
+                  {item.costAtTimeOfWaste !== undefined && <span className="ml-1">@ <Money amount={item.costAtTimeOfWaste} />/{item.unit}</span>}
                 </div>
                 {item.reasonForItem && (
                     <div className="text-xs text-gray-500 mt-0.5 flex items-center">
@@ -77,7 +78,7 @@ const ViewWasteRecordDetailsModal: React.FC<ViewWasteRecordDetailsModalProps> = 
           <div className="mt-4 pt-3 border-t text-right">
             <DetailItem 
                 label="Total Estimated Loss" 
-                value={`$${wasteRecord.totalEstimatedLoss.toFixed(2)}`} 
+                value={<Money amount={wasteRecord.totalEstimatedLoss} />} 
                 className="flex justify-between items-center text-lg font-bold text-red-600" 
                 icon={<FiDollarSign size={16}/>}
             />

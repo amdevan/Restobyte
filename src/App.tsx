@@ -4,19 +4,43 @@
 
 import React from 'react';
 // FIX: Refactored to use named imports for react-router-dom for consistency.
-import { HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate, useLocation, Outlet, useNavigationType } from 'react-router-dom';
 
 import { RestaurantDataProvider, useRestaurantData } from './hooks/useRestaurantData';
 import { AuthProvider, useAuth } from './hooks/useAuth';
+import { isSaaSDomain } from '@/utils/domain';
 
 import RestaurantLayout from './components/layout/RestaurantLayout';
 import Spinner from './components/common/Spinner';
 import FeatureDisabledPage from './components/common/FeatureDisabledPage';
+import PublicLayout from '@/components/public/PublicLayout';
+import PublicHomePage from '@/pages/public/PublicHomePage';
+import PublicMenuPage from '@/pages/public/PublicMenuPage';
+import PublicAboutPage from '@/pages/public/PublicAboutPage';
+const PublicContactPage = React.lazy(() => import('./pages/public/PublicContactPage'));
+const SaaSBlogsPage = React.lazy(() => import('./pages/public/SaaSBlogsPage'));
+const SaaSCareerPage = React.lazy(() => import('./pages/public/SaaSCareerPage'));
+const SaaSContactPage = React.lazy(() => import('./pages/public/SaaSContactPage'));
+const SaaSFeaturesPage = React.lazy(() => import('./pages/public/SaaSFeaturesPage'));
+const SaaSPricingPage = React.lazy(() => import('./pages/public/SaaSPricingPage'));
+const SaaSProductsShopPage = React.lazy(() => import('./pages/public/SaaSProductsShopPage'));
+const SaaSPrivacyPage = React.lazy(() => import('./pages/public/SaaSPrivacyPage'));
+const SaaSTermsPage = React.lazy(() => import('./pages/public/SaaSTermsPage'));
+const DynamicSaaSPage = React.lazy(() => import('./pages/public/DynamicSaaSPage'));
+const PublicLoginPage = React.lazy(() => import('./pages/public/PublicLoginPage'));
+import PublicRegisterPage from '@/pages/public/PublicRegisterPage';
+const CustomerLayout = React.lazy(() => import('./components/customer/CustomerLayout'));
+const CustomerDashboardPage = React.lazy(() => import('./pages/customer/CustomerDashboardPage'));
+const CustomerProfilePage = React.lazy(() => import('./pages/customer/CustomerProfilePage'));
+const CustomerOrdersPage = React.lazy(() => import('./pages/customer/CustomerOrdersPage'));
+const CustomerReservationsPage = React.lazy(() => import('./pages/customer/CustomerReservationsPage'));
+const CustomerSettingsPage = React.lazy(() => import('./pages/customer/CustomerSettingsPage'));
+
 const SaaSLayout = React.lazy(() => import('./pages/saas/SaaSLayout'));
 const LoginPage = React.lazy(() => import('./pages/auth/LoginPage'));
 const RegisterPage = React.lazy(() => import('./pages/auth/RegisterPage'));
 const LandingPage = React.lazy(() => import('./pages/public/LandingPage'));
-const RestaurantWebsitePage = React.lazy(() => import('./pages/public/RestaurantWebsitePage'));
+// Removed RestaurantWebsitePage as it's replaced by PublicLayout and sub-pages
 
 
 // SaaS Pages
@@ -24,6 +48,9 @@ const SaaSDashboardPage = React.lazy(() => import('./pages/saas/SaaSDashboardPag
 const ManageTenantsPage = React.lazy(() => import('./pages/saas/ManageTenantsPage'));
 const ManagePlansPage = React.lazy(() => import('./pages/saas/ManagePlansPage'));
 const SaaSSettingsPage = React.lazy(() => import('./pages/saas/SaaSSettingsPage'));
+const SaaSLoginPage = React.lazy(() => import('./pages/saas/auth/SaaSLoginPage'));
+const WebsiteCMSPage = React.lazy(() => import('./pages/saas/WebsiteCMSPage'));
+const CRMLeadsPage = React.lazy(() => import('./pages/saas/CRMLeadsPage'));
 
 // New SaaS CMS Pages
 const HomePageContentPage = React.lazy(() => import('./pages/saas/cms/HomePageContentPage'));
@@ -135,6 +162,8 @@ const SubscriptionPage = React.lazy(() => import('./pages/SubscriptionPage'));
 const ManageAddonsPage = React.lazy(() => import('./pages/item/ManageAddonsPage'));
 const MobileScanner = React.lazy(() => import('./components/MobileScanner'));
 const SoundSettingsPage = React.lazy(() => import('./pages/settings/SoundSettingsPage'));
+// Website Settings: AI Website Builder
+const AiWebsiteBuilderPage = React.lazy(() => import('./pages/website-settings/AiWebsiteBuilderPage'));
 
 
 const AuthAwareLanding: React.FC = () => {
@@ -292,79 +321,193 @@ const RestaurantPanelRoutes = () => {
 }
 
 const SaaSPanelRoutes = () => {
+    const basePath = isSaaSDomain() ? '' : '/saas';
     return (
         <SaaSLayout>
             <Routes>
                 <Route path="dashboard" element={<SaaSDashboardPage />} />
-                <Route path="tenants" element={<ManageTenantsPage />} />
                 <Route path="plans" element={<ManagePlansPage />} />
-
-                <Route path="cms">
-                    <Route index element={<Navigate to="home" replace />} />
-                    <Route path="home" element={<HomePageContentPage />} />
-                    <Route path="header-footer" element={<HeaderFooterPage />} />
-                    <Route path="pages" element={<PagesPage />} />
-                    <Route path="blogs" element={<BlogsPage />} />
-                    <Route path="seo" element={<SeoPage />} />
-                </Route>
-
+                <Route path="tenants" element={<ManageTenantsPage />} />
+                <Route path="crm/leads" element={<CRMLeadsPage />} />
+                <Route path="cms/*" element={<WebsiteCMSPage />} />
                 <Route path="settings" element={<SaaSSettingsPage />} />
-                <Route path="*" element={<Navigate to="/saas/dashboard" replace />} />
+                <Route path="*" element={<Navigate to={`${basePath}/dashboard`} replace />} />
             </Routes>
         </SaaSLayout>
     )
 }
 
 const AppContent: React.FC = () => {
-    const { isAuthenticated, isLoading, user } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
+  const isSaaS = isSaaSDomain();
+  
+  if (isLoading) {
+    return <div className="flex h-screen w-screen items-center justify-center bg-gray-100"><Spinner size="lg" /></div>;
+  }
 
-    if (isLoading) {
-        return <div className="flex h-screen w-screen items-center justify-center bg-gray-100"><Spinner size="lg" /></div>;
-    }
+  // If we are on the SaaS Domain (admin.xxx.com)
+  if (isSaaS) {
+      return (
+        <React.Suspense fallback={<div className="flex h-screen w-screen items-center justify-center bg-gray-100"><Spinner size="lg" /></div>}>
+          <Routes>
+             <Route path="/" element={<Navigate to="/login" replace />} />
+             <Route path="/login" element={
+                 isAuthenticated && user?.isSuperAdmin 
+                 ? <Navigate to="/dashboard" replace /> 
+                 : <SaaSLoginPage />
+             } />
 
-    return (
+             <Route 
+               path="/*" 
+               element={
+                 isAuthenticated && user?.isSuperAdmin 
+                 ? <SaaSPanelRoutes /> 
+                 : <Navigate to="/login" replace />
+               } 
+             />
+             <Route path="*" element={<Navigate to="/login" replace />} />
+          </Routes>
+        </React.Suspense>
+      );
+  }
+
+  // Default Restaurant App / Landing Page Routes
+  return (
+    <React.Suspense fallback={<div className="flex h-screen w-screen items-center justify-center bg-gray-100"><Spinner size="lg" /></div>}>
         <Routes>
-            <Route path="/" element={<AuthAwareLanding />} />
-            {/* Public landing page accessible even when authenticated */}
-            <Route path="/public" element={<LandingPage />} />
-            {/* Public restaurant website (tenant-facing) */}
-            <Route path="/public/restaurant" element={<RestaurantWebsitePage />} />
-            <Route path="/public/restaurant/:outletId" element={<RestaurantWebsitePage />} />
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/blogs" element={<SaaSBlogsPage />} />
+            <Route path="/career" element={<SaaSCareerPage />} />
+            <Route path="/contact" element={<SaaSContactPage />} />
+            <Route path="/features" element={<SaaSFeaturesPage />} />
+            <Route path="/pricing" element={<SaaSPricingPage />} />
+            <Route path="/products" element={<SaaSProductsShopPage />} />
+            <Route path="/privacy-policy" element={<SaaSPrivacyPage />} />
+            <Route path="/terms-of-service" element={<SaaSTermsPage />} />
+            <Route path="/:slug" element={<DynamicSaaSPage />} />
+            
+            {/* Public Restaurant Website Routes */}
+            <Route path="/public" element={<Outlet />}>
+                <Route path="login" element={<PublicLoginPage />} />
+                <Route path="register" element={<PublicRegisterPage />} />
+            </Route>
 
-            <Route
-                path="/app/*"
+            <Route path="/public/restaurant" element={<PublicLayout />}>
+              <Route index element={<PublicHomePage />} />
+              <Route path="menu" element={<PublicMenuPage />} />
+              <Route path="about" element={<PublicAboutPage />} />
+              <Route path="contact" element={<PublicContactPage />} />
+            </Route>
+
+            <Route path="/website/:id" element={<PublicLayout />}>
+              <Route index element={<PublicHomePage />} />
+              <Route path="menu" element={<PublicMenuPage />} />
+              <Route path="about" element={<PublicAboutPage />} />
+              <Route path="contact" element={<PublicContactPage />} />
+            </Route>
+            
+            {/* Customer Panel Routes */}
+            <Route path="/customer" element={isAuthenticated && user?.roleId === 'role-customer' ? <CustomerLayout /> : <Navigate to="/public/login" replace />}>
+                <Route index element={<Navigate to="dashboard" replace />} />
+                <Route path="dashboard" element={<CustomerDashboardPage />} />
+                <Route path="profile" element={<CustomerProfilePage />} />
+                <Route path="orders" element={<CustomerOrdersPage />} />
+                <Route path="reservations" element={<CustomerReservationsPage />} />
+                <Route path="settings" element={<CustomerSettingsPage />} />
+            </Route>
+            
+            {/* Auth Routes */}
+            <Route path="/login" element={isAuthenticated ? <Navigate to={user?.isSuperAdmin ? "/saas/dashboard" : "/app/home"} replace /> : <LoginPage onSwitchToRegister={() => window.location.href = '/register'} />} />
+            <Route path="/register" element={isAuthenticated ? <Navigate to={user?.isSuperAdmin ? "/saas/dashboard" : "/app/home"} replace /> : <RegisterPage onSwitchToLogin={() => window.location.href = '/login'} />} />
+
+            {/* SaaS Admin Routes (Accessible on localhost if SuperAdmin) */}
+            <Route 
+                path="/saas/*" 
+                element={
+                    isAuthenticated && user?.isSuperAdmin 
+                    ? <SaaSPanelRoutes /> 
+                    : <Navigate to="/app/home" replace />
+                } 
+            />
+
+            {/* Restaurant App Routes */}
+            <Route 
+                path="/app/*" 
                 element={
                     isAuthenticated && !user?.isSuperAdmin
-                        ? <RestaurantPanelRoutes />
-                        : <Navigate to="/" replace />
-                }
+                    ? <RestaurantPanelRoutes /> 
+                    : <Navigate to="/login" replace />
+                } 
             />
-            <Route
-                path="/saas/*"
-                element={
-                    isAuthenticated && user?.isSuperAdmin
-                        ? <SaaSPanelRoutes />
-                        : <Navigate to="/" replace />
-                }
-            />
-
-            <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
-    );
+    </React.Suspense>
+  );
 }
 
+const ScrollPositionManager: React.FC = () => {
+  const location = useLocation();
+  const navigationType = useNavigationType();
+  const keyRef = React.useRef(location.key);
+  const rafRef = React.useRef<number | null>(null);
+
+  React.useEffect(() => {
+    keyRef.current = location.key;
+  }, [location.key]);
+
+  React.useEffect(() => {
+    const save = () => {
+      if (rafRef.current !== null) return;
+      rafRef.current = window.requestAnimationFrame(() => {
+        rafRef.current = null;
+        try {
+          sessionStorage.setItem(`rb_scroll:${keyRef.current}`, String(window.scrollY));
+        } catch {
+        }
+      });
+    };
+
+    window.addEventListener('scroll', save, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', save);
+      if (rafRef.current !== null) {
+        window.cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+    };
+  }, []);
+
+  React.useEffect(() => {
+    if (navigationType === 'POP') {
+      let y = 0;
+      try {
+        const raw = sessionStorage.getItem(`rb_scroll:${location.key}`);
+        y = raw ? Number(raw) : 0;
+      } catch {
+        y = 0;
+      }
+
+      window.requestAnimationFrame(() => window.scrollTo({ top: y, left: 0, behavior: 'auto' }));
+      const t = window.setTimeout(() => window.scrollTo({ top: y, left: 0, behavior: 'auto' }), 60);
+      return () => window.clearTimeout(t);
+    }
+
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, [location.key, navigationType]);
+
+  return null;
+};
+
 const App: React.FC = () => {
-    return (
-        <HashRouter>
-            <RestaurantDataProvider>
-                <AuthProvider>
-                    <AppContent />
-                </AuthProvider>
-            </RestaurantDataProvider>
-        </HashRouter>
-    );
+  return (
+    <HashRouter>
+      <ScrollPositionManager />
+      <AuthProvider>
+        <RestaurantDataProvider>
+          <AppContent />
+        </RestaurantDataProvider>
+      </AuthProvider>
+    </HashRouter>
+  );
 };
 
 export default App;
-// Website Settings: AI Website Builder
-const AiWebsiteBuilderPage = React.lazy(() => import('./pages/website-settings/AiWebsiteBuilderPage'));

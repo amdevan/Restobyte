@@ -143,7 +143,7 @@ const OutletForm: React.FC<OutletFormProps> = ({ initialData, onSubmit, onUpdate
     return (
         <form onSubmit={handleSubmit} className="space-y-4 max-h-[75vh] overflow-y-auto custom-scrollbar pr-2">
              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input label="Outlet Name *" name="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g., Downtown Branch" required />
+                <Input label="Outlet Name *" name="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g., Main Branch" required />
                 <Input label="Restaurant Name (on receipts) *" name="restaurantName" value={restaurantName} onChange={(e) => setRestaurantName(e.target.value)} placeholder="e.g., The Grand Bistro" required />
              </div>
               <div>

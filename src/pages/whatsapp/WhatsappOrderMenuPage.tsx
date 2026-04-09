@@ -16,7 +16,7 @@ const WhatsappOrderMenuPage: React.FC = () => {
     const menuByCategory = useMemo(() => {
         if (!menuItems) return {};
         return menuItems.reduce((acc, item) => {
-            const category = item.category || 'Uncategorized';
+            const category = (typeof item.category === 'object' && item.category !== null ? (item.category as any).name : item.category) || 'Uncategorized';
             if (!acc[category]) {
                 acc[category] = [];
             }
@@ -128,9 +128,9 @@ const WhatsappOrderMenuPage: React.FC = () => {
                                             <p className="text-lg font-bold text-sky-600">${getPriceDisplay(item.variations)}</p>
                                         </div>
                                         <p className="text-sm text-gray-600 mt-1">{item.description}</p>
-                                        {item.isVeg !== undefined && (
-                                            <span className={`mt-2 inline-block px-2 py-0.5 text-xs font-semibold rounded-full ${item.isVeg ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                                {item.isVeg ? 'Veg' : 'Non-Veg'}
+                                        {item.isVegetarian !== undefined && (
+                                            <span className={`mt-2 inline-block px-2 py-0.5 text-xs font-semibold rounded-full ${item.isVegetarian ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                                {item.isVegetarian ? 'Veg' : 'Non-Veg'}
                                             </span>
                                         )}
                                     </div>

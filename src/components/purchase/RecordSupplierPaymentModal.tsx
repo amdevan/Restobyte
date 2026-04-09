@@ -5,6 +5,7 @@ import Input from '../common/Input';
 import Button from '../common/Button';
 import { FiDollarSign, FiSave, FiXCircle, FiCalendar, FiFileText, FiAlignLeft } from 'react-icons/fi';
 import { useRestaurantData } from '../../hooks/useRestaurantData';
+import Money from '../common/Money';
 
 interface RecordSupplierPaymentModalProps {
   purchase: Purchase | null;
@@ -61,13 +62,13 @@ const RecordSupplierPaymentModal: React.FC<RecordSupplierPaymentModalProps> = ({
         Supplier: <span className="font-semibold">{purchase.supplierName || 'N/A'}</span>
       </p>
       <p className="text-sm text-gray-600">
-        Total PO Amount: <span className="font-semibold">${purchase.grandTotalAmount.toFixed(2)}</span>
+        Total PO Amount: <span className="font-semibold"><Money amount={purchase.grandTotalAmount} /></span>
       </p>
        <p className="text-sm text-gray-600">
-        Currently Paid: <span className="font-semibold">${(purchase.paidAmount || 0).toFixed(2)}</span>
+        Currently Paid: <span className="font-semibold"><Money amount={purchase.paidAmount || 0} /></span>
       </p>
       <p className="text-sm text-red-600">
-        Current Due Amount: <span className="font-semibold">${dueAmount.toFixed(2)}</span>
+        Current Due Amount: <span className="font-semibold"><Money amount={dueAmount} /></span>
       </p>
       
       <Input

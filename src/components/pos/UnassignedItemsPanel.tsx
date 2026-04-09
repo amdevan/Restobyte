@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { SaleItem, Split } from '../../types';
 import Button from '../common/Button';
 import { FiPlusCircle, FiArrowRight } from 'react-icons/fi';
+import Money from '../common/Money';
 
 interface UnassignedItemsPanelProps {
   items: SaleItem[];
@@ -44,7 +45,7 @@ const UnassignedItemsPanel: React.FC<UnassignedItemsPanelProps> = ({ items, spli
                 <div className="flex justify-between items-center">
                   <div>
                     <p className="font-medium text-sm">{item.quantity}x {item.name}</p>
-                    <p className="text-xs text-gray-500">${item.price.toFixed(2)} each</p>
+                    <p className="text-xs text-gray-500"><Money amount={item.price} /> each</p>
                   </div>
                   {splits.length > 0 && (
                     <div className="flex items-center space-x-2">

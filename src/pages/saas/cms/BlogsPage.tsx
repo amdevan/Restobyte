@@ -6,15 +6,22 @@ import Button from '@/components/common/Button';
 import Modal from '@/components/common/Modal';
 import { useRestaurantData } from '@/hooks/useRestaurantData';
 import { SaasPost } from '@/types';
-import { FiPlusCircle, FiEdit, FiTrash2, FiMessageSquare } from 'react-icons/fi';
+import { FiPlusCircle, FiEdit, FiTrash2, FiMessageSquare, FiRefreshCcw } from 'react-icons/fi';
 import CMSBlogForm from '@/components/saas/CMSBlogForm';
 
 const BlogsPage: React.FC = () => {
-    const { saasWebsiteContent, updateSaasWebsiteContent } = useRestaurantData();
+    const { saasWebsiteContent, updateSaasWebsiteContent, fetchSaasWebsiteContent } = useRestaurantData();
     const { blogPosts } = saasWebsiteContent;
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingPost, setEditingPost] = useState<SaasPost | null>(null);
+    const [isRefreshing, setIsRefreshing] = useState(false);
+
+    const handleRefresh = async () => {
+        setIsRefreshing(true);
+        await fetchSaasWebsiteContent();
+        setIsRefreshing(false);
+    };
 
     const handleOpenModal = (post: SaasPost | null) => {
         setEditingPost(post);
@@ -50,9 +57,19 @@ const BlogsPage: React.FC = () => {
                 <h1 className="text-2xl font-bold text-gray-800 flex items-center">
                     <FiMessageSquare className="mr-3" /> Blog Post Management
                 </h1>
-                <Button onClick={() => handleOpenModal(null)} leftIcon={<FiPlusCircle/>}>
-                    Add New Post
-                </Button>
+                <div className="flex items-center gap-3">
+                    <Button 
+                        variant="secondary" 
+                        onClick={handleRefresh} 
+                        disabled={isRefreshing}
+                        leftIcon={<FiRefreshCcw className={isRefreshing ? 'animate-spin' : ''}/>}
+                    >
+                        {isRefreshing ? 'Refreshing...' : 'Refresh from Server'}
+                    </Button>
+                    <Button onClick={() => handleOpenModal(null)} leftIcon={<FiPlusCircle/>}>
+                        Add New Post
+                    </Button>
+                </div>
             </div>
 
             <Card className="overflow-x-auto">

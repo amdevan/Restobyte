@@ -7,6 +7,7 @@ import Input from '@/components/common/Input';
 import Button from '@/components/common/Button';
 import DownloadReportButton from '@/components/common/DownloadReportButton';
 import { FiCalendar, FiDollarSign, FiList, FiArrowLeft, FiFilter, FiTag } from 'react-icons/fi';
+import Money from '@/components/common/Money';
 
 interface ItemSaleData {
   id: string;
@@ -42,7 +43,10 @@ const ProductAnalysisReportPage: React.FC = () => {
     filteredSales.forEach(sale => {
       sale.items.forEach(saleItem => {
         const menuItem = menuItems.find(mi => mi.id === saleItem.id);
-        const categoryName = menuItem?.category || 'Uncategorized';
+        const rawCategory = menuItem?.category;
+        const categoryName = rawCategory 
+          ? (typeof rawCategory === 'object' ? (rawCategory as any).name : rawCategory) 
+          : 'Uncategorized';
         
         if (categoryFilter !== 'All' && categoryName !== categoryFilter) {
             return;
@@ -108,7 +112,7 @@ const ProductAnalysisReportPage: React.FC = () => {
           <h3 className="text-lg font-semibold text-gray-700">Item Performance ({analysisData.length})</h3>
            <div className="text-right">
                 <p className="text-sm text-gray-600">Total Revenue (Filtered)</p>
-                <p className="text-xl font-bold text-sky-600">${totalRevenue.toFixed(2)}</p>
+                <p className="text-xl font-bold text-sky-600"><Money amount={totalRevenue} /></p>
             </div>
         </div>
         <div className="overflow-x-auto">
@@ -129,9 +133,13 @@ const ProductAnalysisReportPage: React.FC = () => {
                 {analysisData.map(item => (
                   <tr key={item.id} className="hover:bg-gray-50">
                     <td className="py-3 px-4 font-medium">{item.name}</td>
-                    <td className="py-3 px-4 text-sm text-gray-600">{item.category}</td>
+                    <td className="py-3 px-4 text-sm text-gray-600">
+                      {typeof item.category === 'object' && item.category !== null 
+                        ? (item.category as any).name 
+                        : item.category}
+                    </td>
                     <td className="py-3 px-4 text-right">{item.quantitySold}</td>
-                    <td className="py-3 px-4 text-right font-semibold">${item.grossRevenue.toFixed(2)}</td>
+                    <td className="py-3 px-4 text-right font-semibold"><Money amount={item.grossRevenue} /></td>
                     <td className="py-3 px-4 text-right">{totalRevenue > 0 ? ((item.grossRevenue / totalRevenue) * 100).toFixed(2) : '0.00'}%</td>
                   </tr>
                 ))}

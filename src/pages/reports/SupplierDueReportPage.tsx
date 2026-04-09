@@ -2,7 +2,6 @@
 
 
 import React, { useState, useMemo } from 'react';
-// FIX: Refactored to use named imports for react-router-dom for consistency.
 import { useNavigate } from 'react-router-dom';
 import { useRestaurantData } from '@/hooks/useRestaurantData';
 import { Purchase } from '@/types';
@@ -11,6 +10,7 @@ import Card from '@/components/common/Card';
 import Input from '@/components/common/Input';
 import DownloadReportButton from '@/components/common/DownloadReportButton';
 import { FiSearch, FiCalendar, FiDollarSign, FiArchive, FiCreditCard, FiFilter, FiXCircle, FiArrowLeft } from 'react-icons/fi';
+import Money from '@/components/common/Money';
 
 const SupplierDueReportPage: React.FC = () => {
   const { purchases, suppliers } = useRestaurantData();
@@ -126,8 +126,7 @@ const SupplierDueReportPage: React.FC = () => {
              <div className="text-right">
                 <p className="text-sm text-gray-600">Total Outstanding (Filtered)</p>
                 <p className="text-xl font-bold text-red-600">
-                    <FiDollarSign className="inline h-5 w-5 mr-0.5 relative -top-0.5" />
-                    {totalDueAmount.toFixed(2)}
+                    <Money amount={totalDueAmount} />
                 </p>
              </div>
         </div>
@@ -160,9 +159,9 @@ const SupplierDueReportPage: React.FC = () => {
                       <td className="py-3 px-4 text-sm font-medium text-sky-600">{p.purchaseNumber}</td>
                       <td className="py-3 px-4 text-sm text-gray-600">{new Date(p.date).toLocaleDateString()}</td>
                       <td className="py-3 px-4 text-sm text-gray-600">{p.supplierNameDisplay}</td>
-                      <td className="py-3 px-4 text-sm text-gray-800 text-right">${p.grandTotalAmount.toFixed(2)}</td>
-                      <td className="py-3 px-4 text-sm text-green-600 text-right">${(p.paidAmount || 0).toFixed(2)}</td>
-                      <td className="py-3 px-4 text-sm text-red-600 font-semibold text-right">${due.toFixed(2)}</td>
+                      <td className="py-3 px-4 text-sm text-gray-800 text-right"><Money amount={p.grandTotalAmount} /></td>
+                      <td className="py-3 px-4 text-sm text-green-600 text-right"><Money amount={p.paidAmount || 0} /></td>
+                      <td className="py-3 px-4 text-sm text-red-600 font-semibold text-right"><Money amount={due} /></td>
                     </tr>
                   );
                 })}

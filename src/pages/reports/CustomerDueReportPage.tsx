@@ -2,7 +2,6 @@
 
 
 import React, { useState, useMemo } from 'react';
-// FIX: Refactored to use named imports for react-router-dom for consistency.
 import { useNavigate } from 'react-router-dom';
 import { useRestaurantData } from '@/hooks/useRestaurantData';
 import { Customer } from '@/types';
@@ -11,6 +10,7 @@ import Card from '@/components/common/Card';
 import Input from '@/components/common/Input';
 import DownloadReportButton from '@/components/common/DownloadReportButton';
 import { FiSearch, FiUsers, FiDollarSign, FiPhone, FiMail, FiArrowLeft } from 'react-icons/fi';
+import Money from '@/components/common/Money';
 
 const CustomerDueReportPage: React.FC = () => {
   const { customers } = useRestaurantData();
@@ -72,8 +72,7 @@ const CustomerDueReportPage: React.FC = () => {
           <div className="text-right">
             <p className="text-sm text-gray-600">Total Outstanding</p>
             <p className="text-xl font-bold text-red-600">
-                <FiDollarSign className="inline h-5 w-5 mr-0.5 relative -top-0.5" />
-                {totalDueAmount.toFixed(2)}
+                <Money amount={totalDueAmount} />
             </p>
           </div>
         </div>
@@ -112,7 +111,7 @@ const CustomerDueReportPage: React.FC = () => {
                           </a>
                       ) : '-'}
                     </td>
-                    <td className="py-3 px-4 text-sm text-red-600 font-semibold text-right">${(customer.dueAmount || 0).toFixed(2)}</td>
+                    <td className="py-3 px-4 text-sm text-red-600 font-semibold text-right"><Money amount={customer.dueAmount || 0} /></td>
                   </tr>
                 ))}
               </tbody>

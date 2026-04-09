@@ -7,6 +7,7 @@ import Card from '@/components/common/Card';
 import Modal from '@/components/common/Modal';
 import Input from '@/components/common/Input';
 import { FiPlusCircle, FiEdit, FiTrash2, FiTag, FiPlus } from 'react-icons/fi';
+import Money from '@/components/common/Money';
 
 const AddonGroupForm: React.FC<{
   initialData: Omit<AddonGroup, 'id'> | AddonGroup | null;
@@ -129,7 +130,7 @@ const ManageAddonsPage: React.FC = () => {
                     {group.addons.map(addon => (
                         <li key={addon.id} className="flex justify-between text-sm p-1">
                             <span className="text-gray-600">{addon.name}</span>
-                            <span className="font-medium text-gray-700">+${addon.price.toFixed(2)}</span>
+                            <span className="font-medium text-gray-700">+<Money amount={addon.price} /></span>
                         </li>
                     ))}
                 </ul>

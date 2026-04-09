@@ -9,6 +9,8 @@ import Input from '@/components/common/Input';
 import Button from '@/components/common/Button';
 import DownloadReportButton from '@/components/common/DownloadReportButton';
 import { FiCalendar, FiTag, FiDollarSign, FiList, FiArrowLeft } from 'react-icons/fi';
+import Money from '@/components/common/Money';
+import { formatMoney, getDefaultCurrency } from '@/utils/currency';
 
 interface CategorySaleData {
   categoryName: string;
@@ -17,6 +19,8 @@ interface CategorySaleData {
 }
 
 const CategoryPieChart: React.FC<{ data: CategorySaleData[] }> = ({ data }) => {
+    const { currencies, applicationSettings } = useRestaurantData();
+    const defaultCurrency = getDefaultCurrency(currencies);
     const totalSales = data.reduce((sum, item) => sum + item.totalSales, 0);
     if (totalSales === 0) return null;
 
@@ -25,6 +29,13 @@ const CategoryPieChart: React.FC<{ data: CategorySaleData[] }> = ({ data }) => {
     const radius = 85;
     const circumference = 2 * Math.PI * radius;
     let accumulatedPercentage = 0;
+
+    const format = (amount: number) => {
+        if (defaultCurrency) {
+            return formatMoney(amount, defaultCurrency, applicationSettings);
+        }
+        return `$${amount.toFixed(2)}`;
+    };
 
     return (
         <div className="flex flex-col md:flex-row items-center justify-center p-4 space-y-4 md:space-y-0 md:space-x-8">
@@ -48,7 +59,7 @@ const CategoryPieChart: React.FC<{ data: CategorySaleData[] }> = ({ data }) => {
                             strokeDasharray={strokeDasharray}
                             strokeDashoffset={strokeDashoffset}
                         >
-                            <title>{`${item.categoryName}: $${item.totalSales.toFixed(2)} (${(percentage * 100).toFixed(1)}%)`}</title>
+                            <title>{`${item.categoryName}: ${format(item.totalSales)} (${(percentage * 100).toFixed(1)}%)`}</title>
                         </circle>
                     );
                 })}
@@ -58,7 +69,7 @@ const CategoryPieChart: React.FC<{ data: CategorySaleData[] }> = ({ data }) => {
                     <div key={item.categoryName} className="flex items-center text-sm">
                         <span className="w-3 h-3 rounded-sm mr-2" style={{ backgroundColor: colors[index % colors.length] }}></span>
                         <span className="text-gray-700 truncate flex-1">{item.categoryName}</span>
-                        <span className="font-medium text-gray-800 ml-2">${item.totalSales.toFixed(2)}</span>
+                        <span className="font-medium text-gray-800 ml-2"><Money amount={item.totalSales} /></span>
                     </div>
                 ))}
             </div>
@@ -145,8 +156,7 @@ const FoodMenuSaleByCategoryPage: React.FC = () => {
            <div className="text-right">
                 <p className="text-sm text-gray-600">Total Sales (Filtered)</p>
                 <p className="text-xl font-bold text-sky-600">
-                    <FiDollarSign className="inline h-5 w-5 mr-0.5 relative -top-0.5" />
-                    {totalValue.toFixed(2)}
+                    <Money amount={totalValue} />
                 </p>
              </div>
         </div>
@@ -167,7 +177,7 @@ const FoodMenuSaleByCategoryPage: React.FC = () => {
                   <tr key={item.categoryName} className="hover:bg-gray-50 transition-colors">
                     <td className="py-3 px-4 text-sm font-medium text-gray-800">{item.categoryName}</td>
                     <td className="py-3 px-4 text-sm text-gray-600 text-right">{item.quantitySold}</td>
-                    <td className="py-3 px-4 text-sm text-gray-800 font-semibold text-right">${item.totalSales.toFixed(2)}</td>
+                    <td className="py-3 px-4 text-sm text-gray-800 font-semibold text-right"><Money amount={item.totalSales} /></td>
                   </tr>
                 ))}
               </tbody>

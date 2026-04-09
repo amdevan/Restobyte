@@ -5,10 +5,11 @@ import Modal from '../common/Modal';
 import Button from '../common/Button';
 import Input from '../common/Input';
 import { FiXCircle, FiDollarSign, FiEdit, FiCheck } from 'react-icons/fi';
+import Money from '../common/Money';
 
 interface SummaryLineProps {
     label: string;
-    value: string | number;
+    value: React.ReactNode;
     className?: string;
 }
 
@@ -79,13 +80,13 @@ const RegisterDetailsModal: React.FC<RegisterDetailsModalProps> = ({ isOpen, onC
                                 </div>
                             ) : (
                                 <div className="flex items-center space-x-2">
-                                    <span className="font-mono text-gray-800 font-medium">${parseFloat(openingCash).toFixed(2)}</span>
+                                    <span className="font-mono text-gray-800 font-medium"><Money amount={parseFloat(openingCash)} /></span>
                                     <Button size="sm" variant="outline" className="p-1.5" onClick={() => setIsEditingOpeningCash(true)}><FiEdit size={12}/></Button>
                                 </div>
                             )}
                         </div>
-                        <SummaryLine label="Cash Sales Today" value={`$${dailyData.cashSales.toFixed(2)}`} />
-                        <SummaryLine label="Expected Cash in Drawer" value={`$${expectedCash.toFixed(2)}`} className="font-bold border-t-2 border-dashed !border-t-gray-400" />
+                        <SummaryLine label="Cash Sales Today" value={<Money amount={dailyData.cashSales} />} />
+                        <SummaryLine label="Expected Cash in Drawer" value={<Money amount={expectedCash} />} className="font-bold border-t-2 border-dashed !border-t-gray-400" />
                     </div>
                 </div>
 
@@ -95,7 +96,7 @@ const RegisterDetailsModal: React.FC<RegisterDetailsModalProps> = ({ isOpen, onC
                     <div className="space-y-1">
                         {Object.keys(dailyData.paymentMethodBreakdown).length > 0 ? (
                             Object.entries(dailyData.paymentMethodBreakdown).map(([method, amount]) => (
-                                <SummaryLine key={method} label={method} value={`$${amount.toFixed(2)}`} />
+                                <SummaryLine key={method} label={method} value={<Money amount={amount} />} />
                             ))
                          ) : (
                             <p className="text-gray-500 text-sm py-2 text-center">No sales recorded today.</p>

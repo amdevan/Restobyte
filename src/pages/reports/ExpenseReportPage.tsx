@@ -11,6 +11,7 @@ import Input from '@/components/common/Input';
 import Button from '@/components/common/Button';
 import DownloadReportButton from '@/components/common/DownloadReportButton';
 import { FiSearch, FiCalendar, FiFilter, FiXCircle, FiEye, FiDollarSign, FiTag, FiArrowLeft } from 'react-icons/fi';
+import Money from '@/components/common/Money';
 
 const PAYMENT_METHODS_FILTER_OPTIONS = ["All", "Cash", "Card", "Bank Transfer", "Online Payment", "Other"];
 
@@ -149,8 +150,7 @@ const ExpenseReportPage: React.FC = () => {
              <div className="text-right">
                 <p className="text-sm text-gray-600">Total Expenses (Filtered)</p>
                 <p className="text-xl font-bold text-red-600">
-                    <FiDollarSign className="inline h-5 w-5 mr-0.5 relative -top-0.5" />
-                    {totalExpensesValue.toFixed(2)}
+                    <Money amount={totalExpensesValue} />
                 </p>
              </div>
         </div>
@@ -181,7 +181,7 @@ const ExpenseReportPage: React.FC = () => {
                             <FiTag size={12} className="mr-1"/>{exp.categoryName}
                         </span>
                     </td>
-                    <td className="py-3 px-4 text-sm text-gray-800 font-semibold text-right">${exp.amount.toFixed(2)}</td>
+                    <td className="py-3 px-4 text-sm text-gray-800 font-semibold text-right"><Money amount={exp.amount} /></td>
                     <td className="py-3 px-4 text-sm text-gray-600">{exp.payee || '-'}</td>
                     <td className="py-3 px-4 text-sm text-gray-600 truncate max-w-xs">{exp.description || '-'}</td>
                     <td className="py-3 px-4 text-sm text-gray-600">{exp.paymentMethod}</td>

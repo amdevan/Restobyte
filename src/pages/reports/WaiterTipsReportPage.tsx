@@ -7,6 +7,7 @@ import Input from '@/components/common/Input';
 import Button from '@/components/common/Button';
 import DownloadReportButton from '@/components/common/DownloadReportButton';
 import { FiCalendar, FiDollarSign, FiUser, FiArrowLeft } from 'react-icons/fi';
+import Money from '@/components/common/Money';
 
 interface WaiterTipData {
   waiterId: string;
@@ -100,7 +101,7 @@ const WaiterTipsReportPage: React.FC = () => {
           <h3 className="text-lg font-semibold text-gray-700">Tips Summary ({tipsData.length} Waiters)</h3>
            <div className="text-right">
                 <p className="text-sm text-gray-600">Total Tips (Filtered)</p>
-                <p className="text-xl font-bold text-green-600">${totalTips.toFixed(2)}</p>
+                <p className="text-xl font-bold text-green-600"><Money amount={totalTips} /></p>
             </div>
         </div>
         <div className="overflow-x-auto">
@@ -120,7 +121,7 @@ const WaiterTipsReportPage: React.FC = () => {
                   <tr key={item.waiterId} className="hover:bg-gray-50">
                     <td className="py-3 px-4 font-medium">{item.waiterName}</td>
                     <td className="py-3 px-4 text-right">{item.orderCount}</td>
-                    <td className="py-3 px-4 text-right font-semibold text-green-700">${item.totalTips.toFixed(2)}</td>
+                    <td className="py-3 px-4 text-right font-semibold text-green-700"><Money amount={item.totalTips} /></td>
                   </tr>
                 ))}
               </tbody>

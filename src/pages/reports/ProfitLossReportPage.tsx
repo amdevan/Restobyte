@@ -9,6 +9,7 @@ import Button from '@/components/common/Button';
 import DownloadReportButton from '@/components/common/DownloadReportButton';
 import { FiCalendar, FiDollarSign, FiTrendingUp, FiTrendingDown, FiAlertCircle, FiBarChart2, FiArrowLeft } from 'react-icons/fi';
 import { Sale, Expense } from '@/types';
+import Money from '@/components/common/Money';
 
 const ProfitLossReportPage: React.FC = () => {
   const { sales, expenses } = useRestaurantData();
@@ -94,15 +95,15 @@ const ProfitLossReportPage: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
           <div className="bg-green-50 p-4 rounded-lg shadow">
             <p className="text-sm text-green-700">Total Revenue</p>
-            <p className="text-2xl font-bold text-green-800">${totalRevenue.toFixed(2)}</p>
+            <p className="text-2xl font-bold text-green-800"><Money amount={totalRevenue} /></p>
           </div>
           <div className="bg-red-50 p-4 rounded-lg shadow">
             <p className="text-sm text-red-700">Total Expenses</p>
-            <p className="text-2xl font-bold text-red-800">${totalExpenses.toFixed(2)}</p>
+            <p className="text-2xl font-bold text-red-800"><Money amount={totalExpenses} /></p>
           </div>
           <div className={`${profitLoss >= 0 ? 'bg-sky-50' : 'bg-rose-50'} p-4 rounded-lg shadow`}>
             <p className={`text-sm ${profitLoss >= 0 ? 'text-sky-700' : 'text-rose-700'}`}>Profit / Loss</p>
-            <p className={`text-2xl font-bold ${profitLoss >= 0 ? 'text-sky-800' : 'text-rose-800'}`}>${profitLoss.toFixed(2)}</p>
+            <p className={`text-2xl font-bold ${profitLoss >= 0 ? 'text-sky-800' : 'text-rose-800'}`}><Money amount={profitLoss} /></p>
           </div>
         </div>
       </Card>
@@ -121,7 +122,7 @@ const ProfitLossReportPage: React.FC = () => {
               {Object.entries(revenueByOrderType).map(([type, amount]) => (
                 <li key={type} className="flex justify-between items-center p-2 bg-gray-50 rounded">
                   <span className="text-gray-700">{type}</span>
-                  <span className="font-medium text-green-700">${amount.toFixed(2)}</span>
+                  <span className="font-medium text-green-700"><Money amount={amount} /></span>
                 </li>
               ))}
             </ul>
@@ -134,7 +135,7 @@ const ProfitLossReportPage: React.FC = () => {
               {Object.entries(expensesByCategory).map(([category, amount]) => (
                 <li key={category} className="flex justify-between items-center p-2 bg-gray-50 rounded">
                   <span className="text-gray-700">{category}</span>
-                  <span className="font-medium text-red-700">${amount.toFixed(2)}</span>
+                  <span className="font-medium text-red-700"><Money amount={amount} /></span>
                 </li>
               ))}
             </ul>

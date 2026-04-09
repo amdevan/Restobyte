@@ -127,7 +127,11 @@ const AvailableOnlineFoodsPage: React.FC = () => {
                   <img src={item.imageUrl || `https://picsum.photos/seed/${item.id}/40/40`} alt={item.name} className="w-10 h-10 rounded-md object-cover ml-4 mr-3" />
                   <div className="flex-1">
                     <p className="font-medium text-gray-800">{item.name}</p>
-                    <p className="text-xs text-gray-500">{item.category} - ${getPriceDisplay(item.variations)}</p>
+                    <p className="text-xs text-gray-500">
+                      {typeof item.category === 'object' && item.category !== null 
+                        ? (item.category as any).name 
+                        : item.category} - ${getPriceDisplay(item.variations)}
+                    </p>
                   </div>
                 </label>
               ))

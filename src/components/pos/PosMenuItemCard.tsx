@@ -1,17 +1,18 @@
 import React from 'react';
 import { MenuItem } from '../../types';
 import { FiPlus } from 'react-icons/fi';
+import Money from '@/components/common/Money';
 
 const PosMenuItemCard: React.FC<{ item: MenuItem; onAddItem: (item: MenuItem) => void }> = ({ item, onAddItem }) => {
   const hasOptions = (item.variations && item.variations.length > 1) || (item.addonGroupIds && item.addonGroupIds.length > 0);
 
   const displayPriceRange = () => {
-    if (!item.variations || item.variations.length === 0) return '$--.--';
-    if (item.variations.length === 1) return `$${item.variations[0].price.toFixed(2)}`;
+    if (!item.variations || item.variations.length === 0) return <span className="opacity-60"><Money amount={0} /></span>;
+    if (item.variations.length === 1) return <Money amount={item.variations[0].price} />;
     const min = Math.min(...item.variations.map(v => v.price));
     const max = Math.max(...item.variations.map(v => v.price));
-    if (min === max) return `$${min.toFixed(2)}`;
-    return `$${min.toFixed(2)} - $${max.toFixed(2)}`;
+    if (min === max) return <Money amount={min} />;
+    return <span><Money amount={min} /> - <Money amount={max} /></span>;
   }
 
   return (

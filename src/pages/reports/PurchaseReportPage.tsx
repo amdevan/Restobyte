@@ -13,6 +13,7 @@ import Modal from '@/components/common/Modal';
 import ViewPurchaseDetailsModal from '@/components/purchase/ViewPurchaseDetailsModal';
 import DownloadReportButton from '@/components/common/DownloadReportButton';
 import { FiSearch, FiCalendar, FiFilter, FiXCircle, FiEye, FiPlusCircle, FiDollarSign, FiArchive, FiShoppingCart, FiArrowLeft } from 'react-icons/fi';
+import Money from '@/components/common/Money';
 
 const PurchaseReportPage: React.FC = () => {
   const { purchases, suppliers } = useRestaurantData();
@@ -132,10 +133,9 @@ const PurchaseReportPage: React.FC = () => {
                 Purchase Records ({filteredPurchases.length})
              </h3>
              <div className="text-right">
-                <p className="text-sm text-gray-600">Total Value (Filtered)</p>
+                <p className="text-sm text-gray-600">Total Purchase (Filtered)</p>
                 <p className="text-xl font-bold text-sky-600">
-                    <FiDollarSign className="inline h-5 w-5 mr-0.5 relative -top-0.5" />
-                    {totalPurchaseValue.toFixed(2)}
+                    <Money amount={totalPurchaseValue} />
                 </p>
              </div>
         </div>
@@ -167,7 +167,7 @@ const PurchaseReportPage: React.FC = () => {
                     <td className="py-3 px-4 text-sm text-gray-600">{new Date(p.date).toLocaleDateString()}</td>
                     <td className="py-3 px-4 text-sm text-gray-600">{p.supplierNameDisplay}</td>
                     <td className="py-3 px-4 text-sm text-gray-600">{p.supplierInvoiceNumber || '-'}</td>
-                    <td className="py-3 px-4 text-sm text-gray-800 font-semibold text-right">${p.grandTotalAmount.toFixed(2)}</td>
+                    <td className="py-3 px-4 text-sm text-gray-800 font-semibold text-right"><Money amount={p.grandTotalAmount} /></td>
                     <td className="py-3 px-4 text-sm text-gray-600 text-center">{p.items.length}</td>
                     <td className="py-3 px-4 text-center">
                       <Button onClick={() => handleViewDetails(p)} variant="outline" size="sm" leftIcon={<FiEye />}>

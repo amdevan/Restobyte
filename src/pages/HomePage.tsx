@@ -10,7 +10,6 @@ import UpcomingReservationsCard from '@/components/dashboard/UpcomingReservation
 import Card from '@/components/common/Card';
 import { FiShoppingCart, FiList, FiGrid, FiSettings, FiArrowRight, FiGlobe } from 'react-icons/fi';
 import { useRestaurantData } from '../hooks/useRestaurantData';
-import { API_BASE_URL } from '../config';
 
 
 interface IconProps {
@@ -46,18 +45,6 @@ const HomePage: React.FC = () => {
     const singleActiveOutlet = getSingleActiveOutlet();
     const isCloudKitchen = singleActiveOutlet?.outletType === 'CloudKitchen';
     const isAggregateView = !singleActiveOutlet;
-    const [message, setMessage] = React.useState('');
-
-    const fetchHello = async () => {
-        try {
-            const response = await fetch(`${API_BASE_URL}/hello`);
-            const data = await response.json();
-            setMessage(data.message);
-        } catch (error) {
-            console.error('Error fetching hello:', error);
-            setMessage('Failed to fetch message.');
-        }
-    };
 
 
     return (
@@ -120,17 +107,6 @@ const HomePage: React.FC = () => {
                                 textColorClass="text-amber-600"
                            />
                        </div>
-                    </Card>
-                    <Card title="API Test">
-                        <div className="p-4">
-                            <button 
-                                onClick={fetchHello}
-                                className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-                            >
-                                Fetch Hello
-                            </button>
-                            {message && <p className="mt-4 text-gray-800">{message}</p>}
-                        </div>
                     </Card>
                 </div>
 

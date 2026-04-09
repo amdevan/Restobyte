@@ -5,13 +5,48 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
+}
+
+model Tenant {
+  id                 String   @id @default(uuid())
+  name               String
+  address            String?
+  phone              String?
+  countryCode        String?  // ISO 3166-1 alpha-2 (e.g., US, IN)
+  currencyCode       String?  // ISO 4217 (e.g., USD, INR)
+  subscriptionStatus String   @default("trialing")
+  plan               String   @default("Basic")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  outlets            Outlet[]
+  users              User[]
+  payments           Payment[]
+}
+
+model Outlet {
+  id        String   @id @default(uuid())
+  name      String
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  address   String?
+  phone     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  users     User[]
+  // Categories, Tables, etc. could optionally be linked here too, 
+  // but for now we keep the loosely coupled 'outletId' string in those models 
+  // to avoid complex migration issues with existing data if any.
+  // Actually, let's keep it loose for now to match the previous step's schema
+  // unless we want strict referential integrity. 
+  // Given the user wants "fresh", strict is better, but 'outletId' string is flexible.
 }
 
 model Category {
   id        String     @id @default(uuid())
   name      String
+  outletId  String?
   menuItems MenuItem[]
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
@@ -43,14 +78,43 @@ model Variation {
   updatedAt  DateTime @updatedAt
 }
 
+model Table {
+  id                    String    @id @default(uuid())
+  name                  String
+  capacity              Int
+  status                String    @default("Free") // Free, Occupied, Reserved
+  outletId              String
+  areaFloorId           String?
+  notes                 String?
+  assistanceRequested   Boolean   @default(false)
+  assistanceRequestedAt DateTime?
+  foodReady             Boolean   @default(false)
+  occupiedSince         DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  reservations          Reservation[]
+}
+
 model Customer {
-  id        String   @id @default(uuid())
-  name      String
-  email     String?  @unique
-  phone     String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  orders    Order[]
+  id          String   @id @default(uuid())
+  name        String
+  email       String?
+  phone       String?
+  address     String?
+  billingAddress String?
+  dob         DateTime?
+  companyName String?
+  vatPan      String?
+  dueAmount   Float    @default(0)
+  outletId    String?
+  
+  userId      String?  @unique
+  user        User?    @relation(fields: [userId], references: [id])
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  orders      Order[]
+  reservations Reservation[]
 }
 
 model Order {
@@ -61,6 +125,7 @@ model Order {
   items      OrderItem[]
   total      Float       @default(0)
   status     String      @default("PENDING") // PENDING, COMPLETED, CANCELLED
+  outletId   String?
 }
 
 model OrderItem {
@@ -78,9 +143,16 @@ model User {
   username     String   @unique
   password     String
   roleId       String?
+  
   outletId     String?
+  outlet       Outlet?  @relation(fields: [outletId], references: [id])
+  
+  tenantId     String?
+  tenant       Tenant?  @relation(fields: [tenantId], references: [id])
+
   isActive     Boolean  @default(true)
   isSuperAdmin Boolean  @default(false)
+  customer     Customer?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
@@ -94,4 +166,78 @@ model Currency {
   isDefault    Boolean  @default(false)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+}
+
+model Payment {
+  id        String   @id @default(uuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  amount    Float
+  status    String   @default("paid") // paid, failed, refunded
+  method    String?  // stripe, cash, etc.
+  notes     String?
+  createdAt DateTime @default(now())
+}
+
+model Lead {
+  id         String   @id @default(uuid())
+  name       String
+  email      String?
+  phone      String?
+  company    String?
+  source     String?
+  stage      String   @default("New")
+  notes      LeadNote[]
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model LeadNote {
+  id        String   @id @default(uuid())
+  leadId    String
+  lead      Lead     @relation(fields: [leadId], references: [id])
+  content   String
+  createdAt DateTime @default(now())
+}
+
+model SaasEmailConfig {
+  id         String   @id @default(uuid())
+  env        String   @default("dev")
+  provider   String?
+  smtpHost   String?
+  smtpPort   Int?
+  smtpSecure Boolean?
+  smtpUser   String?
+  smtpPass   String?
+  fromName   String?
+  fromEmail  String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([env])
+}
+
+model SaasWebsiteContent {
+  id        String   @id @default(uuid())
+  env       String   @default("default")
+  content   Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([env])
+}
+
+model Reservation {
+  id              String   @id @default(uuid())
+  customerId      String
+  customer        Customer @relation(fields: [customerId], references: [id])
+  tableId         String?
+  table           Table?   @relation(fields: [tableId], references: [id])
+  outletId        String
+  reservationTime DateTime
+  numberOfGuests  Int
+  status          String   @default("PENDING")
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }

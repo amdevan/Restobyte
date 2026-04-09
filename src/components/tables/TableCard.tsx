@@ -11,6 +11,7 @@ import {
     FiUsers, FiCircle, FiCheckCircle, FiClock as FiClockIcon, FiMapPin, FiDollarSign, 
     FiShoppingCart, FiFileText, FiArrowRightCircle, FiEdit2, FiMessageSquare, FiBell, FiShoppingBag
 } from 'react-icons/fi';
+import Money from '../common/Money';
 
 // Helper function to format time difference
 const formatTimeDifference = (isoTimestamp?: string): string => {
@@ -186,7 +187,7 @@ const TableCard: React.FC<TableCardProps> = ({ table, onStatusChange }) => {
             {openBillAmount > 0 && (
                 <div className="mt-2 flex items-center bg-gray-200/50 p-1.5 rounded-md">
                     <FiDollarSign size={14} className="text-gray-600 mr-1.5 flex-shrink-0" />
-                    <span className="text-gray-800 font-bold text-base">${openBillAmount.toFixed(2)}</span>
+                    <span className="text-gray-800 font-bold text-base"><Money amount={openBillAmount} /></span>
                 </div>
             )}
           </div>

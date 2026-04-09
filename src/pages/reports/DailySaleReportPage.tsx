@@ -8,10 +8,21 @@ import Input from '@/components/common/Input';
 import Button from '@/components/common/Button';
 import DownloadReportButton from '@/components/common/DownloadReportButton';
 import { FiCalendar, FiArrowLeft, FiBarChart2, FiDollarSign } from 'react-icons/fi';
+import Money from '@/components/common/Money';
+import { formatMoney, getDefaultCurrency } from '@/utils/currency';
 
 const BarChart = ({ data }: { data: { label: string, value: number }[] }) => {
+    const { currencies, applicationSettings } = useRestaurantData();
+    const defaultCurrency = getDefaultCurrency(currencies);
     const maxValue = Math.max(...data.map(d => d.value), 0);
     if (maxValue === 0) return <p className="text-center text-gray-500 py-8">No data to display for this day.</p>;
+
+    const format = (amount: number) => {
+        if (defaultCurrency) {
+            return formatMoney(amount, defaultCurrency, applicationSettings);
+        }
+        return `$${amount.toFixed(2)}`;
+    };
 
     return (
         <div className="flex items-end space-x-2 h-64 p-4 border-l border-b bg-gray-50 rounded-lg">
@@ -20,7 +31,7 @@ const BarChart = ({ data }: { data: { label: string, value: number }[] }) => {
                     <div
                         className="w-full bg-sky-500 hover:bg-sky-600 transition-colors rounded-t-sm"
                         style={{ height: `${(d.value / maxValue) * 100}%` }}
-                        title={`${d.label}: $${d.value.toFixed(2)}`}
+                        title={`${d.label}: ${format(d.value)}`}
                     ></div>
                     <span className="text-xs mt-1 text-gray-500 transform -rotate-45">{d.label}</span>
                 </div>
@@ -78,7 +89,7 @@ const DailySaleReportPage: React.FC = () => {
 
             <Card title={`Hourly Sales for ${new Date(selectedDate + 'T00:00:00Z').toLocaleDateString()}`}>
                 <div className="p-4">
-                    <p className="mb-4 text-lg">Total Sales for the day: <span className="font-bold text-xl text-green-600">${totalSales.toFixed(2)}</span></p>
+                    <p className="mb-4 text-lg">Total Sales for the day: <span className="font-bold text-xl text-green-600"><Money amount={totalSales} /></span></p>
                     <BarChart data={hourlySalesData} />
                 </div>
             </Card>

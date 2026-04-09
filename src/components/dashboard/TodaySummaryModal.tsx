@@ -4,10 +4,11 @@ import Modal from '../common/Modal';
 import Button from '../common/Button';
 import { FiXCircle, FiDollarSign, FiShoppingCart, FiTag, FiCreditCard } from 'react-icons/fi';
 import { IconBaseProps } from 'react-icons';
+import Money from '../common/Money';
 
 interface SummaryLineProps {
     label: string;
-    value: string | number;
+    value: React.ReactNode;
     icon?: React.ReactElement<IconBaseProps>;
     isTotal?: boolean;
     className?: string;
@@ -62,7 +63,7 @@ const TodaySummaryModal: React.FC<TodaySummaryModalProps> = ({ isOpen, onClose }
         <Modal isOpen={isOpen} onClose={onClose} title={`Summary for ${new Date(today + 'T00:00:00').toLocaleDateString()}`} size="md">
             <div className="space-y-4">
                 <div className="bg-sky-50 p-4 rounded-lg">
-                    <SummaryLine label="Total Sales" value={`$${dailyData.totalSales.toFixed(2)}`} icon={<FiDollarSign />} isTotal />
+                    <SummaryLine label="Total Sales" value={<Money amount={dailyData.totalSales} />} icon={<FiDollarSign />} isTotal />
                     <SummaryLine label="Total Orders" value={dailyData.orderCount} icon={<FiShoppingCart />} className="border-none"/>
                 </div>
 
@@ -71,7 +72,7 @@ const TodaySummaryModal: React.FC<TodaySummaryModalProps> = ({ isOpen, onClose }
                     <div className="space-y-1">
                         {Object.keys(dailyData.paymentMethodBreakdown).length > 0 ? (
                             Object.entries(dailyData.paymentMethodBreakdown).map(([method, amount]) => (
-                                <SummaryLine key={method} label={method} value={`$${amount.toFixed(2)}`} icon={<FiCreditCard />} />
+                                <SummaryLine key={method} label={method} value={<Money amount={amount} />} icon={<FiCreditCard />} />
                             ))
                          ) : (
                             <p className="text-gray-500 text-sm py-2 text-center">No sales recorded today.</p>

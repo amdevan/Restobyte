@@ -9,7 +9,7 @@ interface CustomerSelectionModalProps {
   onClose: () => void;
   onSelectCustomer: (customer: Customer | null) => void; // null for walk-in
   customers: Customer[];
-  addCustomer: (customerData: Omit<Customer, 'id'>) => Customer;
+  addCustomer: (customerData: Omit<Customer, 'id'>) => Promise<Customer | undefined>;
   initialView?: 'select' | 'add'; // New prop
 }
 
@@ -50,7 +50,7 @@ const CustomerSelectionModal: React.FC<CustomerSelectionModalProps> = ({
     );
   }, [allCustomers, searchTerm]);
 
-  const handleAddNewCustomer = (e: React.FormEvent) => {
+  const handleAddNewCustomer = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newName.trim() || !newPhone.trim()) {
       alert('Customer Name and Phone are required.');
@@ -65,8 +65,12 @@ const CustomerSelectionModal: React.FC<CustomerSelectionModalProps> = ({
       address: newAddress.trim() || undefined,
       dob: newDob || undefined,
     };
-    const createdCustomer = addCustomer(newCustomerData);
-    onSelectCustomer(createdCustomer); // This will also call onClose from the parent (PosPage)
+    const createdCustomer = await addCustomer(newCustomerData);
+    if (createdCustomer) {
+      onSelectCustomer(createdCustomer); // This will also call onClose from the parent (PosPage)
+    } else {
+      alert('Failed to add customer. Please try again.');
+    }
   };
 
   const resetAddForm = () => {

@@ -34,20 +34,51 @@ const CMSHeaderForm: React.FC<CMSHeaderFormProps> = ({ header, onUpdate }) => {
         }
     };
     
-    const handleLinkChange = (id: string, field: 'text' | 'url', value: string) => {
-        const newLinks = localHeader.navLinks.map(link => 
-            link.id === id ? { ...link, [field]: value } : link
-        );
+    const handleLinkChange = (id: string, field: 'text' | 'url', value: string, parentId?: string) => {
+        let newLinks;
+        if (parentId) {
+            newLinks = localHeader.navLinks.map(link => 
+                link.id === parentId 
+                    ? { 
+                        ...link, 
+                        subLinks: link.subLinks?.map(sub => sub.id === id ? { ...sub, [field]: value } : sub) 
+                      } 
+                    : link
+            );
+        } else {
+            newLinks = localHeader.navLinks.map(link => 
+                link.id === id ? { ...link, [field]: value } : link
+            );
+        }
         updateHeader({ ...localHeader, navLinks: newLinks });
     };
 
-    const handleAddLink = () => {
+    const handleAddLink = (parentId?: string) => {
         const newLink: SaasNavLink = { id: `new-${Date.now()}`, text: '', url: '' };
-        updateHeader({ ...localHeader, navLinks: [...localHeader.navLinks, newLink] });
+        if (parentId) {
+            const newLinks = localHeader.navLinks.map(link => 
+                link.id === parentId 
+                    ? { ...link, subLinks: [...(link.subLinks || []), newLink] } 
+                    : link
+            );
+            updateHeader({ ...localHeader, navLinks: newLinks });
+        } else {
+            updateHeader({ ...localHeader, navLinks: [...localHeader.navLinks, newLink] });
+        }
     };
 
-    const handleRemoveLink = (id: string) => {
-        updateHeader({ ...localHeader, navLinks: localHeader.navLinks.filter(link => link.id !== id) });
+    const handleRemoveLink = (id: string, parentId?: string) => {
+        let newLinks;
+        if (parentId) {
+            newLinks = localHeader.navLinks.map(link => 
+                link.id === parentId 
+                    ? { ...link, subLinks: link.subLinks?.filter(sub => sub.id !== id) } 
+                    : link
+            );
+        } else {
+            newLinks = localHeader.navLinks.filter(link => link.id !== id);
+        }
+        updateHeader({ ...localHeader, navLinks: newLinks });
     };
 
     return (
@@ -65,16 +96,30 @@ const CMSHeaderForm: React.FC<CMSHeaderFormProps> = ({ header, onUpdate }) => {
             
             <div>
                 <h4 className="text-md font-medium text-gray-700 mb-2">Navigation Links</h4>
-                <div className="space-y-2">
+                <div className="space-y-4">
                     {localHeader.navLinks.map(link => (
-                        <div key={link.id} className="flex items-center space-x-2 p-2 border rounded-md">
-                            <Input label="Text" value={link.text} onChange={e => handleLinkChange(link.id, 'text', e.target.value)} containerClassName="mb-0 flex-grow" />
-                            <Input label="URL" value={link.url} onChange={e => handleLinkChange(link.id, 'url', e.target.value)} placeholder="#features or /about" containerClassName="mb-0 flex-grow" />
-                            <Button variant="danger" size="sm" onClick={() => handleRemoveLink(link.id)} className="!p-2.5 self-end"><FiTrash2 size={16}/></Button>
+                        <div key={link.id} className="p-4 border rounded-xl bg-gray-50 space-y-3">
+                            <div className="flex items-center space-x-2">
+                                <Input label="Menu Text" value={link.text} onChange={e => handleLinkChange(link.id, 'text', e.target.value)} containerClassName="mb-0 flex-grow" />
+                                <Input label="URL" value={link.url} onChange={e => handleLinkChange(link.id, 'url', e.target.value)} placeholder="#features or /about" containerClassName="mb-0 flex-grow" />
+                                <Button variant="danger" size="sm" onClick={() => handleRemoveLink(link.id)} className="!p-2.5 self-end"><FiTrash2 size={16}/></Button>
+                            </div>
+                            
+                            <div className="pl-6 border-l-2 border-gray-200 space-y-2">
+                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Sub-menu Links</p>
+                                {link.subLinks?.map(sub => (
+                                    <div key={sub.id} className="flex items-center space-x-2 bg-white p-2 rounded-lg border">
+                                        <Input label="Sub Text" value={sub.text} onChange={e => handleLinkChange(sub.id, 'text', e.target.value, link.id)} containerClassName="mb-0 flex-grow" />
+                                        <Input label="Sub URL" value={sub.url} onChange={e => handleLinkChange(sub.id, 'url', e.target.value, link.id)} placeholder="/features/orders" containerClassName="mb-0 flex-grow" />
+                                        <Button variant="danger" size="sm" onClick={() => handleRemoveLink(sub.id, link.id)} className="!p-2.5 self-end"><FiTrash2 size={16}/></Button>
+                                    </div>
+                                ))}
+                                <Button onClick={() => handleAddLink(link.id)} leftIcon={<FiPlus/>} size="sm" variant="secondary" className="mt-1">Add Sub Link</Button>
+                            </div>
                         </div>
                     ))}
                 </div>
-                <Button onClick={handleAddLink} leftIcon={<FiPlus/>} size="sm" variant="secondary" className="mt-2">Add Nav Link</Button>
+                <Button onClick={() => handleAddLink()} leftIcon={<FiPlus/>} size="sm" variant="primary" className="mt-4">Add Main Menu Item</Button>
             </div>
         </div>
     );

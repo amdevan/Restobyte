@@ -7,6 +7,7 @@ import Card from '@/components/common/Card';
 import Button from '@/components/common/Button';
 import DownloadReportButton from '@/components/common/DownloadReportButton';
 import { FiArrowLeft, FiFilter, FiUser } from 'react-icons/fi';
+import Money from '@/components/common/Money';
 
 const SupplierLedgerReportPage: React.FC = () => {
     const { purchases, suppliers } = useRestaurantData();
@@ -61,7 +62,7 @@ const SupplierLedgerReportPage: React.FC = () => {
                     </h3>
                     <div className="text-right">
                         <p className="text-sm text-gray-600">Current Balance</p>
-                        <p className={`text-xl font-bold ${balance > 0 ? 'text-red-600' : 'text-green-600'}`}>${balance.toFixed(2)}</p>
+                        <p className={`text-xl font-bold ${balance > 0 ? 'text-red-600' : 'text-green-600'}`}><Money amount={balance} /></p>
                     </div>
                 </div>
                 <div className="overflow-x-auto">
@@ -82,9 +83,9 @@ const SupplierLedgerReportPage: React.FC = () => {
                                     <tr key={p.id} className="border-b">
                                         <td className="py-3 px-4">{new Date(p.date).toLocaleDateString()}</td>
                                         <td className="py-3 px-4">Purchase Order {p.purchaseNumber}</td>
-                                        <td className="py-3 px-4 text-right">${p.grandTotalAmount.toFixed(2)}</td>
-                                        <td className="py-3 px-4 text-right text-green-600">${(p.paidAmount || 0).toFixed(2)}</td>
-                                        <td className="py-3 px-4 text-right text-red-600 font-semibold">${(p.grandTotalAmount - (p.paidAmount || 0)).toFixed(2)}</td>
+                                        <td className="py-3 px-4 text-right"><Money amount={p.grandTotalAmount} /></td>
+                                        <td className="py-3 px-4 text-right text-green-600"><Money amount={p.paidAmount || 0} /></td>
+                                        <td className="py-3 px-4 text-right text-red-600 font-semibold"><Money amount={p.grandTotalAmount - (p.paidAmount || 0)} /></td>
                                     </tr>
                                 ))}
                             </tbody>

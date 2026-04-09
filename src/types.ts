@@ -24,8 +24,10 @@ export interface MenuItem {
   variations: Variation[];
   addonGroupIds?: string[];
   category: string;
+  categoryId?: string;
+  price: number;
   imageUrl?: string;
-  isVeg?: boolean;
+  isVegetarian?: boolean;
 }
 
 // Alias for clarity, can be evolved if pre-made items need different fields later
@@ -600,7 +602,7 @@ export interface Tax {
 
 export interface Outlet {
   id: string;
-  name: string; // Internal name, e.g., "Downtown Branch"
+  name: string; // Internal name, e.g., "Main Branch"
   restaurantName: string; // Public name for receipts
   address: string;
   phone: string;
@@ -710,6 +712,7 @@ export interface SaasNavLink {
     id: string;
     text: string;
     url: string;
+    subLinks?: SaasNavLink[];
 }
 
 export interface SaasHeader {
@@ -810,11 +813,23 @@ export interface SaasMaintenanceSettings {
     message: string;
 }
 
+export interface SaasEmailSettings {
+    provider: '' | 'smtp';
+    smtpHost: string;
+    smtpPort: number;
+    smtpSecure: boolean;
+    smtpUser: string;
+    smtpPass: string;
+    fromName: string;
+    fromEmail: string;
+}
+
 export interface SaaSSettings {
     sms: SaasSmsSettings;
     paymentGateways: SaasPaymentGatewaySettings;
     legal: SaasLegalSettings;
     maintenance: SaasMaintenanceSettings;
+    email?: SaasEmailSettings;
 }
 
 export interface ChatMessage {
@@ -828,19 +843,19 @@ export interface SoundSettings {
 
 export interface RestaurantDataContextType {
     menuItems: MenuItem[];
-    addMenuItem: (item: Omit<MenuItem, 'id' | 'imageUrl'>, imageUrl?: string, isVeg?: boolean) => void;
-    updateMenuItem: (item: MenuItem) => void;
-    deleteMenuItem: (itemId: string) => void;
+    addMenuItem: (item: Omit<MenuItem, 'id' | 'imageUrl'>, imageUrl?: string, isVeg?: boolean) => Promise<void>;
+    updateMenuItem: (item: MenuItem) => Promise<void>;
+    deleteMenuItem: (itemId: string) => Promise<void>;
     
     tables: Table[];
-    updateTableStatus: (tableId: string, newStatus: TableStatus) => void;
-    addTable: (name: string, capacity: number, areaFloorId?: string) => void;
-    updateTableSettings: (tableId: string, name: string, capacity: number, areaFloorId?: string) => void;
-    deleteTable: (tableId: string) => void;
-    updateTableNotes: (tableId: string, notes: string) => void;
-    requestTableAssistance: (tableId: string) => void;
-    resolveTableAssistance: (tableId: string) => void;
-    resolveFoodReady: (tableId: string) => void;
+    updateTableStatus: (tableId: string, newStatus: TableStatus) => Promise<void>;
+    addTable: (name: string, capacity: number, areaFloorId?: string) => Promise<void>;
+    updateTableSettings: (tableId: string, name: string, capacity: number, areaFloorId?: string) => Promise<void>;
+    deleteTable: (tableId: string) => Promise<void>;
+    updateTableNotes: (tableId: string, notes: string) => Promise<void>;
+    requestTableAssistance: (tableId: string) => Promise<void>;
+    resolveTableAssistance: (tableId: string) => Promise<void>;
+    resolveFoodReady: (tableId: string) => Promise<void>;
     
     reservations: Reservation[];
     addReservation: (reservation: Omit<Reservation, 'id'>) => void;
@@ -854,9 +869,9 @@ export interface RestaurantDataContextType {
     updateKdsOrderStatus: (saleId: string, status: 'new' | 'in-progress' | 'ready' | 'served' | 'on-hold') => void;
     
     foodMenuCategories: FoodMenuCategory[];
-    addFoodMenuCategory: (categoryData: Omit<FoodMenuCategory, 'id'>) => void;
-    updateFoodMenuCategory: (category: FoodMenuCategory) => void;
-    deleteFoodMenuCategory: (categoryId: string) => void;
+    addFoodMenuCategory: (categoryData: Omit<FoodMenuCategory, 'id'>) => Promise<void>;
+    updateFoodMenuCategory: (category: FoodMenuCategory) => Promise<void>;
+    deleteFoodMenuCategory: (categoryId: string) => Promise<void>;
 
     preMadeFoodItems: PreMadeFoodItem[];
     addPreMadeFoodItem: (item: Omit<PreMadeFoodItem, 'id' | 'imageUrl'>, imageUrl?: string, isVeg?: boolean) => void;
@@ -879,11 +894,11 @@ export interface RestaurantDataContextType {
     deleteSupplier: (supplierId: string) => void;
 
     customers: Customer[];
-    addCustomer: (customerData: Omit<Customer, 'id'>) => Customer;
-    updateCustomer: (customer: Customer) => void;
-    deleteCustomer: (customerId: string) => void;
+    addCustomer: (customerData: Omit<Customer, 'id'>) => Promise<Customer | undefined>;
+    updateCustomer: (customer: Customer) => Promise<void>;
+    deleteCustomer: (customerId: string) => Promise<void>;
     getAllCustomers: () => Customer[];
-    receiveCustomerPayment: (customerId: string, amountReceived: number, paymentMethod: string, notes?: string) => void;
+    receiveCustomerPayment: (customerId: string, amountReceived: number, paymentMethod: string, notes?: string) => Promise<void>;
 
     areasFloors: AreaFloor[];
     addAreaFloor: (areaFloorData: Omit<AreaFloor, 'id'>) => void;
@@ -995,6 +1010,7 @@ export interface RestaurantDataContextType {
     // SaaS Content Management
     saasWebsiteContent: SaasWebsiteContent;
     updateSaasWebsiteContent: (updater: (prev: SaasWebsiteContent) => SaasWebsiteContent) => void;
+    fetchSaasWebsiteContent: () => Promise<SaasWebsiteContent | null>;
 
     // SaaS Plan Management
     plans: Plan[];

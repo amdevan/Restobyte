@@ -7,6 +7,7 @@ import Card from '@/components/common/Card';
 import Button from '@/components/common/Button';
 import DownloadReportButton from '@/components/common/DownloadReportButton';
 import { FiArrowLeft, FiUser } from 'react-icons/fi';
+import Money from '@/components/common/Money';
 
 const CustomerLedgerReportPage: React.FC = () => {
     const { sales, customers, receiveCustomerPayment } = useRestaurantData();
@@ -57,7 +58,7 @@ const CustomerLedgerReportPage: React.FC = () => {
                     <div className="text-right">
                         <p className="text-sm text-gray-600">Current Due</p>
                         <p className={`text-xl font-bold ${customer && customer.dueAmount && customer.dueAmount > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                            ${(customer?.dueAmount || 0).toFixed(2)}
+                            <Money amount={customer?.dueAmount || 0} />
                         </p>
                     </div>
                 </div>
@@ -82,9 +83,9 @@ const CustomerLedgerReportPage: React.FC = () => {
                                     <tr key={sale.id} className="border-b">
                                         <td className="py-3 px-4">{new Date(sale.saleDate).toLocaleDateString()}</td>
                                         <td className="py-3 px-4">Sale #{sale.id.slice(-6).toUpperCase()}</td>
-                                        <td className="py-3 px-4 text-right">${sale.totalAmount.toFixed(2)}</td>
-                                        <td className="py-3 px-4 text-right text-green-600">${totalPaidForSale.toFixed(2)}</td>
-                                        <td className="py-3 px-4 text-right text-red-600 font-semibold">${dueForSale.toFixed(2)}</td>
+                                        <td className="py-3 px-4 text-right"><Money amount={sale.totalAmount} /></td>
+                                        <td className="py-3 px-4 text-right text-green-600"><Money amount={totalPaidForSale} /></td>
+                                        <td className="py-3 px-4 text-right text-red-600 font-semibold"><Money amount={dueForSale} /></td>
                                     </tr>
                                 )})}
                             </tbody>

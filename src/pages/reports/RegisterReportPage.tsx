@@ -3,7 +3,6 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useRestaurantData } from '@/hooks/useRestaurantData';
-import { formatMoney, getDefaultCurrency } from '@/utils/currency';
 import { Sale, MenuItem as MenuItemType } from '@/types';
 import Card from '@/components/common/Card';
 import Input from '@/components/common/Input';
@@ -11,10 +10,11 @@ import Button from '@/components/common/Button';
 import DownloadReportButton from '@/components/common/DownloadReportButton';
 import { FiCalendar, FiDollarSign, FiShoppingCart, FiList, FiPrinter, FiPieChart, FiCreditCard, FiTag, FiArrowLeft } from 'react-icons/fi';
 import { IconBaseProps } from 'react-icons';
+import Money from '@/components/common/Money';
 
 interface SummaryLineProps {
     label: string;
-    value: string | number;
+    value: React.ReactNode;
     icon?: React.ReactElement<IconBaseProps>;
     isTotal?: boolean;
 }
@@ -30,7 +30,7 @@ const SummaryLine: React.FC<SummaryLineProps> = ({ label, value, icon, isTotal =
 );
 
 const RegisterReportPage: React.FC = () => {
-    const { sales, currencies, applicationSettings } = useRestaurantData();
+    const { sales } = useRestaurantData();
     const navigate = useNavigate();
     const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
 
@@ -68,16 +68,6 @@ const RegisterReportPage: React.FC = () => {
             paymentMethodBreakdown
         };
     }, [selectedDate, sales]);
-
-    const formatAmount = (amount: number): string => {
-        const cur = getDefaultCurrency(currencies);
-        if (cur) return formatMoney(amount, cur, applicationSettings);
-        const decimals = applicationSettings?.decimalPlaces ?? 2;
-        const symbol = applicationSettings?.currencySymbol ?? '$';
-        const position = applicationSettings?.currencySymbolPosition ?? 'before';
-        const fixed = amount.toFixed(decimals);
-        return position === 'before' ? `${symbol}${fixed}` : `${fixed}${symbol}`;
-    };
 
     const handlePrint = () => {
         // This is a simplified print. A real implementation would use CSS print styles.
@@ -128,9 +118,9 @@ const RegisterReportPage: React.FC = () => {
 
                     <div className="space-y-1 mb-4">
                        <SummaryLine label="Total Orders" value={dailyData.orderCount} icon={<FiShoppingCart />}/>
-                       <SummaryLine label="Gross Sales (Subtotal)" value={formatAmount(dailyData.subTotal)} icon={<FiDollarSign />}/>
-                       <SummaryLine label="Total Tax Collected" value={formatAmount(dailyData.totalTax)} icon={<FiTag />}/>
-                       <SummaryLine label="Grand Total Sales" value={formatAmount(dailyData.totalSales)} icon={<FiDollarSign />} isTotal/>
+                       <SummaryLine label="Gross Sales (Subtotal)" value={<Money amount={dailyData.subTotal} />} icon={<FiDollarSign />}/>
+                       <SummaryLine label="Total Tax Collected" value={<Money amount={dailyData.totalTax} />} icon={<FiTag />}/>
+                       <SummaryLine label="Grand Total Sales" value={<Money amount={dailyData.totalSales} />} icon={<FiDollarSign />} isTotal/>
                     </div>
 
                      <div className="mt-6">
@@ -138,7 +128,7 @@ const RegisterReportPage: React.FC = () => {
                         <div className="space-y-1">
                              {Object.keys(dailyData.paymentMethodBreakdown).length > 0 ? (
                                 Object.entries(dailyData.paymentMethodBreakdown).map(([method, amount]) => (
-                                    <SummaryLine key={method} label={method} value={formatAmount(amount)} icon={<FiCreditCard />}/>
+                                    <SummaryLine key={method} label={method} value={<Money amount={amount} />} icon={<FiCreditCard />}/>
                                 ))
                              ) : (
                                 <p className="text-gray-500 text-sm py-2">No sales recorded for this day.</p>
@@ -150,9 +140,9 @@ const RegisterReportPage: React.FC = () => {
                         <h3 className="text-lg font-semibold text-gray-700 mb-2 border-b pb-1">Tax Summary</h3>
                         <div className="space-y-1">
                            {Object.entries(dailyData.taxBreakdown).map(([name, amount]) => (
-                             <SummaryLine key={name} label={`Total ${name}`} value={formatAmount(amount)} />
+                             <SummaryLine key={name} label={`Total ${name}`} value={<Money amount={amount} />} />
                            ))}
-                           <SummaryLine label="Total Tax" value={formatAmount(dailyData.totalTax)} isTotal/>
+                           <SummaryLine label="Total Tax" value={<Money amount={dailyData.totalTax} />} isTotal/>
                         </div>
                     </div>
                     

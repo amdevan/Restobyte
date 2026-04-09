@@ -9,6 +9,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { FiGrid, FiUsers, FiCreditCard, FiDollarSign, FiSettings, FiLogOut, FiGlobe, FiChevronRight } from 'react-icons/fi';
 import { useAuth } from '../../hooks/useAuth';
 import Footer from '@/components/layout/Footer';
+import { getSaaSBasePath } from '@/utils/domain';
 
 interface NavLinkProps {
     to: string;
@@ -70,6 +71,7 @@ const CollapsibleNavLink: React.FC<{
 
 const SaaSLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { user, logout } = useAuth();
+    const basePath = getSaaSBasePath();
 
     return (
         <div className="flex h-screen bg-gray-200">
@@ -78,19 +80,20 @@ const SaaSLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                     SaaS Admin
                 </div>
                 <nav className="flex-grow space-y-2">
-                    <NavLink to="/saas/dashboard" icon={<FiGrid size={20} />} label="Dashboard" />
-                    <NavLink to="/saas/tenants" icon={<FiUsers size={20} />} label="Tenants" />
-                    <NavLink to="/saas/plans" icon={<FiCreditCard size={20} />} label="Plans" />
+                    <NavLink to={`${basePath}/dashboard`} icon={<FiGrid size={20} />} label="Dashboard" />
+                    <NavLink to={`${basePath}/plans`} icon={<FiCreditCard size={20} />} label="Plans" />
+                    <NavLink to={`${basePath}/tenants`} icon={<FiUsers size={20} />} label="Tenants" />
+                    <NavLink to={`${basePath}/crm/leads`} icon={<FiDollarSign size={20} />} label="CRM" />
                     
-                    <CollapsibleNavLink basePath="/saas/cms" icon={<FiGlobe size={20} />} label="Website & CMS">
-                         <NavLink to="/saas/cms/home" icon={<></>} label="Homepage Sections" isSubItem />
-                         <NavLink to="/saas/cms/header-footer" icon={<></>} label="Header & Footer" isSubItem />
-                         <NavLink to="/saas/cms/pages" icon={<></>} label="Content Pages" isSubItem />
-                         <NavLink to="/saas/cms/blogs" icon={<></>} label="Blog Posts" isSubItem />
-                         <NavLink to="/saas/cms/seo" icon={<></>} label="SEO" isSubItem />
+                    <CollapsibleNavLink basePath={`${basePath}/cms`} icon={<FiGlobe size={20} />} label="Website & CMS">
+                         <NavLink to={`${basePath}/cms/home`} icon={<></>} label="Homepage Sections" isSubItem />
+                         <NavLink to={`${basePath}/cms/header-footer`} icon={<></>} label="Header & Footer" isSubItem />
+                         <NavLink to={`${basePath}/cms/pages`} icon={<></>} label="Content Pages" isSubItem />
+                         <NavLink to={`${basePath}/cms/blogs`} icon={<></>} label="Blog Posts" isSubItem />
+                         <NavLink to={`${basePath}/cms/seo`} icon={<></>} label="SEO" isSubItem />
                     </CollapsibleNavLink>
 
-                    <NavLink to="/saas/settings" icon={<FiSettings size={20} />} label="Settings" />
+                    <NavLink to={`${basePath}/settings`} icon={<FiSettings size={20} />} label="Settings" />
                 </nav>
                 <div className="mt-auto">
                      <button

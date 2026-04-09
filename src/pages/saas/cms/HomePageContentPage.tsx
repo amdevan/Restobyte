@@ -16,13 +16,20 @@ import CMSTestimonialsForm from '@/components/saas/CMSTestimonialsForm';
 import { FiSave, FiCheckCircle, FiArrowUp, FiArrowDown, FiRefreshCcw } from 'react-icons/fi';
 
 const HomePageContentPage: React.FC = () => {
-    const { saasWebsiteContent, updateSaasWebsiteContent } = useRestaurantData();
+    const { saasWebsiteContent, updateSaasWebsiteContent, fetchSaasWebsiteContent } = useRestaurantData();
     const [localContent, setLocalContent] = useState<SaasWebsiteContent>(saasWebsiteContent);
     const [showSavedMessage, setShowSavedMessage] = useState(false);
+    const [isRefreshing, setIsRefreshing] = useState(false);
 
     useEffect(() => {
         setLocalContent(saasWebsiteContent);
     }, [saasWebsiteContent]);
+
+    const handleRefresh = async () => {
+        setIsRefreshing(true);
+        await fetchSaasWebsiteContent();
+        setIsRefreshing(false);
+    };
 
     const handleUpdate = (updater: (prev: SaasWebsiteContent) => SaasWebsiteContent) => {
         const newContent = updater(localContent);
@@ -42,6 +49,14 @@ const HomePageContentPage: React.FC = () => {
             <div className="flex justify-between items-center bg-white p-4 rounded-lg shadow-sm sticky top-0 z-10">
                 <h1 className="text-2xl font-bold text-gray-800">Homepage Content</h1>
                 <div className="flex items-center space-x-3">
+                    <Button 
+                        variant="secondary" 
+                        onClick={handleRefresh} 
+                        disabled={isRefreshing}
+                        leftIcon={<FiRefreshCcw className={isRefreshing ? 'animate-spin' : ''}/>}
+                    >
+                        {isRefreshing ? 'Refreshing...' : 'Refresh from Server'}
+                    </Button>
                     {showSavedMessage && <span className="text-green-600 flex items-center text-sm"><FiCheckCircle className="mr-1.5"/>Saved!</span>}
                     <Button onClick={handleSave} disabled={!isDirty} leftIcon={<FiSave/>}>
                         Save All Changes

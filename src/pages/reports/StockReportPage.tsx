@@ -8,6 +8,7 @@ import Input from '@/components/common/Input';
 import Button from '@/components/common/Button';
 import DownloadReportButton from '@/components/common/DownloadReportButton';
 import { FiSearch, FiArchive, FiAlertTriangle, FiCheckCircle, FiTrendingDown, FiDollarSign, FiFilter, FiArrowLeft } from 'react-icons/fi';
+import Money from '@/components/common/Money';
 
 const StockReportPage: React.FC = () => {
   const { stockItems } = useRestaurantData();
@@ -16,7 +17,9 @@ const StockReportPage: React.FC = () => {
   const [categoryFilter, setCategoryFilter] = useState('All');
 
   const categories = useMemo(() => {
-    const uniqueCategories = new Set(stockItems.map(item => item.category));
+    const uniqueCategories = new Set(stockItems.map(item => {
+        return typeof item.category === 'object' && item.category !== null ? (item.category as any).name : item.category;
+    }));
     return ['All', ...Array.from(uniqueCategories)];
   }, [stockItems]);
 
@@ -74,7 +77,7 @@ const StockReportPage: React.FC = () => {
       <Card title="Stock Summary">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-center">
             <div className="p-3 bg-gray-50 rounded-lg"><p className="text-sm text-gray-500">Total Unique Items</p><p className="text-2xl font-bold text-sky-600">{summaryData.totalItems}</p></div>
-            <div className="p-3 bg-gray-50 rounded-lg"><p className="text-sm text-gray-500">Total Stock Value</p><p className="text-2xl font-bold text-sky-600">${summaryData.totalStockValue.toFixed(2)}</p></div>
+            <div className="p-3 bg-gray-50 rounded-lg"><p className="text-sm text-gray-500">Total Stock Value</p><p className="text-2xl font-bold text-sky-600"><Money amount={summaryData.totalStockValue} /></p></div>
             <div className="p-3 bg-amber-50 rounded-lg"><p className="text-sm text-amber-600">Low Stock Items</p><p className="text-2xl font-bold text-amber-700">{summaryData.lowStockCount}</p></div>
             <div className="p-3 bg-red-50 rounded-lg"><p className="text-sm text-red-600">Out of Stock Items</p><p className="text-2xl font-bold text-red-700">{summaryData.outOfStockCount}</p></div>
         </div>
@@ -132,8 +135,8 @@ const StockReportPage: React.FC = () => {
                       <td className="py-3 px-4 text-sm text-gray-600">{item.category}</td>
                       <td className="py-3 px-4 text-sm text-gray-600 text-right font-semibold">{item.quantity}</td>
                       <td className="py-3 px-4 text-sm text-gray-600">{item.unit}</td>
-                      <td className="py-3 px-4 text-sm text-gray-600 text-right">${(item.costPerUnit || 0).toFixed(2)}</td>
-                      <td className="py-3 px-4 text-sm text-gray-800 font-bold text-right">${item.totalValue.toFixed(2)}</td>
+                      <td className="py-3 px-4 text-sm text-gray-600 text-right"><Money amount={item.costPerUnit || 0} /></td>
+                      <td className="py-3 px-4 text-sm text-gray-800 font-bold text-right"><Money amount={item.totalValue} /></td>
                       <td className="py-3 px-4 text-sm">
                         <span className={`px-2 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full ${statusInfo.colorClass}`}>
                           {statusInfo.icon}

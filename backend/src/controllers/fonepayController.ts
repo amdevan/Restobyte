@@ -1,4 +1,6 @@
 import type { Request, Response } from 'express';
+import prisma from '../db/prisma.js';
+import { sendInvoiceEmail } from '../services/emailService.js';
 
 // Simple in-memory store for QR sessions (prototype only)
 type SessionStatus = 'pending' | 'paid' | 'failed' | 'expired';
@@ -80,12 +82,35 @@ export const getStatus = async (req: Request, res: Response) => {
 
 // Prototype-only helper to simulate marking a session as paid (use webhook in production)
 export const markPaid = async (req: Request, res: Response) => {
-  const { qrSessionId } = req.body || {};
+  const { qrSessionId, tenantId, emailTo, method } = req.body || {};
   if (!qrSessionId) return res.status(400).json({ error: 'qrSessionId is required' });
   const session = sessions.get(qrSessionId);
   if (!session) return res.status(404).json({ error: 'Session not found' });
   session.status = 'paid';
   sessions.set(qrSessionId, session);
+  try {
+    if (tenantId) {
+      const tenant = await prisma.tenant.findUnique({ where: { id: String(tenantId) } });
+      if (tenant) {
+        const payment = await (prisma as any).payment.create({
+          data: {
+            tenantId: tenant.id,
+            amount: Number(session.amount),
+            method: method || 'fonepay',
+            notes: `Fonepay ${qrSessionId}`,
+            status: 'paid'
+          }
+        });
+        if (emailTo) {
+          const invoiceNumber = `PMT-${payment.id.slice(0, 8).toUpperCase()}`;
+          const currency = (tenant as any).currencyCode || session.currency || 'USD';
+          const amountStr = Number(session.amount).toFixed(2);
+          try {
+            await sendInvoiceEmail(String(emailTo), { invoiceNumber, amount: amountStr, currency });
+          } catch {}
+        }
+      }
+    }
+  } catch {}
   return res.json({ ok: true });
 };
-

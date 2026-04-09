@@ -6,16 +6,23 @@ import Button from '@/components/common/Button';
 import Input from '@/components/common/Input';
 import { useRestaurantData } from '@/hooks/useRestaurantData';
 import { SaasSeo } from '@/types';
-import { FiSave, FiCheckCircle, FiSearch } from 'react-icons/fi';
+import { FiSave, FiCheckCircle, FiSearch, FiRefreshCcw } from 'react-icons/fi';
 
 const SeoPage: React.FC = () => {
-    const { saasWebsiteContent, updateSaasWebsiteContent } = useRestaurantData();
+    const { saasWebsiteContent, updateSaasWebsiteContent, fetchSaasWebsiteContent } = useRestaurantData();
     const [localSeo, setLocalSeo] = useState<SaasSeo>(saasWebsiteContent.seo);
     const [showSavedMessage, setShowSavedMessage] = useState(false);
+    const [isRefreshing, setIsRefreshing] = useState(false);
 
     useEffect(() => {
         setLocalSeo(saasWebsiteContent.seo);
     }, [saasWebsiteContent.seo]);
+
+    const handleRefresh = async () => {
+        setIsRefreshing(true);
+        await fetchSaasWebsiteContent();
+        setIsRefreshing(false);
+    };
 
     const handleChange = (field: keyof SaasSeo, value: string) => {
         setLocalSeo(prev => ({ ...prev, [field]: value }));
@@ -47,6 +54,14 @@ const SeoPage: React.FC = () => {
                     <FiSearch className="mr-3" /> SEO Management
                 </h1>
                 <div className="flex items-center space-x-3">
+                    <Button 
+                        variant="secondary" 
+                        onClick={handleRefresh} 
+                        disabled={isRefreshing}
+                        leftIcon={<FiRefreshCcw className={isRefreshing ? 'animate-spin' : ''}/>}
+                    >
+                        {isRefreshing ? 'Refreshing...' : 'Refresh'}
+                    </Button>
                     {showSavedMessage && <span className="text-green-600 flex items-center text-sm"><FiCheckCircle className="mr-1.5"/>Saved!</span>}
                     <Button onClick={handleSave} disabled={!isDirty} leftIcon={<FiSave/>}>
                         Save SEO Settings

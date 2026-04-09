@@ -6,6 +6,9 @@ import Input from '../../common/Input';
 import SubBillCard from '../SubBillCard';
 import PaySplitModal from '../PaySplitModal';
 import { FiArrowLeft, FiCheckCircle, FiDollarSign } from 'react-icons/fi';
+import Money from '../../common/Money';
+import { useRestaurantData } from '../../../hooks/useRestaurantData';
+import { formatMoney, getDefaultCurrency } from '../../../utils/currency';
 
 interface CustomSplitViewProps {
     grandTotal: number;
@@ -14,6 +17,8 @@ interface CustomSplitViewProps {
 }
 
 const CustomSplitView: React.FC<CustomSplitViewProps> = ({ grandTotal, onFinalize, onBack }) => {
+    const { currencies, applicationSettings } = useRestaurantData();
+    const defaultCurrency = getDefaultCurrency(currencies);
     const [customAmount, setCustomAmount] = useState('');
     const [splits, setSplits] = useState<Split[]>([]);
     const [payingSplit, setPayingSplit] = useState<Split | null>(null);
@@ -31,7 +36,10 @@ const CustomSplitView: React.FC<CustomSplitViewProps> = ({ grandTotal, onFinaliz
             return;
         }
         if (amount > remainingAmount + 0.001) { // Add tolerance for floating point
-            alert(`Amount cannot be greater than the remaining due of $${remainingAmount.toFixed(2)}.`);
+            const formattedRemaining = defaultCurrency 
+                ? formatMoney(remainingAmount, defaultCurrency, applicationSettings)
+                : `$${remainingAmount.toFixed(2)}`;
+            alert(`Amount cannot be greater than the remaining due of ${formattedRemaining}.`);
             return;
         }
 
@@ -88,7 +96,7 @@ const CustomSplitView: React.FC<CustomSplitViewProps> = ({ grandTotal, onFinaliz
                     <Button onClick={handleAddSplit} disabled={remainingAmount <= 0}>Add Split</Button>
                 </div>
                 <p className="text-sm font-semibold text-right">
-                    Remaining Amount: <span className="text-red-600">${remainingAmount.toFixed(2)}</span>
+                    Remaining Amount: <span className="text-red-600"><Money amount={remainingAmount} /></span>
                 </p>
             </div>
             
@@ -102,7 +110,7 @@ const CustomSplitView: React.FC<CustomSplitViewProps> = ({ grandTotal, onFinaliz
                     </div>
                 ) : (
                     <div className="flex-grow flex items-center justify-center text-gray-400 text-center p-4 border-2 border-dashed rounded-lg">
-                        Enter an amount and click "Add Split" to begin.
+                        Enter amount and add split to begin.
                     </div>
                 )}
             </div>

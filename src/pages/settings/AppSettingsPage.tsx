@@ -10,6 +10,7 @@ const AppSettingsPage: React.FC = () => {
     const { applicationSettings, updateApplicationSettings, customers } = useRestaurantData();
     const [localSettings, setLocalSettings] = useState<ApplicationSettings>(applicationSettings);
     const [showSavedMessage, setShowSavedMessage] = useState(false);
+    const [activeTab, setActiveTab] = useState<'general' | 'print' | 'pos'>('general');
 
     useEffect(() => {
         setLocalSettings(applicationSettings);
@@ -52,7 +53,19 @@ const AppSettingsPage: React.FC = () => {
                 </div>
             </div>
 
-            {/* Localization Settings Card */}
+            <div className="flex gap-2">
+              <button onClick={() => setActiveTab('general')} className={`px-4 py-2 rounded border ${activeTab==='general'?'bg-sky-50 border-sky-300 text-sky-700':'bg-white border-gray-300 text-gray-700'}`}>General</button>
+              <button onClick={() => setActiveTab('print')} className={`px-4 py-2 rounded border ${activeTab==='print'?'bg-sky-50 border-sky-300 text-sky-700':'bg-white border-gray-300 text-gray-700'}`}>Print</button>
+              <button onClick={() => setActiveTab('pos')} className={`px-4 py-2 rounded border ${activeTab==='pos'?'bg-sky-50 border-sky-300 text-sky-700':'bg-white border-gray-300 text-gray-700'}`}>POS</button>
+              {JSON.stringify(localSettings) !== JSON.stringify(applicationSettings) && (
+                <div className="ml-auto flex items-center gap-2">
+                  <Button variant="secondary" onClick={() => setLocalSettings(applicationSettings)}>Discard</Button>
+                  <Button onClick={handleSave} leftIcon={<FiSave />}>Save</Button>
+                </div>
+              )}
+            </div>
+
+            {activeTab === 'general' && (
             <Card title="Localization & Formatting" icon={<FiGlobe />}>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-4">
                     <div>
@@ -80,16 +93,18 @@ const AppSettingsPage: React.FC = () => {
                     <Input label="Decimal Places" name="decimalPlaces" type="number" value={localSettings.decimalPlaces} onChange={handleInputChange} min="0" max="4" containerClassName="mb-0"/>
                 </div>
             </Card>
+            )}
 
-            {/* Print Settings Card */}
+            {activeTab === 'print' && (
             <Card title="Print Settings" icon={<FiPrinter />}>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-4">
                      <Input label="KOT Characters Per Line" name="kotCharactersPerLine" type="number" value={localSettings.kotCharactersPerLine} onChange={handleInputChange} min="20" max="80" containerClassName="mb-0"/>
                 </div>
                 <p className="text-xs text-gray-500 p-4 pt-0">Set the number of characters per line for Kitchen Order Ticket (KOT) printers to ensure proper formatting.</p>
             </Card>
+            )}
             
-            {/* POS Default Settings */}
+            {activeTab === 'pos' && (
             <Card title="POS Defaults" icon={<FiShoppingCart />}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
                     <div>
@@ -110,6 +125,15 @@ const AppSettingsPage: React.FC = () => {
                     </div>
                 </div>
             </Card>
+            )}
+
+            {isDirty && (
+              <div className="fixed bottom-4 right-4 bg-white border border-gray-200 rounded-lg shadow-lg px-4 py-3 flex items-center gap-3">
+                <span className="text-sm text-gray-600">You have unsaved changes</span>
+                <Button variant="secondary" onClick={() => setLocalSettings(applicationSettings)}>Discard</Button>
+                <Button onClick={handleSave} leftIcon={<FiSave />}>Save</Button>
+              </div>
+            )}
         </div>
     );
 }

@@ -2,6 +2,7 @@ import React from 'react';
 import { SaleItem } from '../../types';
 import Button from '../common/Button';
 import { FiPlus, FiMinus, FiShoppingCart, FiEdit2, FiCheckCircle } from 'react-icons/fi';
+import Money from '../common/Money';
 
 type OrderItem = SaleItem & { status: 'new' | 'sent'; lineId: string };
 
@@ -36,7 +37,7 @@ const CartItems: React.FC<CartItemsProps> = ({ items, onUpdateQuantity, onEditIt
                     </button>
                      {isSent && <FiCheckCircle size={12} className="text-green-500 ml-1" title="Sent to Kitchen"/>}
                     </div>
-                    <p className="text-xs text-gray-500">${item.price.toFixed(2)}</p>
+                    <p className="text-xs text-gray-500"><Money amount={item.price} /></p>
                     {item.notes && <p className="text-xs text-amber-600 bg-amber-50 rounded px-1 py-0.5 mt-1 inline-block whitespace-pre-wrap">Note: {item.notes}</p>}
                 </div>
                 <div className="flex items-center space-x-2.5">
@@ -44,7 +45,7 @@ const CartItems: React.FC<CartItemsProps> = ({ items, onUpdateQuantity, onEditIt
                     <span className="w-6 text-center font-bold text-sm text-gray-800">{item.quantity}</span>
                     <Button size="sm" variant="outline" className="!p-1.5 aspect-square" onClick={() => onUpdateQuantity(item.lineId, item.quantity + 1)} disabled={isSent}><FiPlus size={12}/></Button>
                 </div>
-                <p className="w-20 text-right font-semibold text-sm text-gray-800">${(item.price * item.quantity).toFixed(2)}</p>
+                <p className="w-20 text-right font-semibold text-sm text-gray-800"><Money amount={item.price * item.quantity} /></p>
             </div>
         );
       })}

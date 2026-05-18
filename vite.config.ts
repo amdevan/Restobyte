@@ -11,12 +11,18 @@ const __dirname = path.dirname(__filename);
 
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
+    const allowedHosts: string[] = [];
+    if (env.COOLIFY_FQDN) allowedHosts.push(env.COOLIFY_FQDN);
+    if (env.COOLIFY_FQDN && env.COOLIFY_FQDN.endsWith('.sslip.io')) allowedHosts.push('.sslip.io');
     return {
       plugins: [react()],
       define: {
         'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
         'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
         'process.env.APP_VERSION': JSON.stringify(packageJson.version)
+      },
+      preview: {
+        allowedHosts,
       },
       resolve: {
         alias: {

@@ -26,7 +26,8 @@ import saasWebsiteContentAdminRoutes from './routes/saasWebsiteContentAdminRoute
 dotenv.config();
 
 const app: Express = express();
-const port = process.env.PORT || 3000;
+const port = Number(process.env.PORT || 3000);
+const host = process.env.HOST || '0.0.0.0';
 
 app.use(cors());
 app.use(express.json());
@@ -54,8 +55,8 @@ app.use('/api/me', meRoutes);
 app.use('/api/public', saasWebsiteContentRoutes);
 app.use('/api/saas', saasWebsiteContentAdminRoutes);
 
-app.listen(port, async () => {
-  console.log(`[server]: Server is running at http://localhost:${port}`);
+app.listen(port, host, async () => {
+  console.log(`[server]: Server is running at http://${host}:${port}`);
 
   try {
     await prisma.$connect();

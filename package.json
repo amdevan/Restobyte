@@ -13,6 +13,7 @@
     "@capacitor/cli": "^6.2.1",
     "@capacitor/core": "^6.2.1",
     "capacitor-plugin-qr-barcode-scanner": "^5.0.1",
+    "@zxing/library": "^0.21.3",
     "@google/genai": "^1.5.1",
     "qrcode": "^1.5.4",
     "react": "^19.1.0",

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BarcodeScanner } from '@capacitor-community/barcode-scanner';
+import { BarcodeScanner } from 'capacitor-plugin-qr-barcode-scanner';
 import { IoCameraOutline, IoCloseOutline } from 'react-icons/io5';
 
 const MobileScanner: React.FC = () => {

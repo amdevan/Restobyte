@@ -2,61 +2,105 @@
 
 import React from 'react';
 import { useRestaurantData } from '@/hooks/useRestaurantData';
-import Card from '@/components/common/Card';
 import FeatureDisabledPage from '@/components/common/FeatureDisabledPage';
-import { FiCheckCircle } from 'react-icons/fi';
+import { FiArrowDownRight, FiArrowUpRight, FiCheckCircle, FiClock, FiCreditCard } from 'react-icons/fi';
 import Button from '@/components/common/Button';
 import { Plan } from '@/types';
 
 const PlanCard: React.FC<{ plan: Plan; isCurrent: boolean; currentPrice: number; }> = ({ plan, isCurrent, currentPrice }) => {
     const isUpgrade = plan.price > currentPrice;
     const isDowngrade = plan.price < currentPrice;
+    const maxFeaturesToShow = 4;
+    const visibleFeatures = plan.features.slice(0, maxFeaturesToShow);
+    const hiddenFeaturesCount = Math.max(0, plan.features.length - visibleFeatures.length);
 
     const getButton = () => {
         if (isCurrent) {
-            return <Button variant="secondary" disabled className="w-full mt-8">Your Current Plan</Button>;
+            return <Button variant="secondary" disabled size="sm" className="w-full mt-6">Current Plan</Button>;
         }
         if (isUpgrade) {
-            return <Button variant="primary" className="w-full mt-8">Upgrade to {plan.name}</Button>;
+            return (
+                <Button
+                    variant="primary"
+                    size="sm"
+                    className="w-full mt-6"
+                    rightIcon={<FiArrowUpRight />}
+                >
+                    Upgrade
+                </Button>
+            );
         }
-        return <Button variant="outline" className="w-full mt-8">Downgrade to {plan.name}</Button>;
+        if (isDowngrade) {
+            return (
+                <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full mt-6 bg-white/70"
+                    rightIcon={<FiArrowDownRight />}
+                >
+                    Downgrade
+                </Button>
+            );
+        }
+        return (
+            <Button variant="outline" size="sm" className="w-full mt-6 bg-white/70">
+                Choose Plan
+            </Button>
+        );
     };
 
     return (
-        <div className={`relative flex flex-col rounded-xl border-2 p-8 shadow-sm transition-all h-full ${
-            plan.isFeatured ? 'border-sky-500 bg-sky-50/50 shadow-lg' : 'bg-white border-gray-200'
-        }`}>
-            {plan.isFeatured && (
-                <div className="absolute top-0 -translate-y-1/2 left-1/2 -translate-x-1/2">
-                    <span className="bg-sky-600 text-white text-xs font-semibold px-4 py-1 rounded-full uppercase tracking-wider">Most Popular</span>
-                </div>
-            )}
-             {isCurrent && (
-                <div className="absolute top-4 right-4">
-                    <span className="bg-green-100 text-green-700 text-xs font-semibold px-3 py-1 rounded-full flex items-center">
-                        <FiCheckCircle className="mr-1.5"/> Active Plan
-                    </span>
-                </div>
-            )}
+        <div className={`relative h-full w-full max-w-sm rounded-3xl p-[1px] transition-all ${plan.isFeatured ? 'bg-gradient-to-b from-sky-500/70 via-indigo-500/50 to-violet-500/40 shadow-lg' : 'bg-gradient-to-b from-gray-200/80 to-gray-200/40 shadow-sm'}`}>
+            <div className={`relative flex h-full flex-col rounded-3xl p-5 md:p-6 ${plan.isFeatured ? 'bg-white/85 backdrop-blur' : 'bg-white/80 backdrop-blur'} ring-1 ring-gray-200/70`}>
+                <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                            <h3 className="text-lg font-extrabold text-gray-900 tracking-tight">{plan.name}</h3>
+                            {plan.isFeatured && (
+                                <span className="inline-flex items-center rounded-full bg-sky-600 text-white text-[10px] font-semibold px-2.5 py-1">
+                                    Most Popular
+                                </span>
+                            )}
+                        </div>
+                        <div className="mt-3 flex items-end gap-2">
+                            <div className="text-3xl font-extrabold text-gray-900 tabular-nums">${plan.price.toFixed(2)}</div>
+                            <div className="pb-1 text-xs font-semibold text-gray-500">/{plan.period}</div>
+                        </div>
+                        <div className="mt-2 text-xs text-gray-500">Upgrade or downgrade anytime.</div>
+                    </div>
 
-            <div className="flex-grow">
-                <h3 className="text-2xl font-bold text-gray-800">{plan.name}</h3>
-                <p className="mt-4">
-                    <span className="text-4xl font-extrabold text-gray-900">${plan.price.toFixed(2)}</span>
-                    <span className="text-gray-500">/{plan.period}</span>
-                </p>
-                <p className="mt-2 text-sm text-gray-500">Ideal for growing restaurants.</p>
-                <ul className="mt-6 space-y-3">
-                    {plan.features.map((feature, index) => (
-                        <li key={index} className="flex items-start">
-                            <FiCheckCircle className="text-sky-500 mr-3 mt-1 flex-shrink-0" />
-                            <span className="text-gray-700">{feature}</span>
-                        </li>
-                    ))}
-                </ul>
-            </div>
-            <div className="mt-auto">
-                {getButton()}
+                    {isCurrent && (
+                        <div className="shrink-0">
+                            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200/70 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+                                <FiCheckCircle />
+                                Active
+                            </span>
+                        </div>
+                    )}
+                </div>
+
+                <div className="mt-5 flex-grow">
+                    <div className="rounded-2xl border border-gray-200/70 bg-gray-50/60 p-3.5">
+                        <div className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Includes</div>
+                        <ul className="mt-3 space-y-2">
+                            {visibleFeatures.map((feature, index) => (
+                                <li key={index} className="flex items-start gap-3 text-xs text-gray-700">
+                                    <FiCheckCircle className={`${plan.isFeatured ? 'text-sky-600' : 'text-gray-500'} mt-0.5 flex-shrink-0`} />
+                                    <span className="min-w-0">{feature}</span>
+                                </li>
+                            ))}
+                            {hiddenFeaturesCount > 0 && (
+                                <li className="text-xs font-semibold text-gray-500">
+                                    +{hiddenFeaturesCount} more
+                                </li>
+                            )}
+                        </ul>
+                    </div>
+                </div>
+
+                <div className="mt-5">
+                    {getButton()}
+                </div>
             </div>
         </div>
     );
@@ -76,33 +120,54 @@ const SubscriptionPage: React.FC = () => {
     const publicPlans = plans.filter(p => p.isPublic).sort((a,b) => a.price - b.price);
 
     return (
-        <div className="p-2 md:p-6 space-y-8">
-            <div className="text-center">
-                <h1 className="text-4xl font-extrabold text-gray-800">
-                    Find the perfect plan
-                </h1>
-                <p className="mt-3 text-lg text-gray-500 max-w-2xl mx-auto">
-                    Choose the plan that best fits your restaurant's needs. Upgrade or downgrade anytime.
-                </p>
-            </div>
-            
-             <Card>
-                <div className="p-5 flex flex-col md:flex-row justify-between items-start md:items-center bg-gray-50 rounded-lg">
-                    <div>
-                        <h2 className="text-lg font-semibold text-gray-800">Your Current Subscription</h2>
-                        <p className="text-sm text-gray-500 mt-1">
-                            Status: <span className="font-semibold capitalize text-green-600">{outlet.subscriptionStatus}</span>
-                            {outlet.planExpiryDate && (
-                                <span className="ml-4">Renews/Expires on: <span className="font-semibold">{new Date(outlet.planExpiryDate).toLocaleDateString()}</span></span>
-                            )}
-                        </p>
+        <div className="p-4 md:p-6 space-y-6 bg-gradient-to-b from-gray-50 via-gray-50 to-white min-h-full">
+            <div className="max-w-6xl mx-auto w-full space-y-6">
+            <div className="relative overflow-hidden rounded-3xl border border-gray-200/70 bg-white/70 backdrop-blur shadow-sm p-6 md:p-8">
+                <div className="pointer-events-none absolute -top-24 -right-20 h-64 w-64 rounded-full bg-gradient-to-br from-sky-200/70 via-indigo-200/40 to-transparent blur-2xl" />
+                <div className="pointer-events-none absolute -bottom-28 -left-24 h-64 w-64 rounded-full bg-gradient-to-tr from-emerald-200/50 via-sky-200/30 to-transparent blur-2xl" />
+
+                <div className="relative flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
+                    <div className="min-w-0">
+                        <div className="text-2xl md:text-3xl font-extrabold text-gray-900 tracking-tight">Subscription</div>
+                        <div className="mt-2 text-sm md:text-base text-gray-600 max-w-2xl">
+                            Choose the plan that fits your restaurant. Upgrade or downgrade anytime.
+                        </div>
+                        <div className="mt-4 flex flex-wrap gap-2">
+                            <span className="inline-flex items-center rounded-full border border-gray-200/70 bg-white/70 px-3 py-1 text-xs font-semibold text-gray-700">
+                                Current Plan: <span className="ml-1 text-gray-900">{outlet.plan}</span>
+                            </span>
+                            <span className="inline-flex items-center rounded-full border border-emerald-200/70 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+                                <FiCheckCircle className="mr-1.5" /> {outlet.subscriptionStatus}
+                            </span>
+                            <span className="inline-flex items-center rounded-full border border-gray-200/70 bg-white/70 px-3 py-1 text-xs font-semibold text-gray-700">
+                                {outlet.planExpiryDate ? (
+                                    <>
+                                        <FiClock className="mr-1.5" />
+                                        Renews/Expires: <span className="ml-1 text-gray-900">{new Date(outlet.planExpiryDate).toLocaleDateString()}</span>
+                                    </>
+                                ) : (
+                                    <>No renewal date</>
+                                )}
+                            </span>
+                        </div>
                     </div>
-                    <Button variant="secondary" size="sm" className="mt-3 md:mt-0">Manage Billing</Button>
+
+                    <div className="flex items-start justify-end">
+                        <Button variant="outline" size="sm" className="bg-white/70" leftIcon={<FiCreditCard />}>
+                            Manage Billing
+                        </Button>
+                    </div>
                 </div>
-            </Card>
+            </div>
 
+            <div className="flex items-end justify-between gap-4">
+                <div className="min-w-0">
+                    <div className="text-lg font-extrabold text-gray-900 tracking-tight">Plans</div>
+                    <div className="mt-1 text-sm text-gray-600">Compare features and select the best option.</div>
+                </div>
+            </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-stretch">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 items-stretch justify-items-center">
                 {publicPlans.map(plan => (
                     <PlanCard
                         key={plan.id}
@@ -111,6 +176,7 @@ const SubscriptionPage: React.FC = () => {
                         currentPrice={currentPlanDetails?.price || 0}
                     />
                 ))}
+            </div>
             </div>
         </div>
     );

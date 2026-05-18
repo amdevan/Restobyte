@@ -1,93 +1,83 @@
-
 import React from 'react';
 import { SalesTrendDataPoint } from '../../types';
 
 interface SalesTrendChartProps {
   data: SalesTrendDataPoint[];
+  color?: string;
 }
 
-const SalesTrendChart: React.FC<SalesTrendChartProps> = ({ data }) => {
-  if (!data || data.length === 0) {
+const formatShortDate = (iso: string) => {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+};
+
+const SalesTrendChart: React.FC<SalesTrendChartProps> = ({ data, color = '#2563eb' }) => {
+  const width = 780;
+  const height = 260;
+  const paddingX = 56;
+  const paddingY = 30;
+
+  if (!data?.length) {
     return <p className="text-center text-gray-500 py-8">No sales data available for the selected period.</p>;
   }
 
-  const chartHeight = 220;
-  const chartWidth = 450; // Increased width for more space
-  const padding = { top: 20, right: 20, bottom: 45, left: 45 }; // Increased bottom/left for labels
-  
-  const effectiveWidth = chartWidth - padding.left - padding.right;
-  const effectiveHeight = chartHeight - padding.top - padding.bottom;
+  const max = Math.max(...data.map(d => d.sales), 0);
+  const min = 0;
+  const range = max - min || 1;
 
-  const maxSales = Math.max(...data.map(d => d.sales), 0);
-  const minSales = 0; // Assuming sales don't go negative
+  const toX = (i: number) => paddingX + (i / Math.max(1, data.length - 1)) * (width - 2 * paddingX);
+  const toY = (v: number) => paddingY + (height - 2 * paddingY) - ((v - min) / range) * (height - 2 * paddingY);
 
-  // X-axis (days)
-  const xPoints = data.map((_, index) => padding.left + (index / (data.length - 1)) * effectiveWidth);
-  
-  // Y-axis (sales amount)
-  const yPoints = data.map(d => 
-    padding.top + effectiveHeight - ((d.sales - minSales) / (maxSales - minSales + (maxSales === minSales ? 1 : 0))) * effectiveHeight
-  );
-  
-  const linePath = data.map((_, index) => `${index === 0 ? 'M' : 'L'}${xPoints[index]},${yPoints[index]}`).join(' ');
+  const lineD = data
+    .map((d, i) => `${i === 0 ? 'M' : 'L'}${toX(i)},${toY(d.sales)}`)
+    .join(' ');
 
-  const yAxisTicks = 5;
-  const yTickValues = Array.from({ length: yAxisTicks + 1 }, (_, i) => 
-    minSales + (i / yAxisTicks) * (maxSales - minSales)
-  );
+  const areaD = `${lineD} L${toX(data.length - 1)},${height - paddingY} L${toX(0)},${height - paddingY} Z`;
+
+  const labelStep = Math.max(1, Math.ceil(data.length / 6));
+  const yLabelCount = 5;
 
   return (
-    <div className="w-full overflow-x-auto p-2 flex justify-center">
-      <svg width={chartWidth} height={chartHeight} aria-labelledby="salesTrendTitle" role="img" className="max-w-full">
-        <title id="salesTrendTitle">7-Day Sales Trend</title>
-        {/* Y-axis grid lines and labels */}
-        {yTickValues.map(tickValue => {
-          const yPos = padding.top + effectiveHeight - ((tickValue - minSales) / (maxSales - minSales + (maxSales === minSales ? 1:0) )) * effectiveHeight;
+    <div className="w-full overflow-x-auto">
+      <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="min-w-full block">
+        <defs>
+          <linearGradient id="trendFill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={color} stopOpacity="0.18" />
+            <stop offset="100%" stopColor={color} stopOpacity="0" />
+          </linearGradient>
+        </defs>
+
+        {Array.from({ length: yLabelCount }, (_, i) => {
+          const y = paddingY + (i / (yLabelCount - 1)) * (height - 2 * paddingY);
           return (
-            <g key={`y-tick-${tickValue}`}>
-              <line 
-                x1={padding.left} y1={yPos} 
-                x2={chartWidth - padding.right} y2={yPos} 
-                stroke="#e5e7eb" strokeWidth="0.5" strokeDasharray="2,2"
-              />
-              <text 
-                x={padding.left - 8} y={yPos} 
-                textAnchor="end" dominantBaseline="middle" fontSize="10" fill="#6b7280">
-                ${Math.round(tickValue)}
-              </text>
-            </g>
+            <line key={i} x1={paddingX} y1={y} x2={width - paddingX} y2={y} className="stroke-gray-100" />
           );
         })}
 
-        {/* X-axis labels */}
-        {data.map((d, index) => (
-          <text 
-            key={`x-label-${d.date}`}
-            x={xPoints[index]} y={chartHeight - padding.bottom + 15} 
-            textAnchor="middle" fontSize="10" fill="#6b7280">
-            {d.date}
-          </text>
-        ))}
-        
-        {/* Y-axis Line */}
-        <line x1={padding.left} y1={padding.top} x2={padding.left} y2={chartHeight - padding.bottom} stroke="#d1d5db" strokeWidth="1"/>
-        {/* X-axis Line */}
-        <line x1={padding.left} y1={chartHeight - padding.bottom} x2={chartWidth - padding.right} y2={chartHeight - padding.bottom} stroke="#d1d5db" strokeWidth="1"/>
+        <path d={areaD} fill="url(#trendFill)" />
+        <path d={lineD} fill="none" stroke={color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
 
+        <circle cx={toX(data.length - 1)} cy={toY(data[data.length - 1].sales)} r="4.5" fill={color} stroke="white" strokeWidth="2" />
 
-        {/* Sales line */}
-        <path d={linePath} fill="none" stroke="#0ea5e9" strokeWidth="2" />
+        {Array.from({ length: yLabelCount }, (_, i) => {
+          const value = min + ((yLabelCount - 1 - i) / (yLabelCount - 1)) * range;
+          const y = paddingY + (i / (yLabelCount - 1)) * (height - 2 * paddingY);
+          return (
+            <text key={i} x={paddingX - 10} y={y + 4} textAnchor="end" className="text-[10px] fill-gray-400 tabular-nums">
+              {Math.round(value).toLocaleString()}
+            </text>
+          );
+        })}
 
-        {/* Data points */}
-        {data.map((d, index) => (
-          <circle 
-            key={`point-${d.date}`} 
-            cx={xPoints[index]} cy={yPoints[index]} r="3" 
-            fill="#0ea5e9" stroke="#fff" strokeWidth="1.5"
-          >
-            <title>{`${d.date}: $${d.sales.toFixed(2)}`}</title>
-          </circle>
-        ))}
+        {data.map((d, i) => {
+          if (i % labelStep !== 0 && i !== data.length - 1) return null;
+          return (
+            <text key={d.date} x={toX(i)} y={height - paddingY + 18} textAnchor="middle" className="text-[10px] fill-gray-400">
+              {formatShortDate(d.date)}
+            </text>
+          );
+        })}
       </svg>
     </div>
   );

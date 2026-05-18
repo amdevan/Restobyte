@@ -21,10 +21,10 @@ export const Money: React.FC<MoneyProps> = ({ amount, currency, className }) => 
     formatted = formatMoney(amount, cur, applicationSettings);
   } else {
     const decimals = applicationSettings?.decimalPlaces ?? 2;
-    const symbol = applicationSettings?.currencySymbol ?? '$';
-    const position = applicationSettings?.currencySymbolPosition ?? 'left';
+    const symbol = '$';
+    const position = applicationSettings?.currencySymbolPosition ?? 'before';
     const fixed = amount.toFixed(decimals);
-    formatted = position === 'left' ? `${symbol}${fixed}` : `${fixed}${symbol}`;
+    formatted = position === 'before' ? `${symbol}${fixed}` : `${fixed}${symbol}`;
   }
 
   return <span className={className}>{formatted}</span>;

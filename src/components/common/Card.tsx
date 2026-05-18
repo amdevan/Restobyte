@@ -24,19 +24,19 @@ const Card: React.FC<CardProps> = ({ children, className = '', title, actions, i
       onClick={onClick}
     >
       {(title || actions || icon) && (
-        <div className="p-5 border-b border-gray-200 flex justify-between items-center flex-shrink-0">
-          <div className="flex items-center">
+        <div className="p-5 border-b border-gray-200 flex flex-wrap justify-between items-center gap-3 flex-shrink-0">
+          <div className="flex items-center min-w-0">
             {icon && (
-              <span className="mr-2">
+              <span className="mr-2 flex-shrink-0">
                 {React.cloneElement(icon, { 
                   size: icon.props.size || 20, // Default size if not provided by the icon's original props
                   className: `${icon.props.className || ''} text-gray-700` // Default color, can be overridden by icon's own class
                 })}
               </span>
             )}
-            {title && <h3 className="text-lg font-semibold text-gray-800">{title}</h3>}
+            {title && <h3 className="text-lg font-semibold text-gray-800 truncate">{title}</h3>}
           </div>
-          {actions && <div>{actions}</div>}
+          {actions && <div className="flex-shrink-0">{actions}</div>}
         </div>
       )}
       <div className="p-5 flex-grow">

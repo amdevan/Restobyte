@@ -1,7 +1,8 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { useRestaurantData } from '@/hooks/useRestaurantData';
 import KitchenDisplayCard from '@/components/panel/KitchenDisplayCard';
-import { FiHardDrive, FiChevronDown, FiMaximize, FiMinimize } from 'react-icons/fi';
+import { useNavigate } from 'react-router-dom';
+import { FiArrowLeft, FiBarChart2, FiChevronDown, FiHardDrive, FiMaximize, FiMinimize, FiShoppingCart } from 'react-icons/fi';
 import { Sale } from '@/types';
 
 const playNotificationSound = () => {
@@ -42,6 +43,7 @@ const KitchenColumn: React.FC<{ title: string; count: number; children: React.Re
 
 const KitchenDisplayPage: React.FC = () => {
     const { sales, getSingleActiveOutlet, updateKdsOrderStatus } = useRestaurantData();
+    const navigate = useNavigate();
     const [isFullscreen, setIsFullscreen] = useState(false);
     
     // Sound notification logic
@@ -107,6 +109,35 @@ const KitchenDisplayPage: React.FC = () => {
             {/* Header */}
             <header className="bg-[#212529] p-3 flex justify-between items-center shadow-md flex-shrink-0 border-b border-gray-700">
                 <div className="flex items-center space-x-4">
+                    <div className="flex items-center gap-2">
+                        <button
+                            type="button"
+                            onClick={() => navigate('/app/dashboard')}
+                            className="p-2 rounded-md text-gray-300 hover:bg-gray-700 hover:text-white transition-colors"
+                            aria-label="Go to Dashboard"
+                            title="Dashboard"
+                        >
+                            <FiBarChart2 size={20} />
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => navigate(-1)}
+                            className="p-2 rounded-md text-gray-300 hover:bg-gray-700 hover:text-white transition-colors"
+                            aria-label="Go back"
+                            title="Back"
+                        >
+                            <FiArrowLeft size={20} />
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => navigate('/app/panel/pos')}
+                            className="p-2 rounded-md text-gray-300 hover:bg-gray-700 hover:text-white transition-colors"
+                            aria-label="Go to POS"
+                            title="POS"
+                        >
+                            <FiShoppingCart size={20} />
+                        </button>
+                    </div>
                     <FiHardDrive size={24} />
                     <h1 className="text-xl font-bold">KITCHEN</h1>
                     <div className="h-6 w-px bg-gray-600"></div>

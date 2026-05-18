@@ -32,24 +32,33 @@ interface NavLinkProps {
   label: string;
   currentPath: string;
   isSubItem?: boolean;
+  isCollapsed?: boolean;
+  onCollapsedNavigate?: () => void;
 }
 
-const NavLink: React.FC<NavLinkProps> = ({ to, icon, label, currentPath, isSubItem = false }) => {
+const NavLink: React.FC<NavLinkProps> = ({ to, icon, label, currentPath, isSubItem = false, isCollapsed = false, onCollapsedNavigate }) => {
   const isActive = currentPath === to;
 
-  const linkClasses = `w-full flex items-center rounded-lg transition-all duration-200 ease-in-out relative transform hover:-translate-y-px ${isSubItem ? 'pl-12 space-x-2 p-2' : 'pl-4 space-x-3 p-3'
-    } ${isActive
-      ? 'bg-sky-600 text-white shadow-md'
-      : 'text-sky-200 hover:bg-sky-600/70 hover:text-white'
+  const linkClasses = `w-full flex items-center rounded-lg transition-all duration-200 ease-in-out relative transform hover:-translate-y-px ${isCollapsed ? 'justify-center p-2' : (isSubItem ? 'pl-9 space-x-2 p-1.5' : 'pl-3 space-x-3 p-2')
+    } ${isSubItem && isCollapsed ? 'hidden' : ''} ${isActive
+      ? 'bg-[#131a22] text-amber-200 shadow-md ring-1 ring-amber-400/25'
+      : 'text-slate-200 hover:bg-white/5 hover:text-amber-100'
     }`;
 
   return (
-    <Link to={to} className={linkClasses} aria-current={isActive ? "page" : undefined}>
-      {isActive && !isSubItem && (
-        <div className="absolute left-0 top-1/2 -translate-y-1/2 h-6 w-1 bg-amber-400 rounded-r-full"></div>
+    <Link
+      to={to}
+      className={linkClasses}
+      aria-current={isActive ? "page" : undefined}
+      onClick={() => {
+        if (isCollapsed && onCollapsedNavigate) onCollapsedNavigate();
+      }}
+    >
+      {isActive && !isSubItem && !isCollapsed && (
+        <div className="absolute left-0 top-1/2 -translate-y-1/2 h-6 w-1 bg-amber-300 rounded-r-full"></div>
       )}
-      {icon && React.cloneElement(icon, { size: isSubItem ? 16 : 18, className: "flex-shrink-0" })}
-      <span className={`font-medium truncate ${isSubItem ? 'text-sm' : 'text-base'}`}>{label}</span>
+      {icon && React.cloneElement(icon, { size: isSubItem ? 13 : 15, className: "flex-shrink-0" })}
+      {!isCollapsed && <span className={`font-medium truncate ${isSubItem ? 'text-[11px]' : 'text-xs'}`}>{label}</span>}
     </Link>
   );
 };
@@ -80,6 +89,8 @@ interface CollapsibleSidebarSectionProps {
   isSectionActive: boolean;
   onClick: () => void;
   currentPath: string;
+  isCollapsed?: boolean;
+  onCollapsedNavigate?: () => void;
 }
 
 const CollapsibleSidebarSection: React.FC<CollapsibleSidebarSectionProps> = ({
@@ -91,26 +102,43 @@ const CollapsibleSidebarSection: React.FC<CollapsibleSidebarSectionProps> = ({
   isSectionActive,
   onClick,
   currentPath,
+  isCollapsed = false,
+  onCollapsedNavigate,
 }) => {
-  const buttonClasses = `w-full flex items-center justify-between space-x-3 p-3 rounded-lg text-sky-200 hover:bg-sky-600/70 hover:text-white transition-all duration-200 ease-in-out focus:outline-none relative transform hover:-translate-y-px ${isSectionActive ? 'bg-sky-600 text-white' : ''
+  if (isCollapsed) {
+    const to = items[0]?.path || '/app/dashboard';
+    return (
+      <NavLink
+        to={to}
+        icon={icon}
+        label={label}
+        currentPath={currentPath}
+        isCollapsed
+        onCollapsedNavigate={onCollapsedNavigate}
+      />
+    );
+  }
+
+  const buttonClasses = `w-full flex items-center justify-between space-x-3 p-2 rounded-lg text-slate-200 hover:bg-white/5 hover:text-amber-100 transition-all duration-200 ease-in-out focus:outline-none relative transform hover:-translate-y-px ${isSectionActive ? 'bg-[#131a22] text-amber-200 ring-1 ring-amber-400/25' : ''
     }`;
 
   return (
     <div>
-      <button onClick={onClick} className={buttonClasses}>
+      <button onClick={onClick} className={buttonClasses} aria-expanded={isOpen} aria-controls={`sidebar-section-${name}`}>
         <div className="flex items-center space-x-3 pl-1">
           {isSectionActive && (
-            <div className="absolute left-0 top-1/2 -translate-y-1/2 h-6 w-1 bg-amber-400 rounded-r-full"></div>
+            <div className="absolute left-0 top-1/2 -translate-y-1/2 h-6 w-1 bg-amber-300 rounded-r-full"></div>
           )}
-          {React.cloneElement(icon, { size: 18 })}
-          <span className="font-medium text-base">{label}</span>
+          {React.cloneElement(icon, { size: 15 })}
+          <span className="font-medium text-xs">{label}</span>
         </div>
         <FiChevronRight
-          size={16}
+          size={13}
           className={`transition-transform duration-300 ${isOpen ? 'rotate-90' : 'rotate-0'}`}
         />
       </button>
       <div
+        id={`sidebar-section-${name}`}
         className={`transition-all duration-300 ease-in-out overflow-hidden ${isOpen ? 'max-h-screen' : 'max-h-0'
           }`}
       >
@@ -136,6 +164,7 @@ const RestaurantLayout: React.FC<{ children: React.ReactNode }> = ({ children })
   const location = useLocation();
   const currentPath = location.pathname;
   const [openMenuKey, setOpenMenuKey] = useState<string | null>(null);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   const { getSingleActiveOutlet } = useRestaurantData();
   const singleActiveOutlet = getSingleActiveOutlet();
@@ -343,7 +372,6 @@ const RestaurantLayout: React.FC<{ children: React.ReactNode }> = ({ children })
   const activeMenuKey = useMemo(() => getMenuKeyForPath(currentPath), [currentPath, getMenuKeyForPath]);
 
   const currentPageLabel = useMemo(() => {
-    if (currentPath === '/app/home') return 'Home';
     if (currentPath === '/app/dashboard') return 'Dashboard';
 
     const allLinks = [
@@ -377,19 +405,23 @@ const RestaurantLayout: React.FC<{ children: React.ReactNode }> = ({ children })
     setOpenMenuKey(prevKey => (prevKey === key ? null : key));
   };
 
+  const settingsSection = sidebarSections.find(section => section.key === 'settings');
+  const saleCustomerSection = sidebarSections.find(section => section.key === 'sale');
+  const sidebarSectionsWithoutSettings = sidebarSections.filter(section => section.key !== 'settings' && section.key !== 'sale');
+  const sidebarSectionsOrdered = saleCustomerSection
+    ? [saleCustomerSection, ...sidebarSectionsWithoutSettings]
+    : sidebarSectionsWithoutSettings;
+
   return (
     <div className="flex h-screen bg-gray-100">
-      <aside className="w-80 bg-sky-700 text-white p-4 space-y-2 shadow-lg flex flex-col overflow-y-auto custom-scrollbar">
-        <div className="text-3xl font-bold text-center text-white py-4 border-b border-sky-600 mb-2">
-          Resto<span className="text-amber-400">Byte</span>
+      <aside className={`${isSidebarCollapsed ? 'w-20' : 'w-64'} bg-[#0b0f14] text-white p-4 space-y-2 shadow-2xl flex flex-col overflow-y-auto custom-scrollbar transition-all duration-300 border-r border-white/5`}>
+        <div className="text-xl font-bold text-left text-white py-4 border-b border-white/10 mb-2 px-2">
+          {isSidebarCollapsed ? <span className="text-amber-300">RB</span> : <>Resto<span className="text-amber-300">Byte</span></>}
         </div>
         <nav className="flex-grow space-y-1">
-          <NavLink to="/app/home" icon={<FiHome />} label="Home" currentPath={currentPath} />
-          <NavLink to="/app/dashboard" icon={<FiBarChart2 />} label="Dashboard" currentPath={currentPath} />
-          <NavLink to="/app/outlet-setting" icon={<FiTool />} label="Outlet Setting" currentPath={currentPath} />
-          <NavLink to="/app/subscription" icon={<FiCreditCard />} label="Subscription" currentPath={currentPath} />
+          <NavLink to="/app/dashboard" icon={<FiBarChart2 />} label="Dashboard" currentPath={currentPath} isCollapsed={isSidebarCollapsed} onCollapsedNavigate={() => setIsSidebarCollapsed(false)} />
 
-          {sidebarSections.map(section => (
+          {sidebarSectionsOrdered.map(section => (
             <CollapsibleSidebarSection
               key={section.key}
               name={section.key}
@@ -400,17 +432,35 @@ const RestaurantLayout: React.FC<{ children: React.ReactNode }> = ({ children })
               isSectionActive={activeMenuKey === section.key}
               onClick={() => handleMenuClick(section.key)}
               currentPath={currentPath}
+              isCollapsed={isSidebarCollapsed}
+              onCollapsedNavigate={() => setIsSidebarCollapsed(false)}
             />
           ))}
 
-          <div className="pt-4 border-t border-sky-600/50">
-            <NavLink to="/app/report" icon={<FiFileText />} label="Reports" currentPath={currentPath} />
-            <NavLink to="/app/send-sms" icon={<FiMessageSquare />} label="Send SMS" currentPath={currentPath} />
+          <div className="pt-4 border-t border-white/10">
+            <NavLink to="/app/report" icon={<FiFileText />} label="Reports" currentPath={currentPath} isCollapsed={isSidebarCollapsed} onCollapsedNavigate={() => setIsSidebarCollapsed(false)} />
+            <NavLink to="/app/send-sms" icon={<FiMessageSquare />} label="Send SMS" currentPath={currentPath} isCollapsed={isSidebarCollapsed} onCollapsedNavigate={() => setIsSidebarCollapsed(false)} />
+            <NavLink to="/app/subscription" icon={<FiCreditCard />} label="Subscription" currentPath={currentPath} isCollapsed={isSidebarCollapsed} onCollapsedNavigate={() => setIsSidebarCollapsed(false)} />
+            <NavLink to="/app/outlet-setting" icon={<FiTool />} label="Outlet Setting" currentPath={currentPath} isCollapsed={isSidebarCollapsed} onCollapsedNavigate={() => setIsSidebarCollapsed(false)} />
+            {settingsSection && (
+              <CollapsibleSidebarSection
+                name="settings"
+                label={settingsSection.label}
+                icon={settingsSection.icon}
+                items={settingsSection.items}
+                isOpen={openMenuKey === 'settings'}
+                isSectionActive={activeMenuKey === 'settings'}
+                onClick={() => handleMenuClick('settings')}
+                currentPath={currentPath}
+                isCollapsed={isSidebarCollapsed}
+                onCollapsedNavigate={() => setIsSidebarCollapsed(false)}
+              />
+            )}
           </div>
         </nav>
       </aside>
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header title={currentPageLabel} />
+        <Header title={currentPageLabel} onToggleSidebar={() => setIsSidebarCollapsed(v => !v)} isSidebarCollapsed={isSidebarCollapsed} />
         <main className="flex-1 overflow-y-auto custom-scrollbar p-6">
           {children}
         </main>

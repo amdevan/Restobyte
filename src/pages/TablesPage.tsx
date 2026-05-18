@@ -6,7 +6,7 @@ import { useRestaurantData } from '../hooks/useRestaurantData';
 import { Table, TableStatus } from '../types';
 import Card from '@/components/common/Card';
 import Button from '@/components/common/Button';
-import { FiMapPin, FiPackage, FiGrid, FiSearch, FiShoppingCart, FiCalendar, FiMonitor, FiHome, FiBell } from 'react-icons/fi';
+import { FiMapPin, FiPackage, FiGrid, FiSearch, FiShoppingCart, FiCalendar, FiMonitor, FiBarChart2, FiBell } from 'react-icons/fi';
 import Input from '@/components/common/Input';
 
 
@@ -162,7 +162,7 @@ const TablesPage: React.FC = () => {
         
         <div className="flex items-center space-x-4">
             <div className="hidden md:flex items-center space-x-2">
-                <Button size="sm" variant="secondary" onClick={() => navigate('/app/home')} title="Go Home" leftIcon={<FiHome size={14}/>}>Home</Button>
+                <Button size="sm" variant="secondary" onClick={() => navigate('/app/dashboard')} title="Dashboard" leftIcon={<FiBarChart2 size={14}/>}>Dashboard</Button>
                 <Button size="sm" onClick={() => navigate('/app/panel/pos')} title="Go to POS" leftIcon={<FiShoppingCart size={14}/>}>POS</Button>
                 <Button size="sm" variant="secondary" onClick={() => navigate('/app/reservations')} title="Reservations" leftIcon={<FiCalendar size={14}/>}>Reservations</Button>
                 <Button size="sm" variant="secondary" onClick={() => navigate('/app/panel/kitchen-display')} title="Kitchen Display" leftIcon={<FiMonitor size={14}/>}>KDS</Button>

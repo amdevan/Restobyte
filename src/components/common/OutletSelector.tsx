@@ -52,7 +52,7 @@ const OutletSelector: React.FC = () => {
         <div ref={menuRef} className="relative">
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="flex items-center space-x-2 p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors"
+                className={`flex items-center gap-2 px-3 py-2 rounded-xl border shadow-sm transition-colors ${isOpen ? 'bg-white border-gray-300' : 'bg-white border-gray-200 hover:bg-gray-50'}`}
             >
                 <FiHome size={16} className="text-gray-600" />
                 <span className="text-sm font-semibold text-gray-700 max-w-[150px] truncate">{selectionText}</span>
@@ -60,9 +60,9 @@ const OutletSelector: React.FC = () => {
             </button>
 
             {isOpen && (
-                <div className="absolute left-0 mt-2 w-72 origin-top-right bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none py-1 z-50">
-                     <div className="px-3 py-2 border-b">
-                        <label className="w-full flex items-center text-sm text-gray-700 hover:bg-gray-100 p-2 rounded-md cursor-pointer">
+                <div className="absolute left-0 mt-2 w-full sm:w-72 bg-white rounded-2xl shadow-2xl ring-1 ring-gray-200/70 focus:outline-none overflow-hidden z-[210]">
+                     <div className="px-3 py-2 border-b border-gray-200/70 bg-gray-50/60">
+                        <label className="w-full flex items-center text-sm text-gray-700 hover:bg-gray-100/70 p-2 rounded-xl cursor-pointer">
                             <input
                                 type="checkbox"
                                 onChange={handleSelectAll}
@@ -72,9 +72,9 @@ const OutletSelector: React.FC = () => {
                             <span className="ml-3 font-semibold">Select All Outlets</span>
                         </label>
                      </div>
-                     <div className="max-h-60 overflow-y-auto custom-scrollbar">
+                     <div className="max-h-60 overflow-y-auto custom-scrollbar py-1">
                         {outlets.map(outlet => (
-                             <label key={outlet.id} className="w-full flex items-center text-sm text-gray-700 hover:bg-gray-100 p-3 cursor-pointer">
+                             <label key={outlet.id} className="w-full flex items-center text-sm text-gray-700 hover:bg-gray-100/70 px-3 py-2 cursor-pointer">
                                  <input
                                      type="checkbox"
                                      value={outlet.id}

@@ -11,7 +11,7 @@ import {
 } from '../types';
 import { INITIAL_TABLES_COUNT } from '../constants';
 import { API_BASE_URL } from '../config';
-import { CURRENCIES } from '@/constants/geo';
+import { CURRENCIES, DEFAULT_CURRENCY_BY_COUNTRY } from '@/constants/geo';
 import { useAuth } from './useAuth';
 
 const RestaurantDataContext = createContext<RestaurantDataContextType | undefined>(undefined);
@@ -60,9 +60,14 @@ const initialWaiters: Waiter[] = [
     { id: 'waiter-1', name: 'John Doe', employeeId: 'EMP001' },
     { id: 'waiter-2', name: 'Jane Smith', employeeId: 'EMP002' },
 ];
-const initialCurrencies: Currency[] = [
-    { id: 'curr-1', name: 'US Dollar', code: 'USD', symbol: '$', exchangeRate: 1, isDefault: true },
-];
+const initialCurrencies: Currency[] = CURRENCIES.map(c => ({
+    id: `cur-${c.code}`,
+    name: c.name,
+    code: c.code,
+    symbol: c.symbol,
+    exchangeRate: 1,
+    isDefault: c.code === 'USD',
+}));
 const initialDenominations: Denomination[] = [];
 const initialPurchases: Purchase[] = [];
 const initialExpenseCategories: ExpenseCategory[] = [
@@ -222,18 +227,27 @@ const useLocalStorage = <T,>(key: string, initialValue: T): [T, React.Dispatch<R
 };
 
 export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-    const { user, isAuthenticated } = useAuth();
+    const { user, isAuthenticated, logout } = useAuth();
     // This is a simplified implementation. A real app would use a more robust state management solution.
     // const [menuItems, setMenuItems] = useLocalStorage<MenuItem[]>('menuItems', []);
     const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
 
     useEffect(() => {
         if (isAuthenticated && user?.outletId) {
-            fetch(`${API_BASE_URL}/menu-items`, {
-                headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` }
+            const token = localStorage.getItem('authToken');
+            if (!token) {
+                setMenuItems([]);
+                return;
+            }
+            fetch(`${API_BASE_URL}/menu-items?outletId=${encodeURIComponent(user.outletId)}`, {
+                headers: { Authorization: `Bearer ${token}` }
             })
             .then(res => {
-                if (!res.ok) throw new Error('Failed to fetch menu items');
+                if (res.status === 401) {
+                    logout();
+                    throw new Error('Unauthorized');
+                }
+                if (!res.ok) throw new Error(`Failed to fetch menu items (${res.status})`);
                 return res.json();
             })
             .then(data => {
@@ -251,17 +265,26 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         } else {
              setMenuItems([]);
         }
-    }, [isAuthenticated, user?.outletId]);
+    }, [isAuthenticated, user?.outletId, logout]);
     // const [tables, setTables] = useLocalStorage<Table[]>('tables', generateInitialTables());
     const [tables, setTables] = useState<Table[]>([]);
 
     useEffect(() => {
         if (isAuthenticated && user?.outletId) {
+            const token = localStorage.getItem('authToken');
+            if (!token) {
+                setTables([]);
+                return;
+            }
             fetch(`${API_BASE_URL}/tables`, {
-                headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` }
+                headers: { Authorization: `Bearer ${token}` }
             })
             .then(res => {
-                if (!res.ok) throw new Error('Failed to fetch tables');
+                if (res.status === 401) {
+                    logout();
+                    throw new Error('Unauthorized');
+                }
+                if (!res.ok) throw new Error(`Failed to fetch tables (${res.status})`);
                 return res.json();
             })
             .then(data => setTables(data))
@@ -269,7 +292,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         } else {
              setTables([]);
         }
-    }, [isAuthenticated, user?.outletId]);
+    }, [isAuthenticated, user?.outletId, logout]);
     // Helper to generate outlet-specific keys
     const getKey = (baseKey: string) => user?.outletId ? `${baseKey}_${user.outletId}` : baseKey;
 
@@ -280,11 +303,20 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
 
     useEffect(() => {
         if (isAuthenticated && user?.outletId) {
+            const token = localStorage.getItem('authToken');
+            if (!token) {
+                setFoodMenuCategories([]);
+                return;
+            }
             fetch(`${API_BASE_URL}/categories`, {
-                headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` }
+                headers: { Authorization: `Bearer ${token}` }
             })
             .then(res => {
-                if (!res.ok) throw new Error('Failed to fetch categories');
+                if (res.status === 401) {
+                    logout();
+                    throw new Error('Unauthorized');
+                }
+                if (!res.ok) throw new Error(`Failed to fetch categories (${res.status})`);
                 return res.json();
             })
             .then(data => {
@@ -302,7 +334,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         } else {
              setFoodMenuCategories([]);
         }
-    }, [isAuthenticated, user?.outletId]);
+    }, [isAuthenticated, user?.outletId, logout]);
 
     const [preMadeFoodItems, setPreMadeFoodItems] = useLocalStorage<PreMadeFoodItem[]>(getKey('preMadeFoodItems'), []);
     const [stockItems, setStockItems] = useLocalStorage<StockItem[]>(getKey('stockItems'), initialStockItems);
@@ -314,11 +346,20 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
 
     useEffect(() => {
         if (isAuthenticated && user?.outletId) {
+            const token = localStorage.getItem('authToken');
+            if (!token) {
+                setCustomers([]);
+                return;
+            }
             fetch(`${API_BASE_URL}/customers`, {
-                headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` }
+                headers: { Authorization: `Bearer ${token}` }
             })
             .then(res => {
-                if (!res.ok) throw new Error('Failed to fetch customers');
+                if (res.status === 401) {
+                    logout();
+                    throw new Error('Unauthorized');
+                }
+                if (!res.ok) throw new Error(`Failed to fetch customers (${res.status})`);
                 return res.json();
             })
             .then(data => {
@@ -336,7 +377,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         } else {
              setCustomers([]);
         }
-    }, [isAuthenticated, user?.outletId]);
+    }, [isAuthenticated, user?.outletId, logout]);
     const [areasFloors, setAreasFloors] = useLocalStorage<AreaFloor[]>(getKey('areasFloors'), initialAreasFloors);
     const [kitchens, setKitchens] = useLocalStorage<Kitchen[]>(getKey('kitchens'), initialKitchens);
     const [printers, setPrinters] = useLocalStorage<Printer[]>(getKey('printers'), initialPrinters);
@@ -349,11 +390,10 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         const fetchCurrencies = async () => {
             try {
                 const res = await fetch(`${API_BASE_URL}/currencies`);
-                if (res.ok) {
-                    const data = await res.json();
-                    if (Array.isArray(data)) {
-                        setCurrencies(data);
-                    }
+                if (!res.ok) return;
+                const data = await res.json();
+                if (Array.isArray(data) && data.length > 0) {
+                    setCurrencies(data);
                 }
             } catch (err) {
                 console.error('Failed to fetch currencies:', err);
@@ -416,7 +456,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         fetchSaasWebsiteContent();
     }, [isAuthenticated, user?.isSuperAdmin]);
     
-    // Align default currency with tenant preference
+    // Align default currency with tenant preference (fallback to browser locale)
     useEffect(() => {
         const run = async () => {
             if (!isAuthenticated) return;
@@ -424,10 +464,19 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 const res = await fetch(`${API_BASE_URL}/tenants/me-currency`, {
                     headers: { Authorization: `Bearer ${localStorage.getItem('authToken') || ''}` }
                 });
-                if (!res.ok) return;
-                const data = await res.json();
-                const code: string | undefined = data?.currencyCode || undefined;
-                if (!code) return;
+                const data = res.ok ? await res.json().catch(() => ({})) : {};
+                const explicitCode: string | undefined = data?.currencyCode || undefined;
+                const explicitCountry: string | undefined = data?.countryCode || undefined;
+
+                const locale = Intl.DateTimeFormat().resolvedOptions().locale || '';
+                const localeRegion = locale.split(/[-_]/).pop();
+                const inferredCountry = (explicitCountry && typeof explicitCountry === 'string' ? explicitCountry : undefined)
+                    || (localeRegion && localeRegion.length === 2 ? localeRegion.toUpperCase() : undefined);
+
+                const code = explicitCode
+                    || (inferredCountry ? DEFAULT_CURRENCY_BY_COUNTRY[inferredCountry] : undefined)
+                    || 'USD';
+
                 setCurrencies(prev => {
                     const exists = prev.find(c => c.code === code);
                     if (exists) {
@@ -451,12 +500,59 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         run();
     }, [isAuthenticated]);
 
+    const setAndPersistTableStatus = useCallback(async (tableId: string, newStatus: TableStatus) => {
+        setTables(prev => prev.map(t => {
+            if (t.id !== tableId) return t;
+            const nextOccupiedSince = newStatus === TableStatus.Occupied
+                ? (t.occupiedSince || new Date().toISOString())
+                : undefined;
+            return { ...t, status: newStatus, occupiedSince: nextOccupiedSince };
+        }));
+
+        try {
+            const token = localStorage.getItem('authToken');
+            if (!token) return;
+
+            const res = await fetch(`${API_BASE_URL}/tables/${tableId}/status`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ status: newStatus }),
+            });
+
+            if (res.status === 401) {
+                logout();
+                return;
+            }
+
+            if (!res.ok) {
+                const err = await res.json().catch(() => null);
+                alert(err?.message || `Failed to update table status (${res.status})`);
+                return;
+            }
+
+            const updatedTable = await res.json().catch(() => null);
+            if (updatedTable && typeof updatedTable === 'object' && 'id' in updatedTable) {
+                const normalizedOccupiedSince = (updatedTable as any).occupiedSince ? String((updatedTable as any).occupiedSince) : undefined;
+                setTables(prev => prev.map(t => t.id === (updatedTable as any).id ? { ...t, ...(updatedTable as any), occupiedSince: normalizedOccupiedSince } : t));
+            }
+        } catch (err) {
+            console.error("Failed to update table status:", err);
+        }
+    }, [logout]);
+
 
     const contextValue: RestaurantDataContextType = {
         // Implement all functions from RestaurantDataContextType
         menuItems,
         addMenuItem: async (item, imageUrl, isVeg) => {
             try {
+                if (!item.categoryId) {
+                    alert('Please select a valid category before adding a menu item.');
+                    return;
+                }
                 const res = await fetch(`${API_BASE_URL}/menu-items`, {
                     method: 'POST',
                     headers: { 
@@ -465,10 +561,13 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                     },
                     body: JSON.stringify({ ...item, imageUrl, isVegetarian: isVeg })
                 });
-                if (res.ok) {
-                    const newItem = await res.json();
-                    setMenuItems(prev => [...prev, newItem]);
+                if (!res.ok) {
+                    const err = await res.json().catch(() => null);
+                    alert(err?.message || `Failed to add menu item (${res.status})`);
+                    return;
                 }
+                const newItem = await res.json();
+                setMenuItems(prev => [...prev, newItem]);
             } catch (err) {
                 console.error("Failed to add menu item:", err);
             }
@@ -507,19 +606,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         
         tables,
         updateTableStatus: async (tableId, newStatus) => {
-            setTables(prev => prev.map(t => t.id === tableId ? { ...t, status: newStatus, occupiedSince: newStatus === TableStatus.Occupied ? new Date().toISOString() : undefined } : t));
-            try {
-                await fetch(`${API_BASE_URL}/tables/${tableId}/status`, {
-                    method: 'PUT',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        Authorization: `Bearer ${localStorage.getItem('authToken')}`
-                    },
-                    body: JSON.stringify({ status: newStatus })
-                });
-            } catch (err) {
-                console.error("Failed to update table status:", err);
-            }
+            await setAndPersistTableStatus(tableId, newStatus);
         },
         addTable: async (name, capacity, areaFloorId) => {
             try {
@@ -531,10 +618,13 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                     },
                     body: JSON.stringify({ name, capacity, areaFloorId })
                 });
-                if (res.ok) {
-                    const newTable = await res.json();
-                    setTables(prev => [...prev, newTable]);
+                if (!res.ok) {
+                    const err = await res.json().catch(() => null);
+                    alert(err?.message || `Failed to add table (${res.status})`);
+                    return;
                 }
+                const newTable = await res.json();
+                setTables(prev => [...prev, newTable]);
             } catch (err) {
                 console.error("Failed to add table:", err);
             }
@@ -549,10 +639,13 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                     },
                     body: JSON.stringify({ name, capacity, areaFloorId })
                 });
-                if (res.ok) {
-                    const updatedTable = await res.json();
-                    setTables(prev => prev.map(t => t.id === tableId ? updatedTable : t));
+                if (!res.ok) {
+                    const err = await res.json().catch(() => null);
+                    alert(err?.message || `Failed to update table (${res.status})`);
+                    return;
                 }
+                const updatedTable = await res.json();
+                setTables(prev => prev.map(t => t.id === tableId ? updatedTable : t));
             } catch (err) {
                 console.error("Failed to update table settings:", err);
             }
@@ -646,11 +739,26 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             const newSale = { ...saleData, id: `sale-${Date.now()}`, saleDate: new Date().toISOString() };
             setSales(prev => [...prev, newSale]);
             if (saleData.assignedTableId && saleData.orderType === 'Dine In') {
-                setTables(prev => prev.map(t => t.id === saleData.assignedTableId ? { ...t, status: TableStatus.Occupied, occupiedSince: new Date().toISOString() } : t));
+                const nextStatus = saleData.isSettled ? TableStatus.Free : TableStatus.Occupied;
+                void setAndPersistTableStatus(saleData.assignedTableId, nextStatus);
             }
             return newSale;
         },
-        updateSale: (updatedSale) => setSales(prev => prev.map(s => s.id === updatedSale.id ? updatedSale : s)),
+        updateSale: (updatedSale) => {
+            const existing = sales.find(s => s.id === updatedSale.id);
+            setSales(prev => prev.map(s => s.id === updatedSale.id ? updatedSale : s));
+
+            if (updatedSale.orderType === 'Dine In' && updatedSale.assignedTableId) {
+                const wasSettled = Boolean(existing?.isSettled);
+                const isSettled = Boolean(updatedSale.isSettled);
+
+                if (!wasSettled && isSettled) {
+                    void setAndPersistTableStatus(updatedSale.assignedTableId, TableStatus.Free);
+                } else if (wasSettled && !isSettled) {
+                    void setAndPersistTableStatus(updatedSale.assignedTableId, TableStatus.Occupied);
+                }
+            }
+        },
         updateKdsOrderStatus: (saleId, status) => setSales(prev => prev.map(s => s.id === saleId ? { ...s, kdsStatus: status, kdsReadyTimestamp: status === 'ready' ? new Date().toISOString() : s.kdsReadyTimestamp } : s)),
         
         foodMenuCategories,
@@ -664,10 +772,13 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                     },
                     body: JSON.stringify(categoryData)
                 });
-                if (res.ok) {
-                    const newCategory = await res.json();
-                    setFoodMenuCategories(prev => [...prev, newCategory]);
+                if (!res.ok) {
+                    const err = await res.json().catch(() => null);
+                    alert(err?.message || `Failed to add category (${res.status})`);
+                    return;
                 }
+                const newCategory = await res.json();
+                setFoodMenuCategories(prev => [...prev, newCategory]);
             } catch (err) {
                 console.error("Failed to add category:", err);
             }
@@ -682,10 +793,13 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                     },
                     body: JSON.stringify(category)
                 });
-                if (res.ok) {
-                    const updatedCategory = await res.json();
-                    setFoodMenuCategories(prev => prev.map(c => c.id === category.id ? updatedCategory : c));
+                if (!res.ok) {
+                    const err = await res.json().catch(() => null);
+                    alert(err?.message || `Failed to update category (${res.status})`);
+                    return;
                 }
+                const updatedCategory = await res.json();
+                setFoodMenuCategories(prev => prev.map(c => c.id === category.id ? updatedCategory : c));
             } catch (err) {
                 console.error("Failed to update category:", err);
             }
@@ -696,9 +810,12 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                     method: 'DELETE',
                     headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` }
                 });
-                if (res.ok) {
-                    setFoodMenuCategories(prev => prev.filter(c => c.id !== categoryId));
+                if (!res.ok) {
+                    const err = await res.json().catch(() => null);
+                    alert(err?.message || `Failed to delete category (${res.status})`);
+                    return;
                 }
+                setFoodMenuCategories(prev => prev.filter(c => c.id !== categoryId));
             } catch (err) {
                 console.error("Failed to delete category:", err);
             }

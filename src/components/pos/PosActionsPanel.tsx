@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useRestaurantData } from '../../hooks/useRestaurantData';
-import { FiActivity, FiCalendar, FiBell, FiClock, FiGrid, FiUser, FiTrendingUp, FiArchive, FiSearch, FiHome, FiMonitor, FiTv } from 'react-icons/fi';
+import { FiActivity, FiCalendar, FiBell, FiClock, FiGrid, FiUser, FiTrendingUp, FiArchive, FiSearch, FiBarChart2, FiMonitor, FiTv } from 'react-icons/fi';
 import { useNavigate, Link } from 'react-router-dom';
 import Button from '../common/Button';
 import Modal from '../common/Modal';
@@ -144,7 +144,7 @@ const PosActionsPanel: React.FC<PosActionsPanelProps> = ({ searchTerm, onSearchC
                 <div className="flex items-center justify-between h-20">
                     {/* Left: Nav actions */}
                     <div className="flex items-center space-x-2">
-                        <Link to="/app/home" title="Home" className="p-3 rounded-full text-gray-500 hover:bg-gray-100 hover:text-sky-600"><FiHome size={24}/></Link>
+                        <Link to="/app/dashboard" title="Dashboard" className="p-3 rounded-full text-gray-500 hover:bg-gray-100 hover:text-sky-600"><FiBarChart2 size={24}/></Link>
                         <Link to="/app/tables" title="Table Status" className="p-3 rounded-full text-gray-500 hover:bg-gray-100 hover:text-sky-600"><FiGrid size={24}/></Link>
                         <Link to="/app/panel/kitchen-display" title="Kitchen Display" className="p-3 rounded-full text-gray-500 hover:bg-gray-100 hover:text-sky-600"><FiMonitor size={24}/></Link>
                         <button onClick={() => openInNewTab('#/app/panel/customer-display')} title="Open Customer Display" className="p-3 rounded-full text-gray-500 hover:bg-gray-100 hover:text-sky-600">

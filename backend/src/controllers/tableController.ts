@@ -71,18 +71,23 @@ export const updateTableStatus = async (req: Request, res: Response) => {
   }
   const id = req.params.id as string;
   const { status } = req.body;
-  
-  const table = await prisma.table.updateMany({
-    where: { id, outletId: user.outletId },
-    data: { status }
-  });
-  
-  if (table.count === 0) {
-     res.status(404).json({ message: 'Table not found or unauthorized' });
-     return;
+
+  const existing = await prisma.table.findFirst({ where: { id, outletId: user.outletId } });
+  if (!existing) {
+    res.status(404).json({ message: 'Table not found or unauthorized' });
+    return;
   }
-  
-  res.json({ message: 'Table status updated' });
+
+  const statusValue = typeof status === 'string' ? status : String(status);
+  const updatedTable = await prisma.table.update({
+    where: { id },
+    data: {
+      status: statusValue,
+      occupiedSince: statusValue === 'Occupied' ? new Date() : null,
+    },
+  });
+
+  res.json(updatedTable);
 };
 
 export const deleteTable = async (req: Request, res: Response) => {

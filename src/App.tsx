@@ -62,7 +62,6 @@ const SeoPage = React.lazy(() => import('./pages/saas/cms/SeoPage'));
 
 // Restaurant Pages (import all existing pages)
 const DashboardPage = React.lazy(() => import('./pages/DashboardPage'));
-const HomePage = React.lazy(() => import('./pages/HomePage'));
 const MenuPage = React.lazy(() => import('./pages/MenuPage'));
 const TablesPage = React.lazy(() => import('./pages/TablesPage'));
 const ReservationsPage = React.lazy(() => import('./pages/ReservationsPage'));
@@ -172,7 +171,7 @@ const AuthAwareLanding: React.FC = () => {
         return <div className="flex h-screen w-screen items-center justify-center bg-gray-100"><Spinner size="lg" /></div>;
     }
     if (isAuthenticated) {
-        return <Navigate to={user?.isSuperAdmin ? "/saas/dashboard" : "/app/home"} replace />;
+        return <Navigate to={user?.isSuperAdmin ? "/saas/dashboard" : "/app/dashboard"} replace />;
     }
     return <LandingPage />;
 }
@@ -199,7 +198,7 @@ const RestaurantPanelRoutes = () => {
 
     const routes = (
         <Routes>
-            <Route path="home" element={<HomePage />} />
+            <Route path="home" element={<Navigate to="/app/dashboard" replace />} />
             <Route path="dashboard" element={<DashboardPage />} />
             <Route path="website-public" element={<LandingPage />} />
             <Route path="menu" element={<MenuPage />} />
@@ -303,7 +302,7 @@ const RestaurantPanelRoutes = () => {
             <Route path="production" element={<ProductionPage />} />
             <Route path="send-sms" element={<SendSmsPage />} />
             <Route path="mobile-scanner" element={<MobileScanner />} />
-            <Route path="*" element={<Navigate to="/app/home" replace />} />
+            <Route path="*" element={<Navigate to="/app/dashboard" replace />} />
         </Routes>
     );
 
@@ -329,7 +328,9 @@ const SaaSPanelRoutes = () => {
                 <Route path="plans" element={<ManagePlansPage />} />
                 <Route path="tenants" element={<ManageTenantsPage />} />
                 <Route path="crm/leads" element={<CRMLeadsPage />} />
+                
                 <Route path="cms/*" element={<WebsiteCMSPage />} />
+                
                 <Route path="settings" element={<SaaSSettingsPage />} />
                 <Route path="*" element={<Navigate to={`${basePath}/dashboard`} replace />} />
             </Routes>
@@ -375,7 +376,7 @@ const AppContent: React.FC = () => {
   return (
     <React.Suspense fallback={<div className="flex h-screen w-screen items-center justify-center bg-gray-100"><Spinner size="lg" /></div>}>
         <Routes>
-            <Route path="/" element={<LandingPage />} />
+            <Route path="/" element={<AuthAwareLanding />} />
             <Route path="/blogs" element={<SaaSBlogsPage />} />
             <Route path="/career" element={<SaaSCareerPage />} />
             <Route path="/contact" element={<SaaSContactPage />} />
@@ -417,8 +418,17 @@ const AppContent: React.FC = () => {
             </Route>
             
             {/* Auth Routes */}
-            <Route path="/login" element={isAuthenticated ? <Navigate to={user?.isSuperAdmin ? "/saas/dashboard" : "/app/home"} replace /> : <LoginPage onSwitchToRegister={() => window.location.href = '/register'} />} />
-            <Route path="/register" element={isAuthenticated ? <Navigate to={user?.isSuperAdmin ? "/saas/dashboard" : "/app/home"} replace /> : <RegisterPage onSwitchToLogin={() => window.location.href = '/login'} />} />
+            <Route path="/login" element={isAuthenticated ? <Navigate to={user?.isSuperAdmin ? "/saas/dashboard" : "/app/dashboard"} replace /> : <LoginPage onSwitchToRegister={() => window.location.href = '/register'} />} />
+            <Route path="/register" element={isAuthenticated ? <Navigate to={user?.isSuperAdmin ? "/saas/dashboard" : "/app/dashboard"} replace /> : <RegisterPage onSwitchToLogin={() => window.location.href = '/login'} />} />
+
+            <Route
+                path="/saas/login"
+                element={
+                    isAuthenticated && user?.isSuperAdmin
+                        ? <Navigate to="/saas/dashboard" replace />
+                        : <SaaSLoginPage />
+                }
+            />
 
             {/* SaaS Admin Routes (Accessible on localhost if SuperAdmin) */}
             <Route 
@@ -426,7 +436,7 @@ const AppContent: React.FC = () => {
                 element={
                     isAuthenticated && user?.isSuperAdmin 
                     ? <SaaSPanelRoutes /> 
-                    : <Navigate to="/app/home" replace />
+                    : <Navigate to="/saas/login" replace />
                 } 
             />
 
@@ -434,7 +444,7 @@ const AppContent: React.FC = () => {
             <Route 
                 path="/app/*" 
                 element={
-                    isAuthenticated && !user?.isSuperAdmin
+                    isAuthenticated 
                     ? <RestaurantPanelRoutes /> 
                     : <Navigate to="/login" replace />
                 } 

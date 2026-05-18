@@ -1,25 +1,15 @@
 import React, { createContext, useState, useEffect, useContext, useCallback, ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { User } from '../types';
 import { API_BASE_URL } from '@/config';
 import { isSaaSDomain } from '@/utils/domain';
-import type { User } from '../types';
+// no local data needed; using backend API
 
 interface AuthContextType {
   isAuthenticated: boolean;
   user: User | null;
-  login: (
-    username: string,
-    password: string,
-    options?: { skipNavigation?: boolean; isPublic?: boolean }
-  ) => Promise<{ success: boolean; message: string }>;
-  register: (
-    username: string,
-    password: string,
-    restaurantName: string,
-    fullName: string,
-    mobile: string,
-    address: string
-  ) => Promise<{ success: boolean; message: string; user?: User }>;
+  login: (username: string, password: string, options?: { skipNavigation?: boolean, isPublic?: boolean }) => Promise<{ success: boolean; message: string }>;
+  register: (username: string, password: string, restaurantName: string, fullName: string, mobile: string, address: string) => Promise<{ success: boolean; message: string; user?: User }>;
   publicRegister: (name: string, email: string, password: string, outletId?: string) => Promise<{ success: boolean; message: string }>;
   logout: () => void;
   isLoading: boolean;
@@ -32,6 +22,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     try {
@@ -43,7 +34,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setIsAuthenticated(true);
       }
     } catch (error) {
-      console.error('Failed to parse auth user from localStorage', error);
+      console.error("Failed to parse auth user from localStorage", error);
       localStorage.removeItem('authUser');
       localStorage.removeItem('authToken');
     } finally {
@@ -51,63 +42,52 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }, []);
 
-  const login = useCallback(
-    async (
-      username: string,
-      password: string,
-      options?: { skipNavigation?: boolean; isPublic?: boolean }
-    ): Promise<{ success: boolean; message: string }> => {
-      try {
-        const res = await fetch(`${API_BASE_URL}/auth/login`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: username.trim(), password: password.trim() }),
-        });
-
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({ message: 'Invalid username or password.' }));
-          return { success: false, message: err.message || 'Invalid username or password.' };
-        }
-
-        const data = await res.json();
-        const authUser: User = {
-          id: data.user.id,
-          username: data.user.username,
-          isSuperAdmin: !!data.user.isSuperAdmin,
-          roleId: data.user.roleId || '',
-          outletId: data.user.outletId || '',
-          isActive: data.user.isActive,
-          passwordHash: '',
-        };
-
-        setUser(authUser);
-        setIsAuthenticated(true);
-        localStorage.setItem('authUser', JSON.stringify(authUser));
-        localStorage.setItem('authToken', data.token);
-
-        if (!options?.skipNavigation) {
-          if (options?.isPublic) {
-            if (authUser.roleId === 'role-customer') {
-              navigate('/customer/dashboard');
-            } else {
-              navigate('/public/restaurant');
-            }
-          } else if (authUser.isSuperAdmin) {
-            navigate(isSaaSDomain() ? '/dashboard' : '/saas/dashboard');
-          } else {
-            navigate('/app/home');
-          }
-        }
-
-        return { success: true, message: data.message || 'Login successful!' };
-      } catch (error) {
-        console.error('Login error:', error);
-        return { success: false, message: 'Login error.' };
+  const login = useCallback(async (username: string, password: string, options?: { skipNavigation?: boolean, isPublic?: boolean }): Promise<{ success: boolean; message: string }> => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: username.trim(), password: password.trim() })
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ message: 'Invalid username or password.' }));
+        return { success: false, message: err.message || 'Invalid username or password.' };
       }
-    },
-    [navigate]
-  );
+      const data = await res.json();
+      const authUser: User = {
+        id: data.user.id,
+        username: data.user.username,
+        isSuperAdmin: !!data.user.isSuperAdmin,
+        roleId: data.user.roleId || '',
+        outletId: data.user.outletId || '',
+        isActive: data.user.isActive,
+        passwordHash: ''
+      };
+      setUser(authUser);
+      setIsAuthenticated(true);
+      localStorage.setItem('authUser', JSON.stringify(authUser));
+      localStorage.setItem('authToken', data.token);
 
+      if (!options?.skipNavigation) {
+        if (options?.isPublic) {
+          if (authUser.roleId === 'role-customer') {
+            navigate('/customer/dashboard');
+          } else {
+            navigate('/public/restaurant');
+          }
+        } else if (authUser.isSuperAdmin) {
+          navigate('/saas/dashboard');
+        } else {
+          navigate('/app/dashboard');
+        }
+      }
+      return { success: true, message: data.message || 'Login successful!' };
+    } catch (error) {
+      console.error("Login error:", error);
+      return { success: false, message: 'Login error.' };
+    }
+  }, [navigate]);
+  
   const publicRegister = useCallback(async (name: string, email: string, password: string, outletId?: string) => {
     try {
       const payload = {
@@ -116,13 +96,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         name: name.trim(),
         roleId: 'role-customer',
         outletId,
-        isSuperAdmin: false,
+        isSuperAdmin: false
       };
 
       const res = await fetch(`${API_BASE_URL}/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(payload)
       });
 
       if (!res.ok) {
@@ -130,74 +110,79 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return { success: false, message: err.message || 'Registration failed.' };
       }
 
+      await res.json().catch(() => null);
       return { success: true, message: 'Registration successful! Please login.' };
     } catch (error) {
-      console.error('Public Registration error:', error);
+      console.error("Public Registration error:", error);
       return { success: false, message: 'Network error. Please try again.' };
     }
   }, []);
 
-  const register = useCallback(
-    async (username: string, password: string, restaurantName: string, fullName: string, mobile: string, address: string) => {
-      try {
-        const res = await fetch(`${API_BASE_URL}/tenants`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            restaurantName,
-            fullName,
-            mobile,
-            address,
-            username: username.trim(),
-            password: password.trim(),
-          }),
-        });
-
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({ message: 'Registration failed.' }));
-          return { success: false, message: err.message || 'Registration failed.' };
-        }
-
-        const data = await res.json();
-        const newUser: User = {
-          id: data.adminUser.id,
-          username: data.adminUser.username,
-          isSuperAdmin: false,
-          roleId: 'role-admin',
-          outletId: data.outlet?.id || '',
-          isActive: true,
-          passwordHash: '',
-        };
-
-        return { success: true, message: 'Registration successful! Please login.', user: newUser };
-      } catch (error) {
-        console.error('Registration error:', error);
-        return { success: false, message: 'Network error. Please try again.' };
+  const register = useCallback(async (username: string, password: string, restaurantName: string, fullName: string, mobile: string, address: string) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/tenants`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          restaurantName,
+          fullName,
+          mobile,
+          address,
+          username: username.trim(),
+          password: password.trim()
+        })
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ message: 'Registration failed.' }));
+        return { success: false, message: err.message || 'Registration failed.' };
       }
-    },
-    []
-  );
+      const data = await res.json();
+      const newUser: User = {
+        id: data.adminUser.id,
+        username: data.adminUser.username,
+        isSuperAdmin: false,
+        roleId: 'role-admin',
+        outletId: data.outlet?.id || '',
+        isActive: true,
+        passwordHash: ''
+      };
+      return { success: true, message: 'Registration successful! Please login.', user: newUser };
+    } catch (error) {
+      console.error("Registration error:", error);
+      return { success: false, message: 'Network error. Please try again.' };
+    }
+  }, []);
 
   const logout = useCallback(() => {
     localStorage.removeItem('authUser');
     localStorage.removeItem('authToken');
     setUser(null);
     setIsAuthenticated(false);
-
+    const path = location.pathname || '/';
     if (isSaaSDomain()) {
-      navigate('/login');
+      navigate('/login', { replace: true });
       return;
     }
-
-    if (window.location.hash.includes('/public')) {
-      navigate('/public/restaurant');
+    if (path.startsWith('/saas')) {
+      navigate('/saas/login', { replace: true });
       return;
     }
+    if (path.startsWith('/customer')) {
+      navigate('/public/login', { replace: true });
+      return;
+    }
+    if (path.startsWith('/public')) {
+      navigate('/public/restaurant', { replace: true });
+      return;
+    }
+    navigate('/', { replace: true });
+  }, [location.pathname, navigate]);
 
-    navigate('/login');
-  }, [navigate]);
-
-  return <AuthContext.Provider value={{ isAuthenticated, user, login, register, publicRegister, logout, isLoading }}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={{ isAuthenticated, user, login, register, publicRegister, logout, isLoading }}>
+      {children}
+    </AuthContext.Provider>
+  );
 };
 
 export const useAuth = (): AuthContextType => {

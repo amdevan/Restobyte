@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { MenuItem, Variation, Addon, SaleItem, AddonGroup } from '../../types';
 import { useRestaurantData } from '../../hooks/useRestaurantData';
 import Modal from '../common/Modal';
 import Button from '../common/Button';
 import { FiPlus, FiCheck } from 'react-icons/fi';
+import { formatMoney, getDefaultCurrency } from '../../utils/currency';
 
 interface ItemCustomizationModalProps {
   isOpen: boolean;
@@ -13,10 +14,20 @@ interface ItemCustomizationModalProps {
 }
 
 const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({ isOpen, onClose, item, onSave }) => {
-  const { addonGroups: allAddonGroups } = useRestaurantData();
+  const { addonGroups: allAddonGroups, currencies, applicationSettings } = useRestaurantData();
+  const defaultCurrency = useMemo(() => getDefaultCurrency(currencies), [currencies]);
   
   const [selectedVariation, setSelectedVariation] = useState<Variation | null>(null);
   const [selectedAddons, setSelectedAddons] = useState<Record<string, Addon[]>>({});
+
+  const format = useCallback((amount: number): string => {
+    if (defaultCurrency) return formatMoney(amount, defaultCurrency, applicationSettings);
+    const decimals = applicationSettings?.decimalPlaces ?? 2;
+    const position = applicationSettings?.currencySymbolPosition ?? 'before';
+    const fixed = amount.toFixed(decimals);
+    const symbol = '$';
+    return position === 'before' ? `${symbol}${fixed}` : `${fixed}${symbol}`;
+  }, [defaultCurrency, applicationSettings]);
 
   useEffect(() => {
     if (isOpen && item) {
@@ -70,7 +81,7 @@ const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({ isOpen,
     }
     
     // Create a detailed note from addons
-    const addonNotes = addons.map(a => `+ ${a.name} ($${a.price.toFixed(2)})`).join('\n');
+    const addonNotes = addons.map(a => `+ ${a.name} (${format(a.price)})`).join('\n');
     
     const configuredItem: SaleItem = {
       id: item.id,
@@ -78,7 +89,7 @@ const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({ isOpen,
       price: totalItemPrice,
       basePrice: selectedVariation.price,
       quantity: 1,
-      isVeg: item.isVeg,
+      isVeg: item.isVegetarian,
       notes: addonNotes,
     };
 
@@ -106,7 +117,7 @@ const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({ isOpen,
                   }`}
                 >
                   <p className="font-semibold">{variation.name}</p>
-                  <p className="text-sm">${variation.price.toFixed(2)}</p>
+                  <p className="text-sm">{format(variation.price)}</p>
                 </button>
               ))}
             </div>
@@ -131,7 +142,7 @@ const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({ isOpen,
                       }`}
                   >
                     <p className="font-medium">{addon.name}</p>
-                    <p className="text-xs">+${addon.price.toFixed(2)}</p>
+                    <p className="text-xs">+{format(addon.price)}</p>
                     {isSelected && <FiCheck className="absolute top-2 right-2 text-sky-600"/>}
                   </button>
                 );
@@ -144,7 +155,7 @@ const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({ isOpen,
         <div className="flex justify-between items-center pt-4 border-t mt-4">
           <div>
             <p className="text-gray-600">Total Price</p>
-            <p className="text-3xl font-bold text-sky-700">${totalItemPrice.toFixed(2)}</p>
+            <p className="text-3xl font-bold text-sky-700">{format(totalItemPrice)}</p>
           </div>
           <Button onClick={handleSaveClick} size="lg" className="!text-base" leftIcon={<FiPlus />}>
             Add to Order

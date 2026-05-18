@@ -2,7 +2,7 @@ export type PlanName = 'Basic' | 'Pro';
 export type FeatureName = 'customers' | 'inventory' | 'reports';
 
 export const PLAN_FEATURES: Record<PlanName, { features: FeatureName[]; limits: { maxTables: number } }> = {
-  Basic: { features: ['reports'], limits: { maxTables: 10 } },
+  Basic: { features: ['customers', 'inventory', 'reports'], limits: { maxTables: 25 } },
   Pro: { features: ['customers', 'inventory', 'reports'], limits: { maxTables: 100 } },
 };
 

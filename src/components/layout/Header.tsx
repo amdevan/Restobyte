@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { 
     FiSearch, FiBell, FiChevronDown,
     FiUser, FiSettings, FiLogOut, FiHome, FiCheck,
-    FiShoppingCart, FiGrid, FiMonitor, FiCalendar
+    FiShoppingCart, FiGrid, FiMonitor, FiCalendar, FiMenu, FiChevronLeft, FiGlobe
 } from 'react-icons/fi';
 import { useAuth } from '../../hooks/useAuth';
 import { useRestaurantData } from '../../hooks/useRestaurantData';
@@ -71,9 +71,11 @@ const UserMenuDropdown: React.FC = () => {
 
 interface HeaderProps {
   title: string;
+  onToggleSidebar?: () => void;
+  isSidebarCollapsed?: boolean;
 }
 
-const Header: React.FC<HeaderProps> = ({ title }) => {
+const Header: React.FC<HeaderProps> = ({ title, onToggleSidebar, isSidebarCollapsed }) => {
     const navigate = useNavigate();
     const location = useLocation();
     const { getSingleActiveOutlet } = useRestaurantData();
@@ -93,10 +95,24 @@ const Header: React.FC<HeaderProps> = ({ title }) => {
     
     const visibleActions = actions.filter(a => !(isCloudKitchen && a.cloudKitchenHidden) && !isAggregateView);
 
+    const websiteHref = outlet?.id
+        ? `${window.location.origin}/#/website/${outlet.id}`
+        : `${window.location.origin}/#/public/restaurant`;
+
   return (
     <header className="bg-white shadow-sm p-3 flex-shrink-0 grid grid-cols-3 items-center z-20 border-b">
         {/* Left side: Title */}
         <div className="flex items-center space-x-4">
+            {onToggleSidebar && (
+                <button
+                    type="button"
+                    onClick={onToggleSidebar}
+                    className="p-2 rounded-md hover:bg-gray-100 text-gray-700"
+                    aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                >
+                    {isSidebarCollapsed ? <FiMenu size={20} /> : <FiChevronLeft size={20} />}
+                </button>
+            )}
             <h1 className="text-xl font-semibold text-gray-800">{title}</h1>
             {showOutletSelectorInHeader && <OutletSelector />}
         </div>
@@ -123,6 +139,16 @@ const Header: React.FC<HeaderProps> = ({ title }) => {
 
         {/* Right side: User Menu */}
         <div className="flex items-center space-x-4 justify-end">
+            <a
+                href={websiteHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-2 rounded-md hover:bg-gray-100 text-gray-700"
+                aria-label="Open restaurant website"
+                title="Open restaurant website"
+            >
+                <FiGlobe size={20} />
+            </a>
             <UserMenuDropdown />
         </div>
     </header>

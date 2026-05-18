@@ -11,7 +11,7 @@ interface FeatureDisabledPageProps {
     backPath?: string;
 }
 
-const FeatureDisabledPage: React.FC<FeatureDisabledPageProps> = ({ type, featureName, reason, backPath = '/app/home' }) => {
+const FeatureDisabledPage: React.FC<FeatureDisabledPageProps> = ({ type, featureName, reason, backPath = '/app/dashboard' }) => {
     const navigate = useNavigate();
 
     const content = {

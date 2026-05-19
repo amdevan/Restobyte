@@ -50,8 +50,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         body: JSON.stringify({ username: username.trim(), password: password.trim() })
       });
       if (!res.ok) {
-        const err = await res.json().catch(() => ({ message: 'Invalid username or password.' }));
-        return { success: false, message: err.message || 'Invalid username or password.' };
+        const err = await res.json().catch(() => null);
+        const message =
+          (err && typeof err === 'object' && 'message' in err && typeof (err as any).message === 'string' && (err as any).message) ||
+          `Login failed (${res.status}).`;
+        return { success: false, message };
       }
       const data = await res.json();
       const authUser: User = {
@@ -83,8 +86,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
       return { success: true, message: data.message || 'Login successful!' };
     } catch (error) {
-      console.error("Login error:", error);
-      return { success: false, message: 'Login error.' };
+      const message =
+        error instanceof Error
+          ? `Network error. Check API URL and backend is running. (${error.message})`
+          : 'Network error. Check API URL and backend is running.';
+      return { success: false, message };
     }
   }, [navigate]);
   
@@ -106,15 +112,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       });
 
       if (!res.ok) {
-        const err = await res.json().catch(() => ({ message: 'Registration failed.' }));
-        return { success: false, message: err.message || 'Registration failed.' };
+        const err = await res.json().catch(() => null);
+        const message =
+          (err && typeof err === 'object' && 'message' in err && typeof (err as any).message === 'string' && (err as any).message) ||
+          `Registration failed (${res.status}).`;
+        return { success: false, message };
       }
 
       await res.json().catch(() => null);
       return { success: true, message: 'Registration successful! Please login.' };
     } catch (error) {
-      console.error("Public Registration error:", error);
-      return { success: false, message: 'Network error. Please try again.' };
+      const message =
+        error instanceof Error
+          ? `Network error. Check API URL and backend is running. (${error.message})`
+          : 'Network error. Check API URL and backend is running.';
+      return { success: false, message };
     }
   }, []);
 
@@ -133,8 +145,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         })
       });
       if (!res.ok) {
-        const err = await res.json().catch(() => ({ message: 'Registration failed.' }));
-        return { success: false, message: err.message || 'Registration failed.' };
+        const err = await res.json().catch(() => null);
+        const message =
+          (err && typeof err === 'object' && 'message' in err && typeof (err as any).message === 'string' && (err as any).message) ||
+          `Registration failed (${res.status}).`;
+        return { success: false, message };
       }
       const data = await res.json();
       const newUser: User = {
@@ -148,8 +163,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       };
       return { success: true, message: 'Registration successful! Please login.', user: newUser };
     } catch (error) {
-      console.error("Registration error:", error);
-      return { success: false, message: 'Network error. Please try again.' };
+      const message =
+        error instanceof Error
+          ? `Network error. Check API URL and backend is running. (${error.message})`
+          : 'Network error. Check API URL and backend is running.';
+      return { success: false, message };
     }
   }, []);
 

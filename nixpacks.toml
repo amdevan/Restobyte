@@ -5,4 +5,4 @@ nixPkgs = ["nodejs_22"]
 cmds = ["npm run build"]
 
 [start]
-cmd = "npm run preview -- --host --port $PORT"
+cmd = "node server.js"

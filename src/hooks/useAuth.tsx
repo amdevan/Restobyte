@@ -24,6 +24,24 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const navigate = useNavigate();
   const location = useLocation();
 
+  const buildHttpErrorMessage = useCallback(async (action: string, url: string, res: Response) => {
+    const contentType = res.headers.get('content-type') || '';
+    const serverMessage = await (async () => {
+      if (contentType.includes('application/json')) {
+        const err = await res.json().catch(() => null);
+        const msg =
+          err && typeof err === 'object' && 'message' in err && typeof (err as any).message === 'string'
+            ? ((err as any).message as string)
+            : '';
+        return msg;
+      }
+      const text = await res.text().catch(() => '');
+      return text ? text.slice(0, 180) : '';
+    })();
+    const base = `${action} failed (${res.status}) at ${url}.`;
+    return serverMessage ? `${base} ${serverMessage}` : base;
+  }, []);
+
   useEffect(() => {
     try {
       const storedUser = localStorage.getItem('authUser');
@@ -44,16 +62,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const login = useCallback(async (username: string, password: string, options?: { skipNavigation?: boolean, isPublic?: boolean }): Promise<{ success: boolean; message: string }> => {
     try {
-      const res = await fetch(`${API_BASE_URL}/auth/login`, {
+      const url = `${API_BASE_URL}/auth/login`;
+      const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: username.trim(), password: password.trim() })
       });
       if (!res.ok) {
-        const err = await res.json().catch(() => null);
-        const message =
-          (err && typeof err === 'object' && 'message' in err && typeof (err as any).message === 'string' && (err as any).message) ||
-          `Login failed (${res.status}).`;
+        const message = await buildHttpErrorMessage('Login', url, res);
         return { success: false, message };
       }
       const data = await res.json();
@@ -86,13 +102,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
       return { success: true, message: data.message || 'Login successful!' };
     } catch (error) {
+      const url = `${API_BASE_URL}/auth/login`;
       const message =
         error instanceof Error
-          ? `Network error. Check API URL and backend is running. (${error.message})`
-          : 'Network error. Check API URL and backend is running.';
+          ? `Network error at ${url}. Check API URL and backend is running. (${error.message})`
+          : `Network error at ${url}. Check API URL and backend is running.`;
       return { success: false, message };
     }
-  }, [navigate]);
+  }, [buildHttpErrorMessage, navigate]);
   
   const publicRegister = useCallback(async (name: string, email: string, password: string, outletId?: string) => {
     try {
@@ -105,34 +122,34 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         isSuperAdmin: false
       };
 
-      const res = await fetch(`${API_BASE_URL}/auth/register`, {
+      const url = `${API_BASE_URL}/auth/register`;
+      const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
 
       if (!res.ok) {
-        const err = await res.json().catch(() => null);
-        const message =
-          (err && typeof err === 'object' && 'message' in err && typeof (err as any).message === 'string' && (err as any).message) ||
-          `Registration failed (${res.status}).`;
+        const message = await buildHttpErrorMessage('Registration', url, res);
         return { success: false, message };
       }
 
       await res.json().catch(() => null);
       return { success: true, message: 'Registration successful! Please login.' };
     } catch (error) {
+      const url = `${API_BASE_URL}/auth/register`;
       const message =
         error instanceof Error
-          ? `Network error. Check API URL and backend is running. (${error.message})`
-          : 'Network error. Check API URL and backend is running.';
+          ? `Network error at ${url}. Check API URL and backend is running. (${error.message})`
+          : `Network error at ${url}. Check API URL and backend is running.`;
       return { success: false, message };
     }
-  }, []);
+  }, [buildHttpErrorMessage]);
 
   const register = useCallback(async (username: string, password: string, restaurantName: string, fullName: string, mobile: string, address: string) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/tenants`, {
+      const url = `${API_BASE_URL}/tenants`;
+      const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -145,10 +162,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         })
       });
       if (!res.ok) {
-        const err = await res.json().catch(() => null);
-        const message =
-          (err && typeof err === 'object' && 'message' in err && typeof (err as any).message === 'string' && (err as any).message) ||
-          `Registration failed (${res.status}).`;
+        const message = await buildHttpErrorMessage('Registration', url, res);
         return { success: false, message };
       }
       const data = await res.json();
@@ -163,13 +177,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       };
       return { success: true, message: 'Registration successful! Please login.', user: newUser };
     } catch (error) {
+      const url = `${API_BASE_URL}/tenants`;
       const message =
         error instanceof Error
-          ? `Network error. Check API URL and backend is running. (${error.message})`
-          : 'Network error. Check API URL and backend is running.';
+          ? `Network error at ${url}. Check API URL and backend is running. (${error.message})`
+          : `Network error at ${url}. Check API URL and backend is running.`;
       return { success: false, message };
     }
-  }, []);
+  }, [buildHttpErrorMessage]);
 
   const logout = useCallback(() => {
     localStorage.removeItem('authUser');

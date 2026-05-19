@@ -822,8 +822,30 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         },
 
         preMadeFoodItems,
-        addPreMadeFoodItem: (item, imageUrl, isVeg) => setPreMadeFoodItems(prev => [...prev, { ...item, id: `pmf-${Date.now()}`, imageUrl, isVeg }]),
-        updatePreMadeFoodItem: (item) => setPreMadeFoodItems(prev => prev.map(i => i.id === item.id ? item : i)),
+        addPreMadeFoodItem: (item, imageUrl, isVeg) => {
+            const normalizedPrice =
+                typeof item.price === 'number'
+                    ? item.price
+                    : (item.variations?.[0]?.price ?? 0);
+            const normalizedItem = {
+                ...item,
+                price: normalizedPrice,
+                isVegetarian: item.isVegetarian === undefined ? (isVeg === undefined ? true : isVeg) : item.isVegetarian,
+            };
+            setPreMadeFoodItems(prev => [...prev, { ...normalizedItem, id: `pmf-${Date.now()}`, imageUrl }]);
+        },
+        updatePreMadeFoodItem: (item) => {
+            const normalizedPrice =
+                typeof item.price === 'number'
+                    ? item.price
+                    : (item.variations?.[0]?.price ?? 0);
+            const normalizedItem = {
+                ...item,
+                price: normalizedPrice,
+                isVegetarian: item.isVegetarian === undefined ? ((item as any).isVeg === undefined ? true : (item as any).isVeg) : item.isVegetarian,
+            };
+            setPreMadeFoodItems(prev => prev.map(i => i.id === item.id ? normalizedItem : i));
+        },
         deletePreMadeFoodItem: (itemId) => setPreMadeFoodItems(prev => prev.filter(i => i.id !== itemId)),
 
         stockItems,

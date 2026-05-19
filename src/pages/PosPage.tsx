@@ -76,6 +76,7 @@ type OrderItem = SaleItem & { status: 'new' | 'sent'; lineId: string };
 const PosPage: React.FC = () => {
   const {
     menuItems,
+    preMadeFoodItems,
     foodMenuCategories,
     customers,
     addCustomer,
@@ -129,7 +130,15 @@ const PosPage: React.FC = () => {
   // Post-Sale State
   const [lastCompletedSale, setLastCompletedSale] = useState<Sale | null>(null);
   
-  const categories = useMemo(() => ['All', ...foodMenuCategories.map(c => c.name)], [foodMenuCategories]);
+  const categories = useMemo(() => {
+    const categorySet = new Set<string>();
+    for (const c of foodMenuCategories) categorySet.add(c.name);
+    for (const item of preMadeFoodItems) {
+      const categoryName = typeof item.category === 'object' && item.category !== null ? (item.category as any).name : item.category;
+      if (typeof categoryName === 'string' && categoryName.trim()) categorySet.add(categoryName);
+    }
+    return ['All', ...Array.from(categorySet)];
+  }, [foodMenuCategories, preMadeFoodItems]);
   const activeWaiters = useMemo(() => waiters, [waiters]);
   const activeDeliveryPartners = useMemo(() => deliveryPartners.filter(dp => dp.isEnabled), [deliveryPartners]);
   const hasNewItems = useMemo(() => currentOrderItems.some(item => item.status === 'new'), [currentOrderItems]);
@@ -385,14 +394,23 @@ const handleSendKot = useCallback(() => {
     setEditingNoteItem(null);
   };
 
+  const mergedMenuItems = useMemo(() => {
+    const normalizedPreMade = preMadeFoodItems.map(item => {
+      const normalizedPrice = typeof item.price === 'number' ? item.price : (item.variations?.[0]?.price ?? 0);
+      const normalizedIsVeg = item.isVegetarian === undefined ? ((item as any).isVeg === undefined ? true : (item as any).isVeg) : item.isVegetarian;
+      return { ...item, price: normalizedPrice, isVegetarian: normalizedIsVeg };
+    });
+    return [...menuItems, ...normalizedPreMade];
+  }, [menuItems, preMadeFoodItems]);
+
   const filteredMenu = useMemo(() => {
-    return menuItems.filter(item => {
+    return mergedMenuItems.filter(item => {
       const categoryName = typeof item.category === 'object' && item.category !== null ? (item.category as any).name : item.category;
       const matchesCategory = selectedCategory === 'All' || categoryName === selectedCategory;
       const matchesSearch = menuSearchTerm === '' || item.name.toLowerCase().includes(menuSearchTerm.toLowerCase());
       return matchesCategory && matchesSearch;
     });
-  }, [menuItems, selectedCategory, menuSearchTerm]);
+  }, [mergedMenuItems, selectedCategory, menuSearchTerm]);
 
   const subTotal = useMemo(() => currentOrderItems.reduce((sum, item) => sum + item.price * item.quantity, 0), [currentOrderItems]);
   const discountValue = useMemo(() => discountType === 'fixed' ? discountAmount : (subTotal * discountAmount) / 100, [subTotal, discountType, discountAmount]);

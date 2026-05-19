@@ -29,7 +29,8 @@ const AddPreMadeFoodForm: React.FC<AddPreMadeFoodFormProps> = ({ onSubmit, onUpd
       setPrice(initialData.variations[0]?.price || '');
       setCategory(initialData.category || 'Pre-Made Food');
       setImageUrl(initialData.imageUrl || '');
-      setIsVeg(initialData.isVeg === undefined ? true : initialData.isVeg);
+      const fallbackIsVeg = (initialData as any).isVeg as boolean | undefined;
+      setIsVeg(initialData.isVegetarian === undefined ? (fallbackIsVeg === undefined ? true : fallbackIsVeg) : initialData.isVegetarian);
     } else {
       setName('');
       setDescription('');
@@ -80,7 +81,8 @@ const AddPreMadeFoodForm: React.FC<AddPreMadeFoodFormProps> = ({ onSubmit, onUpd
         description, 
         variations: [{ name: 'Regular', price: numericPrice }],
         category, 
-        isVeg 
+        price: numericPrice,
+        isVegetarian: isVeg,
     };
 
     if (initialData && onUpdate) {

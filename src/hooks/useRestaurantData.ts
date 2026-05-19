@@ -392,9 +392,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 const res = await fetch(`${API_BASE_URL}/currencies`);
                 if (!res.ok) return;
                 const data = await res.json();
-                if (Array.isArray(data) && data.length > 0) {
-                    setCurrencies(data);
-                }
+                if (Array.isArray(data)) setCurrencies(data);
             } catch (err) {
                 console.error('Failed to fetch currencies:', err);
             }
@@ -569,7 +567,12 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 const newItem = await res.json();
                 setMenuItems(prev => [...prev, newItem]);
             } catch (err) {
+                const message =
+                    err instanceof Error
+                        ? `Failed to add menu item. (${err.message})`
+                        : 'Failed to add menu item.';
                 console.error("Failed to add menu item:", err);
+                alert(message);
             }
         },
         updateMenuItem: async (item) => {

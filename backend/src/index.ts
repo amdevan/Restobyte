@@ -64,6 +64,24 @@ async function start() {
     process.exit(1);
   }
 
+  try {
+    const existingCount = await prisma.currency.count();
+    if (existingCount === 0) {
+      await prisma.currency.create({
+        data: {
+          name: 'US Dollar',
+          code: 'USD',
+          symbol: '$',
+          exchangeRate: 1,
+          isDefault: true,
+        },
+      });
+      console.log('[database]: Seeded default currency (USD)');
+    }
+  } catch (error) {
+    console.error('[database]: Failed to ensure default currency', error);
+  }
+
   app.listen(port, host, () => {
     console.log(`[server]: Server is running at http://${host}:${port}`);
   });

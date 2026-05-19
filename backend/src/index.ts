@@ -3,6 +3,7 @@ import type { Express, Request, Response } from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
 import prisma from './db/prisma.js';
+import bcrypt from 'bcryptjs';
 
 // Import routes
 import helloRoutes from './routes/helloRoutes.js';
@@ -62,6 +63,73 @@ async function start() {
   } catch (error) {
     console.error('[database]: Failed to connect to database', error);
     process.exit(1);
+  }
+
+  if (process.env.SEED_DEMO_USERS === 'true') {
+    try {
+      const tenant = await prisma.tenant.upsert({
+        where: { id: 'tenant-1' },
+        update: {},
+        create: {
+          id: 'tenant-1',
+          name: 'Demo Tenant',
+          plan: 'Pro',
+          subscriptionStatus: 'active',
+        },
+      });
+
+      const outlet = await prisma.outlet.upsert({
+        where: { id: 'outlet-1' },
+        update: { tenantId: tenant.id },
+        create: {
+          id: 'outlet-1',
+          name: 'Main Outlet',
+          tenantId: tenant.id,
+          address: '123 Main St',
+          phone: '555-0123',
+        },
+      });
+
+      const adminUsername = process.env.DEMO_ADMIN_USERNAME || 'admin';
+      const adminPassword = process.env.DEMO_ADMIN_PASSWORD || 'admin123';
+      const existingAdmin = await prisma.user.findUnique({ where: { username: adminUsername } });
+      if (!existingAdmin) {
+        const hashed = await bcrypt.hash(adminPassword, 10);
+        await prisma.user.create({
+          data: {
+            username: adminUsername,
+            password: hashed,
+            roleId: 'role-admin',
+            outletId: outlet.id,
+            tenantId: tenant.id,
+            isActive: true,
+            isSuperAdmin: false,
+          },
+        });
+        console.log('[seed]: Created demo admin user');
+      }
+
+      const superUsername = process.env.DEMO_SUPERADMIN_USERNAME || 'superadmin';
+      const superPassword = process.env.DEMO_SUPERADMIN_PASSWORD || 'superadmin123';
+      const existingSuper = await prisma.user.findUnique({ where: { username: superUsername } });
+      if (!existingSuper) {
+        const hashed = await bcrypt.hash(superPassword, 10);
+        await prisma.user.create({
+          data: {
+            username: superUsername,
+            password: hashed,
+            roleId: 'role-superadmin',
+            outletId: outlet.id,
+            tenantId: tenant.id,
+            isActive: true,
+            isSuperAdmin: true,
+          },
+        });
+        console.log('[seed]: Created demo superadmin user');
+      }
+    } catch (error) {
+      console.error('[seed]: Failed to seed demo users', error);
+    }
   }
 
   try {

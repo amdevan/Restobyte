@@ -55,13 +55,18 @@ app.use('/api/me', meRoutes);
 app.use('/api/public', saasWebsiteContentRoutes);
 app.use('/api/saas', saasWebsiteContentAdminRoutes);
 
-app.listen(port, host, async () => {
-  console.log(`[server]: Server is running at http://${host}:${port}`);
-
+async function start() {
   try {
     await prisma.$connect();
     console.log('[database]: Connected to database successfully');
   } catch (error) {
     console.error('[database]: Failed to connect to database', error);
+    process.exit(1);
   }
-});
+
+  app.listen(port, host, () => {
+    console.log(`[server]: Server is running at http://${host}:${port}`);
+  });
+}
+
+start();

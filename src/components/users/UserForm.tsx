@@ -8,8 +8,8 @@ import { FiSave, FiXCircle, FiUser as FiUserIcon, FiLock, FiBriefcase, FiHome, F
 
 interface UserFormProps {
   initialData?: User | null;
-  onSubmit: (data: Omit<User, 'id'>) => void;
-  onUpdate: (data: User) => void;
+  onSubmit: (data: Omit<User, 'id'>) => Promise<{ success: boolean; message?: string }>;
+  onUpdate: (data: User) => Promise<{ success: boolean; message?: string }>;
   onClose: () => void;
 }
 
@@ -22,7 +22,9 @@ const UserForm: React.FC<UserFormProps> = ({ initialData, onSubmit, onUpdate, on
   const [outletId, setOutletId] = useState('');
   const [isActive, setIsActive] = useState(true);
   const [passwordError, setPasswordError] = useState('');
+  const [submitError, setSubmitError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (initialData) {
@@ -34,24 +36,33 @@ const UserForm: React.FC<UserFormProps> = ({ initialData, onSubmit, onUpdate, on
       setPassword('');
       setConfirmPassword('');
     } else {
-      // Reset for new user
       setUsername('');
       setPassword('');
       setConfirmPassword('');
-      setRoleId(roles[0]?.id || '');
-      setOutletId(outlets[0]?.id || '');
+      setRoleId('');
+      setOutletId('');
       setIsActive(true);
     }
+    setPasswordError('');
+    setSubmitError('');
+    setShowPassword(false);
+    setIsSubmitting(false);
+  }, [initialData]);
+
+  useEffect(() => {
+    if (initialData) return;
+    setRoleId(prev => prev || roles[0]?.id || '');
+    setOutletId(prev => prev || outlets[0]?.id || '');
   }, [initialData, roles, outlets]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setPasswordError('');
+    setSubmitError('');
+    if (isSubmitting) return;
     
-    if (!username.trim() || !roleId || !outletId) {
-      alert('Username, Role, and Outlet are required.');
-      return;
-    }
+    const trimmedUsername = username.trim();
+    if (!trimmedUsername || !roleId || !outletId) return setSubmitError('Username, Role, and Outlet are required.');
 
     // Password validation
     if (!initialData && !password) { // Required for new users
@@ -68,7 +79,7 @@ const UserForm: React.FC<UserFormProps> = ({ initialData, onSubmit, onUpdate, on
     }
 
     const userData = {
-        username,
+        username: trimmedUsername,
         // In a real app, you would hash this password before storing.
         // We'll use the plain text here for simplicity, but name the property `passwordHash`.
         passwordHash: password || initialData?.passwordHash || '', 
@@ -77,16 +88,25 @@ const UserForm: React.FC<UserFormProps> = ({ initialData, onSubmit, onUpdate, on
         isActive,
     };
     
-    if (initialData) {
-        // If password field was empty, keep the old hash
-        if (!password) {
-            userData.passwordHash = initialData.passwordHash;
+    setIsSubmitting(true);
+    try {
+      if (initialData) {
+        const result = await onUpdate({ ...initialData, ...userData });
+        if (!result.success) {
+          setSubmitError(result.message || 'Failed to update user.');
+          return;
         }
-      onUpdate({ ...initialData, ...userData });
-    } else {
-      onSubmit(userData);
+      } else {
+        const result = await onSubmit(userData);
+        if (!result.success) {
+          setSubmitError(result.message || 'Failed to add user.');
+          return;
+        }
+      }
+      onClose();
+    } finally {
+      setIsSubmitting(false);
     }
-    onClose(); 
   };
   
   const togglePasswordVisibility = () => setShowPassword(!showPassword);
@@ -104,6 +124,7 @@ const UserForm: React.FC<UserFormProps> = ({ initialData, onSubmit, onUpdate, on
         <Input label="Confirm Password" type={showPassword ? "text" : "password"} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} leftIcon={<FiLock />} />
       </div>
       {passwordError && <p className="text-xs text-red-600 -mt-2">{passwordError}</p>}
+      {submitError && <p className="text-xs text-red-600 -mt-2">{submitError}</p>}
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
@@ -126,8 +147,10 @@ const UserForm: React.FC<UserFormProps> = ({ initialData, onSubmit, onUpdate, on
       </div>
 
       <div className="flex justify-end space-x-3 pt-4 border-t">
-        <Button type="button" variant="secondary" onClick={onClose} leftIcon={<FiXCircle />}>Cancel</Button>
-        <Button type="submit" variant="primary" leftIcon={<FiSave />}>{initialData ? 'Update User' : 'Save User'}</Button>
+        <Button type="button" variant="secondary" onClick={onClose} leftIcon={<FiXCircle />} disabled={isSubmitting}>Cancel</Button>
+        <Button type="submit" variant="primary" leftIcon={<FiSave />} disabled={isSubmitting}>
+          {initialData ? 'Update User' : 'Save User'}
+        </Button>
       </div>
     </form>
   );

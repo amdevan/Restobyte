@@ -30,14 +30,17 @@ const AccountAndUserPage: React.FC = () => {
     setEditingUser(null);
   };
 
-  const handleDelete = (userId: string) => {
+  const handleDelete = async (userId: string) => {
     const userToDelete = users.find(u => u.id === userId);
     if (userToDelete?.id === 'user-admin') {
       alert("The default admin user cannot be deleted.");
       return;
     }
     if (window.confirm(`Are you sure you want to delete the user "${userToDelete?.username}"?`)) {
-      deleteUser(userId);
+      const result = await deleteUser(userId);
+      if (!result.success) {
+        alert(result.message || 'Failed to delete user.');
+      }
     }
   };
   

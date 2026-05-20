@@ -1555,137 +1555,137 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         },
         
         roles, users,
-        addUser: (userData) => {
-            void (async () => {
-                const token = localStorage.getItem('authToken');
-                if (!token) {
-                    alert('Unauthorized. Please log in again.');
-                    return;
-                }
-                try {
-                    const res = await fetch(`${API_BASE_URL}/users`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            Authorization: `Bearer ${token}`
-                        },
-                        body: JSON.stringify({
-                            username: userData.username,
-                            password: userData.passwordHash,
-                            roleId: userData.roleId,
-                            outletId: userData.outletId,
-                            isActive: userData.isActive,
-                            isSuperAdmin: Boolean((userData as any).isSuperAdmin),
-                        })
-                    });
-                    if (res.status === 401) {
-                        logout();
-                        return;
-                    }
-                    if (!res.ok) {
-                        const err = await res.json().catch(() => null);
-                        alert(err?.message || `Failed to add user (${res.status})`);
-                        return;
-                    }
-                    const created = await res.json().catch(() => null);
-                    if (!created) return;
-                    const normalized: User = {
-                        id: String(created.id),
-                        username: String(created.username),
-                        passwordHash: '',
-                        roleId: created.roleId ? String(created.roleId) : '',
-                        outletId: created.outletId ? String(created.outletId) : '',
-                        isActive: Boolean(created.isActive),
-                        isSuperAdmin: Boolean(created.isSuperAdmin),
-                    };
-                    setUsers(prev => [...prev, normalized]);
-                } catch (err) {
-                    console.error('Failed to add user:', err);
-                    alert('Failed to add user. Please try again.');
-                }
-            })();
-        },
-        updateUser: (userToUpdate) => {
-            void (async () => {
-                const token = localStorage.getItem('authToken');
-                if (!token) {
-                    alert('Unauthorized. Please log in again.');
-                    return;
-                }
-                try {
-                    const payload: any = {
-                        username: userToUpdate.username,
-                        roleId: userToUpdate.roleId,
-                        outletId: userToUpdate.outletId,
-                        isActive: userToUpdate.isActive,
-                        isSuperAdmin: Boolean(userToUpdate.isSuperAdmin),
-                    };
-                    if (userToUpdate.passwordHash && userToUpdate.passwordHash.length >= 6) {
-                        payload.password = userToUpdate.passwordHash;
-                    }
+        addUser: async (userData) => {
+            const token = localStorage.getItem('authToken');
+            if (!token) return { success: false, message: 'Unauthorized. Please log in again.' };
 
-                    const res = await fetch(`${API_BASE_URL}/users/${userToUpdate.id}`, {
-                        method: 'PUT',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            Authorization: `Bearer ${token}`
-                        },
-                        body: JSON.stringify(payload)
-                    });
-                    if (res.status === 401) {
-                        logout();
-                        return;
-                    }
-                    if (!res.ok) {
-                        const err = await res.json().catch(() => null);
-                        alert(err?.message || `Failed to update user (${res.status})`);
-                        return;
-                    }
-                    const updated = await res.json().catch(() => null);
-                    if (!updated) return;
-                    const normalized: User = {
-                        id: String(updated.id),
-                        username: String(updated.username),
-                        passwordHash: '',
-                        roleId: updated.roleId ? String(updated.roleId) : '',
-                        outletId: updated.outletId ? String(updated.outletId) : '',
-                        isActive: Boolean(updated.isActive),
-                        isSuperAdmin: Boolean(updated.isSuperAdmin),
-                    };
-                    setUsers(prev => prev.map(u => u.id === normalized.id ? normalized : u));
-                } catch (err) {
-                    console.error('Failed to update user:', err);
-                    alert('Failed to update user. Please try again.');
+            try {
+                const res = await fetch(`${API_BASE_URL}/users`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({
+                        username: userData.username,
+                        password: userData.passwordHash,
+                        roleId: userData.roleId,
+                        outletId: userData.outletId,
+                        isActive: userData.isActive,
+                        isSuperAdmin: Boolean((userData as any).isSuperAdmin),
+                    }),
+                });
+
+                if (res.status === 401) {
+                    logout();
+                    return { success: false, message: 'Unauthorized. Please log in again.' };
                 }
-            })();
+
+                if (!res.ok) {
+                    const err = await res.json().catch(() => null);
+                    return { success: false, message: err?.message || `Failed to add user (${res.status})` };
+                }
+
+                const created = await res.json().catch(() => null);
+                if (!created) return { success: false, message: 'Failed to add user.' };
+
+                const normalized: User = {
+                    id: String(created.id),
+                    username: String(created.username),
+                    passwordHash: '',
+                    roleId: created.roleId ? String(created.roleId) : '',
+                    outletId: created.outletId ? String(created.outletId) : '',
+                    isActive: Boolean(created.isActive),
+                    isSuperAdmin: Boolean(created.isSuperAdmin),
+                };
+                setUsers(prev => [...prev, normalized]);
+                return { success: true };
+            } catch (err) {
+                console.error('Failed to add user:', err);
+                return { success: false, message: 'Failed to add user. Please try again.' };
+            }
         },
-        deleteUser: (userId) => {
-            void (async () => {
-                const token = localStorage.getItem('authToken');
-                if (!token) {
-                    alert('Unauthorized. Please log in again.');
-                    return;
+        updateUser: async (userToUpdate) => {
+            const token = localStorage.getItem('authToken');
+            if (!token) return { success: false, message: 'Unauthorized. Please log in again.' };
+
+            try {
+                const payload: any = {
+                    username: userToUpdate.username,
+                    roleId: userToUpdate.roleId,
+                    outletId: userToUpdate.outletId,
+                    isActive: userToUpdate.isActive,
+                    isSuperAdmin: Boolean(userToUpdate.isSuperAdmin),
+                };
+
+                if (userToUpdate.passwordHash && userToUpdate.passwordHash.length >= 6) {
+                    payload.password = userToUpdate.passwordHash;
                 }
-                try {
-                    const res = await fetch(`${API_BASE_URL}/users/${userId}`, {
-                        method: 'DELETE',
-                        headers: { Authorization: `Bearer ${token}` }
-                    });
-                    if (res.status === 401) {
-                        logout();
-                        return;
-                    }
-                    if (!res.ok) {
-                        const err = await res.json().catch(() => null);
-                        alert(err?.message || `Failed to delete user (${res.status})`);
-                        return;
-                    }
-                    setUsers(prev => prev.filter(u => u.id !== userId));
-                } catch (err) {
-                    console.error('Failed to delete user:', err);
-                    alert('Failed to delete user. Please try again.');
+
+                const res = await fetch(`${API_BASE_URL}/users/${userToUpdate.id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify(payload),
+                });
+
+                if (res.status === 401) {
+                    logout();
+                    return { success: false, message: 'Unauthorized. Please log in again.' };
                 }
-            })();
+
+                if (!res.ok) {
+                    const err = await res.json().catch(() => null);
+                    return { success: false, message: err?.message || `Failed to update user (${res.status})` };
+                }
+
+                const updated = await res.json().catch(() => null);
+                if (!updated) return { success: false, message: 'Failed to update user.' };
+
+                const normalized: User = {
+                    id: String(updated.id),
+                    username: String(updated.username),
+                    passwordHash: '',
+                    roleId: updated.roleId ? String(updated.roleId) : '',
+                    outletId: updated.outletId ? String(updated.outletId) : '',
+                    isActive: Boolean(updated.isActive),
+                    isSuperAdmin: Boolean(updated.isSuperAdmin),
+                };
+                setUsers(prev => prev.map(u => (u.id === normalized.id ? normalized : u)));
+                return { success: true };
+            } catch (err) {
+                console.error('Failed to update user:', err);
+                return { success: false, message: 'Failed to update user. Please try again.' };
+            }
+        },
+        deleteUser: async (userId) => {
+            const token = localStorage.getItem('authToken');
+            if (!token) return { success: false, message: 'Unauthorized. Please log in again.' };
+
+            try {
+                const res = await fetch(`${API_BASE_URL}/users/${userId}`, {
+                    method: 'DELETE',
+                    headers: { Authorization: `Bearer ${token}` },
+                });
+
+                if (res.status === 401) {
+                    logout();
+                    return { success: false, message: 'Unauthorized. Please log in again.' };
+                }
+
+                if (!res.ok) {
+                    const err = await res.json().catch(() => null);
+                    return { success: false, message: err?.message || `Failed to delete user (${res.status})` };
+                }
+
+                setUsers(prev => prev.filter(u => u.id !== userId));
+                return { success: true };
+            } catch (err) {
+                console.error('Failed to delete user:', err);
+                return { success: false, message: 'Failed to delete user. Please try again.' };
+            }
         },
         registerUser: async (username, password, restaurantName, fullName, mobile, address) => {
             console.log('Attempting to register user:', { username, restaurantName });

@@ -1003,9 +1003,9 @@ export interface RestaurantDataContextType {
     // User Management
     roles: Role[];
     users: User[];
-    addUser: (userData: Omit<User, 'id'>) => void;
-    updateUser: (user: User) => void;
-    deleteUser: (userId: string) => void;
+    addUser: (userData: Omit<User, 'id'>) => Promise<{ success: boolean; message?: string }>;
+    updateUser: (user: User) => Promise<{ success: boolean; message?: string }>;
+    deleteUser: (userId: string) => Promise<{ success: boolean; message?: string }>;
     registerUser: (username: string, password: string, restaurantName: string, fullName: string, mobile: string, address: string) => Promise<{ success: boolean; message: string; user?: User }>;
     checkLogin: (username: string, password: string) => User | null;
 

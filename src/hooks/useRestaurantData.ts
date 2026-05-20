@@ -524,6 +524,9 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                     const allowedIds = new Set(normalized.map(o => o.id));
                     const next = prev.filter(id => allowedIds.has(id));
                     if (next.length > 0) return next;
+                    if (user?.outletId && allowedIds.has(String(user.outletId))) {
+                        return [String(user.outletId)];
+                    }
                     const first = normalized[0]?.id;
                     return first ? [first] : [];
                 });
@@ -532,7 +535,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             }
         };
         void run();
-    }, [isAuthenticated, logout, setOutlets, setActiveOutletIds]);
+    }, [isAuthenticated, logout, setOutlets, setActiveOutletIds, user?.outletId]);
 
     useEffect(() => {
         const run = async () => {
@@ -1436,7 +1439,6 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                     };
 
                     setOutlets(prev => prev.map(o => o.id === tempId ? createdOutlet : o));
-                    setActiveOutletIds([createdOutlet.id]);
                 } catch (err) {
                     console.error('Failed to create outlet:', err);
                     setOutlets(prev => prev.filter(o => o.id !== tempId));
@@ -1508,7 +1510,13 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             const prevOutlets = outlets;
             const prevActive = activeOutletIds;
             setOutlets(prev => prev.filter(o => o.id !== outletId));
-            setActiveOutletIds(prev => prev.filter(id => id !== outletId));
+            setActiveOutletIds(prev => {
+                const next = prev.filter(id => id !== outletId);
+                if (next.length > 0) return next;
+                const remaining = prevOutlets.filter(o => o.id !== outletId);
+                const first = remaining[0]?.id;
+                return first ? [first] : [];
+            });
 
             void (async () => {
                 const token = localStorage.getItem('authToken');

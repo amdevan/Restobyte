@@ -5,7 +5,7 @@ import { Expense, ExpenseCategory } from '../../types';
 import { useRestaurantData } from '../../hooks/useRestaurantData';
 import Input from '../common/Input';
 import Button from '../common/Button';
-import { FiSave, FiXCircle, FiCalendar, FiDollarSign, FiTag, FiUsers, FiAlignLeft, FiHash } from 'react-icons/fi';
+import { FiSave, FiXCircle, FiCalendar, FiTag, FiUsers, FiAlignLeft, FiHash } from 'react-icons/fi';
 
 interface ExpenseFormProps {
   initialData?: Expense | null;
@@ -105,7 +105,6 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ initialData, onSubmit, onUpda
           min="0.01"
           step="0.01"
           required
-          leftIcon={<FiDollarSign />}
         />
       </div>
       

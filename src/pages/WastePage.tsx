@@ -9,7 +9,8 @@ import Button from '@/components/common/Button';
 import Modal from '@/components/common/Modal';
 import AddWasteRecordForm from '@/components/waste/AddWasteRecordForm';
 import ViewWasteRecordDetailsModal from '@/components/waste/ViewWasteRecordDetailsModal';
-import { FiSearch, FiCalendar, FiFilter, FiXCircle, FiEye, FiPlusCircle, FiTrash2, FiDollarSign, FiArchive } from 'react-icons/fi';
+import Money from '@/components/common/Money';
+import { FiSearch, FiCalendar, FiFilter, FiXCircle, FiEye, FiPlusCircle, FiTrash2, FiArchive } from 'react-icons/fi';
 
 const WastePage: React.FC = () => {
   const { wasteRecords, addWasteRecord, stockItems, getSingleActiveOutlet } = useRestaurantData();
@@ -159,8 +160,7 @@ const WastePage: React.FC = () => {
              <div className="text-right">
                 <p className="text-sm text-gray-600">Total Est. Loss (Filtered)</p>
                 <p className="text-xl font-bold text-red-600">
-                    <FiDollarSign className="inline h-5 w-5 mr-0.5 relative -top-0.5" />
-                    {totalEstimatedLossValue.toFixed(2)}
+                    <Money amount={totalEstimatedLossValue} />
                 </p>
              </div>
         </div>
@@ -196,7 +196,7 @@ const WastePage: React.FC = () => {
                     </td>
                     <td className="py-3 px-4 text-sm text-gray-600">{record.responsiblePerson || '-'}</td>
                     <td className="py-3 px-4 text-sm text-red-600 font-semibold text-right">
-                      {record.totalEstimatedLoss !== undefined ? `$${record.totalEstimatedLoss.toFixed(2)}` : '-'}
+                      {record.totalEstimatedLoss !== undefined ? <Money amount={record.totalEstimatedLoss} /> : '-'}
                     </td>
                     <td className="py-3 px-4 text-center">
                       <Button onClick={() => handleOpenDetailsModal(record)} variant="outline" size="sm" leftIcon={<FiEye />}>

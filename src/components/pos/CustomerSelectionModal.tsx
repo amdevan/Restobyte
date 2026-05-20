@@ -3,6 +3,7 @@ import { Customer } from '../../types';
 import Button from '../common/Button';
 import Input from '../common/Input';
 import { FiSearch, FiUserPlus, FiXCircle, FiCheckCircle, FiSmile } from 'react-icons/fi';
+import Money from '../common/Money';
 
 interface CustomerSelectionModalProps {
   isOpen: boolean; // This prop might be controlled by the parent Modal component
@@ -123,7 +124,7 @@ const CustomerSelectionModal: React.FC<CustomerSelectionModalProps> = ({
                   {customer.dueAmount && customer.dueAmount > 0 && (
                     <div className="text-right flex-shrink-0 ml-4">
                       <p className="text-xs text-red-500 font-medium">Due</p>
-                      <p className="font-semibold text-red-600">${customer.dueAmount.toFixed(2)}</p>
+                      <p className="font-semibold text-red-600"><Money amount={customer.dueAmount} /></p>
                     </div>
                   )}
                 </div>

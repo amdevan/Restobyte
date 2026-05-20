@@ -898,6 +898,7 @@ export interface RestaurantDataContextType {
     updateCustomer: (customer: Customer) => Promise<void>;
     deleteCustomer: (customerId: string) => Promise<void>;
     getAllCustomers: () => Customer[];
+    applyCustomerDueDelta: (customerId: string, deltaAmount: number) => Promise<void>;
     receiveCustomerPayment: (customerId: string, amountReceived: number, paymentMethod: string, notes?: string) => Promise<void>;
 
     areasFloors: AreaFloor[];

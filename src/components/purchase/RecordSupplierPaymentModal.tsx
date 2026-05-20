@@ -3,9 +3,10 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Purchase } from '../../types';
 import Input from '../common/Input';
 import Button from '../common/Button';
-import { FiDollarSign, FiSave, FiXCircle, FiCalendar, FiFileText, FiAlignLeft } from 'react-icons/fi';
+import { FiSave, FiXCircle, FiCalendar, FiFileText, FiAlignLeft } from 'react-icons/fi';
 import { useRestaurantData } from '../../hooks/useRestaurantData';
 import Money from '../common/Money';
+import { formatMoney, getDefaultCurrency } from '../../utils/currency';
 
 interface RecordSupplierPaymentModalProps {
   purchase: Purchase | null;
@@ -14,8 +15,15 @@ interface RecordSupplierPaymentModalProps {
 }
 
 const RecordSupplierPaymentModal: React.FC<RecordSupplierPaymentModalProps> = ({ purchase, onClose, onRecordPayment }) => {
-  const { paymentMethods } = useRestaurantData();
+  const { paymentMethods, currencies, applicationSettings } = useRestaurantData();
   const paymentMethodOptions = useMemo(() => paymentMethods.filter(pm => pm.isEnabled).map(pm => pm.name), [paymentMethods]);
+  const defaultCurrency = useMemo(() => getDefaultCurrency(currencies), [currencies]);
+  const moneySettings = useMemo(() => {
+    return {
+      currencySymbolPosition: applicationSettings?.currencySymbolPosition ?? 'before',
+      decimalPlaces: applicationSettings?.decimalPlaces ?? 2,
+    };
+  }, [applicationSettings?.currencySymbolPosition, applicationSettings?.decimalPlaces]);
 
   const [amountPaid, setAmountPaid] = useState('');
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
@@ -45,7 +53,9 @@ const RecordSupplierPaymentModal: React.FC<RecordSupplierPaymentModalProps> = ({
       return;
     }
     if (numericAmount > dueAmount) {
-        if (!window.confirm(`The amount entered ($${numericAmount.toFixed(2)}) is greater than the current due ($${dueAmount.toFixed(2)}). Do you want to proceed? This might result in an overpayment.`)) {
+        const entered = defaultCurrency ? formatMoney(numericAmount, defaultCurrency, moneySettings) : numericAmount.toFixed(moneySettings.decimalPlaces);
+        const due = defaultCurrency ? formatMoney(dueAmount, defaultCurrency, moneySettings) : dueAmount.toFixed(moneySettings.decimalPlaces);
+        if (!window.confirm(`The amount entered (${entered}) is greater than the current due (${due}). Do you want to proceed? This might result in an overpayment.`)) {
             return;
         }
     }
@@ -79,7 +89,6 @@ const RecordSupplierPaymentModal: React.FC<RecordSupplierPaymentModalProps> = ({
         onChange={(e) => setAmountPaid(e.target.value)}
         min="0.01"
         step="0.01"
-        leftIcon={<FiDollarSign />}
         required
         autoFocus
       />

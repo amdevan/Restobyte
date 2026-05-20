@@ -2,20 +2,21 @@
 import React from 'react';
 import { Purchase, PurchaseItem } from '../../types';
 import Button from '../common/Button';
-import { FiXCircle, FiInfo, FiList, FiUser, FiCalendar, FiFileText, FiHash, FiDollarSign } from 'react-icons/fi';
+import Money from '../common/Money';
+import { FiXCircle, FiInfo, FiList, FiUser, FiCalendar, FiFileText, FiHash } from 'react-icons/fi';
 
 interface ViewPurchaseDetailsModalProps {
   purchase: Purchase | null;
   onClose: () => void;
 }
 
-const DetailItem: React.FC<{ label: string; value?: string | number; icon?: React.ReactElement<{ size?: number | string; className?: string }>; className?: string }> = ({ label, value, icon, className = '' }) => (
+const DetailItem: React.FC<{ label: string; value?: React.ReactNode; icon?: React.ReactElement<{ size?: number | string; className?: string }>; className?: string }> = ({ label, value, icon, className = '' }) => (
   <div className={`py-1.5 ${className}`}>
     <span className="text-xs font-medium text-gray-500 uppercase tracking-wider flex items-center">
       {icon && React.cloneElement(icon, { size: 13, className: "mr-1.5 text-sky-600"})}
       {label}
     </span>
-    <p className="text-gray-800 text-sm mt-0.5">{value || '-'}</p>
+    <p className="text-gray-800 text-sm mt-0.5">{value === undefined || value === null ? '-' : value}</p>
   </div>
 );
 
@@ -52,10 +53,10 @@ const ViewPurchaseDetailsModal: React.FC<ViewPurchaseDetailsModalProps> = ({ pur
               <div key={item.id || index} className="p-2.5 border rounded-md hover:bg-gray-50/50">
                 <div className="flex justify-between items-start">
                   <span className="font-medium text-gray-800">{item.itemName}</span>
-                  <span className="text-xs text-gray-500">Subtotal: ${item.subTotal.toFixed(2)}</span>
+                  <span className="text-xs text-gray-500">Subtotal: <Money amount={item.subTotal} /></span>
                 </div>
                 <div className="text-xs text-gray-500 mt-0.5">
-                  Qty: {item.quantityPurchased} {item.unit} &nbsp;&bull;&nbsp; Cost/Unit: ${item.costPerUnit.toFixed(2)}
+                  Qty: {item.quantityPurchased} {item.unit} &nbsp;&bull;&nbsp; Cost/Unit: <Money amount={item.costPerUnit} />
                 </div>
                  <div className="text-xs text-gray-500 mt-0.5">
                   Category: {item.category} &nbsp;&bull;&nbsp; Low Stock Th.: {item.lowStockThreshold} {item.unit}
@@ -66,14 +67,14 @@ const ViewPurchaseDetailsModal: React.FC<ViewPurchaseDetailsModalProps> = ({ pur
         </div>
 
         <div className="mt-4 pt-3 border-t text-right space-y-1">
-          <DetailItem label="Subtotal" value={`$${purchase.subTotalAmount.toFixed(2)}`} className="flex justify-between items-center" />
+          <DetailItem label="Subtotal" value={<Money amount={purchase.subTotalAmount} />} className="flex justify-between items-center" />
           {purchase.taxAmount !== undefined && (
-            <DetailItem label="Tax" value={`$${purchase.taxAmount.toFixed(2)}`} className="flex justify-between items-center" />
+            <DetailItem label="Tax" value={<Money amount={purchase.taxAmount} />} className="flex justify-between items-center" />
           )}
           {purchase.discountAmount !== undefined && (
-            <DetailItem label="Discount" value={`-$${purchase.discountAmount.toFixed(2)}`} className="flex justify-between items-center text-green-600" />
+            <DetailItem label="Discount" value={<span>-<Money amount={purchase.discountAmount} /></span>} className="flex justify-between items-center text-green-600" />
           )}
-          <DetailItem label="Grand Total" value={`$${purchase.grandTotalAmount.toFixed(2)}`} className="flex justify-between items-center text-lg font-bold text-sky-700" icon={<FiDollarSign size={16}/>}/>
+          <DetailItem label="Grand Total" value={<Money amount={purchase.grandTotalAmount} />} className="flex justify-between items-center text-lg font-bold text-sky-700" />
         </div>
         
         {purchase.stockEntryId && (

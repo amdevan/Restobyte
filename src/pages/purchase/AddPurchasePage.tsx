@@ -7,7 +7,8 @@ import { PurchaseItem as PurchaseItemType, Supplier } from '@/types';
 import Input from '@/components/common/Input';
 import Button from '@/components/common/Button';
 import Card from '@/components/common/Card';
-import { FiPlus, FiTrash2, FiSave, FiArrowLeft, FiShoppingCart, FiDollarSign, FiBox } from 'react-icons/fi';
+import Money from '@/components/common/Money';
+import { FiPlus, FiTrash2, FiSave, FiArrowLeft, FiShoppingCart, FiBox } from 'react-icons/fi';
 
 interface PurchaseLine {
   id: string; // Temporary client-side ID for the line
@@ -333,7 +334,7 @@ const AddPurchasePage: React.FC = () => {
                     )}
                   </div>
                   <div className="md:col-span-12 text-right text-sm font-medium pr-10 md:pr-14">
-                    Subtotal: ${calculateSubTotal(line).toFixed(2)}
+                    Subtotal: <Money amount={calculateSubTotal(line)} />
                   </div>
                 </div>
               ))}
@@ -351,7 +352,6 @@ const AddPurchasePage: React.FC = () => {
                     placeholder="e.g., 15.50"
                     min="0"
                     step="0.01"
-                    leftIcon={<FiDollarSign />}
                 />
                 <Input
                     label="Discount Amount (Optional)"
@@ -361,11 +361,10 @@ const AddPurchasePage: React.FC = () => {
                     placeholder="e.g., 5.00"
                     min="0"
                     step="0.01"
-                    leftIcon={<FiDollarSign />}
                 />
                  <div className="text-right p-3 bg-gray-100 rounded-md">
-                    <p className="text-sm text-gray-600">Subtotal: ${overallSubTotal.toFixed(2)}</p>
-                    <p className="text-lg font-semibold text-sky-700">Grand Total: ${grandTotal.toFixed(2)}</p>
+                    <p className="text-sm text-gray-600">Subtotal: <Money amount={overallSubTotal} /></p>
+                    <p className="text-lg font-semibold text-sky-700">Grand Total: <Money amount={grandTotal} /></p>
                 </div>
             </div>
             

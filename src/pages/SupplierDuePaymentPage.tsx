@@ -8,7 +8,8 @@ import Card from '@/components/common/Card';
 import Modal from '@/components/common/Modal';
 import Input from '@/components/common/Input';
 import RecordSupplierPaymentModal from '@/components/purchase/RecordSupplierPaymentModal';
-import { FiSearch, FiCalendar, FiDollarSign, FiArchive, FiCreditCard, FiFilter, FiXCircle } from 'react-icons/fi';
+import Money from '@/components/common/Money';
+import { FiSearch, FiCalendar, FiArchive, FiCreditCard, FiFilter, FiXCircle } from 'react-icons/fi';
 
 const SupplierDuePaymentPage: React.FC = () => {
   const { purchases, suppliers, recordSupplierPayment } = useRestaurantData();
@@ -130,8 +131,7 @@ const SupplierDuePaymentPage: React.FC = () => {
              <div className="text-right">
                 <p className="text-sm text-gray-600">Total Outstanding (Filtered)</p>
                 <p className="text-xl font-bold text-red-600">
-                    <FiDollarSign className="inline h-5 w-5 mr-0.5 relative -top-0.5" />
-                    {totalDueAmount.toFixed(2)}
+                    <Money amount={totalDueAmount} />
                 </p>
              </div>
         </div>
@@ -167,11 +167,11 @@ const SupplierDuePaymentPage: React.FC = () => {
                       <td className="py-3 px-4 text-sm text-gray-600">{new Date(p.date).toLocaleDateString()}</td>
                       <td className="py-3 px-4 text-sm text-gray-600">{p.supplierNameDisplay}</td>
                       <td className="py-3 px-4 text-sm text-gray-600">{p.supplierInvoiceNumber || '-'}</td>
-                      <td className="py-3 px-4 text-sm text-gray-800 text-right">${p.grandTotalAmount.toFixed(2)}</td>
-                      <td className="py-3 px-4 text-sm text-green-600 text-right">${(p.paidAmount || 0).toFixed(2)}</td>
-                      <td className="py-3 px-4 text-sm text-red-600 font-semibold text-right">${due.toFixed(2)}</td>
+                      <td className="py-3 px-4 text-sm text-gray-800 text-right"><Money amount={p.grandTotalAmount} /></td>
+                      <td className="py-3 px-4 text-sm text-green-600 text-right"><Money amount={p.paidAmount || 0} /></td>
+                      <td className="py-3 px-4 text-sm text-red-600 font-semibold text-right"><Money amount={due} /></td>
                       <td className="py-3 px-4 text-center">
-                        <Button onClick={() => handleOpenModal(p)} variant="primary" size="sm" leftIcon={<FiDollarSign />}>
+                        <Button onClick={() => handleOpenModal(p)} variant="primary" size="sm" leftIcon={<FiCreditCard />}>
                           Record Payment
                         </Button>
                       </td>

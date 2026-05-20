@@ -9,6 +9,7 @@ import Modal from '@/components/common/Modal';
 import Input from '@/components/common/Input';
 import ReceivePaymentModal from '@/components/customer/ReceivePaymentModal';
 import { FiSearch, FiUsers, FiDollarSign, FiPhone, FiMail, FiCreditCard } from 'react-icons/fi';
+import Money from '@/components/common/Money';
 
 const CustomerDueReceivePage: React.FC = () => {
   const { customers, receiveCustomerPayment } = useRestaurantData();
@@ -76,8 +77,7 @@ const CustomerDueReceivePage: React.FC = () => {
           <div className="text-right">
             <p className="text-sm text-gray-600">Total Outstanding (Filtered)</p>
             <p className="text-xl font-bold text-red-600">
-                <FiDollarSign className="inline h-5 w-5 mr-0.5 relative -top-0.5" />
-                {totalDueAmount.toFixed(2)}
+                <Money amount={totalDueAmount} />
             </p>
           </div>
         </div>
@@ -117,7 +117,7 @@ const CustomerDueReceivePage: React.FC = () => {
                           </a>
                       ) : '-'}
                     </td>
-                    <td className="py-3 px-4 text-sm text-red-600 font-semibold text-right">${(customer.dueAmount || 0).toFixed(2)}</td>
+                    <td className="py-3 px-4 text-sm text-red-600 font-semibold text-right"><Money amount={customer.dueAmount || 0} /></td>
                     <td className="py-3 px-4 text-center">
                       <Button onClick={() => handleOpenModal(customer)} variant="primary" size="sm" leftIcon={<FiDollarSign />}>
                         Receive Payment

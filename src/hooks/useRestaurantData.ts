@@ -341,8 +341,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
     const [stockEntries, setStockEntries] = useLocalStorage<StockEntry[]>(getKey('stockEntries'), []);
     const [stockAdjustments, setStockAdjustments] = useLocalStorage<StockAdjustment[]>(getKey('stockAdjustments'), []);
     const [suppliers, setSuppliers] = useLocalStorage<Supplier[]>(getKey('suppliers'), []);
-    // const [customers, setCustomers] = useLocalStorage<Customer[]>('customers', initialCustomers);
-    const [customers, setCustomers] = useState<Customer[]>([]);
+    const [customers, setCustomers] = useLocalStorage<Customer[]>(getKey('customers'), []);
 
     useEffect(() => {
         if (isAuthenticated && user?.outletId) {
@@ -367,12 +366,10 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                     setCustomers(data);
                 } else {
                     console.error("Customers data is not an array:", data);
-                    setCustomers([]);
                 }
             })
             .catch(err => {
                 console.error("Failed to fetch customers:", err);
-                setCustomers([]);
             });
         } else {
              setCustomers([]);
@@ -973,6 +970,43 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             }
         },
         getAllCustomers: () => customers,
+        applyCustomerDueDelta: async (customerId: string, deltaAmount: number) => {
+            const customer = customers.find(c => c.id === customerId);
+            if (!customer) return;
+            if (!Number.isFinite(deltaAmount) || deltaAmount === 0) return;
+
+            const previousDueAmount = customer.dueAmount || 0;
+            const nextDueAmount = Math.max(0, previousDueAmount + deltaAmount);
+
+            setCustomers(prev => prev.map(c => c.id === customerId ? { ...c, dueAmount: nextDueAmount } : c));
+
+            const token = localStorage.getItem('authToken');
+            if (!token) {
+                setCustomers(prev => prev.map(c => c.id === customerId ? { ...c, dueAmount: previousDueAmount } : c));
+                alert('Unauthorized. Please log in again.');
+                return;
+            }
+
+            try {
+                const res = await fetch(`${API_BASE_URL}/customers/${customerId}`, {
+                    method: 'PUT',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ dueAmount: nextDueAmount })
+                });
+                if (!res.ok) {
+                    const err = await res.json().catch(() => null);
+                    setCustomers(prev => prev.map(c => c.id === customerId ? { ...c, dueAmount: previousDueAmount } : c));
+                    alert(err?.message || `Failed to update customer due (${res.status})`);
+                }
+            } catch (err) {
+                console.error("Failed to update customer due:", err);
+                setCustomers(prev => prev.map(c => c.id === customerId ? { ...c, dueAmount: previousDueAmount } : c));
+                alert('Failed to update customer due. Please try again.');
+            }
+        },
         receiveCustomerPayment: async (customerId: string, amountReceived: number, paymentMethod: string, notes?: string) => {
             const customer = customers.find(c => c.id === customerId);
             if (!customer) return;

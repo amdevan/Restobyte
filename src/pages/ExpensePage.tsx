@@ -8,7 +8,8 @@ import Input from '@/components/common/Input';
 import Button from '@/components/common/Button';
 import Modal from '@/components/common/Modal';
 import ExpenseForm from '@/components/expense/ExpenseForm';
-import { FiSearch, FiCalendar, FiFilter, FiXCircle, FiEye, FiDollarSign, FiPlusCircle, FiEdit, FiTrash2, FiTag } from 'react-icons/fi';
+import Money from '@/components/common/Money';
+import { FiSearch, FiCalendar, FiFilter, FiXCircle, FiEye, FiPlusCircle, FiEdit, FiTrash2, FiTag } from 'react-icons/fi';
 
 const ExpensePage: React.FC = () => {
   const { expenses, expenseCategories, addExpense: contextAddExpense, updateExpense, deleteExpense, paymentMethods, getSingleActiveOutlet } = useRestaurantData();
@@ -102,7 +103,7 @@ const ExpensePage: React.FC = () => {
     <div className="p-4 sm:p-6 space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
         <h1 className="text-2xl sm:text-3xl font-semibold text-gray-800 flex items-center">
-            <FiDollarSign className="mr-3 text-sky-600"/> Expense Management
+            <FiTag className="mr-3 text-sky-600"/> Expense Management
         </h1>
         <Button onClick={() => handleOpenModal()} leftIcon={<FiPlusCircle />} variant="primary" disabled={expenseCategories.length === 0}>
             Add New Expense
@@ -185,8 +186,7 @@ const ExpensePage: React.FC = () => {
              <div className="text-right">
                 <p className="text-sm text-gray-600">Total Expenses (Filtered)</p>
                 <p className="text-xl font-bold text-sky-600">
-                    <FiDollarSign className="inline h-5 w-5 mr-0.5 relative -top-0.5" />
-                    {totalExpensesValue.toFixed(2)}
+                    <Money amount={totalExpensesValue} />
                 </p>
              </div>
         </div>
@@ -218,7 +218,7 @@ const ExpensePage: React.FC = () => {
                             <FiTag size={12} className="mr-1"/>{exp.categoryName}
                         </span>
                     </td>
-                    <td className="py-3 px-4 text-sm text-gray-800 font-semibold text-right">${exp.amount.toFixed(2)}</td>
+                    <td className="py-3 px-4 text-sm text-gray-800 font-semibold text-right"><Money amount={exp.amount} /></td>
                     <td className="py-3 px-4 text-sm text-gray-600">{exp.payee || '-'}</td>
                     <td className="py-3 px-4 text-sm text-gray-600 truncate max-w-xs">{exp.description || '-'}</td>
                     <td className="py-3 px-4 text-sm text-gray-600">{exp.paymentMethod}</td>

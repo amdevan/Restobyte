@@ -3,8 +3,10 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Customer } from '../../types';
 import Input from '../common/Input';
 import Button from '../common/Button';
-import { FiDollarSign, FiSave, FiXCircle, FiCreditCard, FiAlignLeft } from 'react-icons/fi';
+import { FiSave, FiXCircle, FiCreditCard, FiAlignLeft } from 'react-icons/fi';
 import { useRestaurantData } from '../../hooks/useRestaurantData';
+import Money from '../common/Money';
+import { formatMoney, getDefaultCurrency } from '../../utils/currency';
 
 interface ReceivePaymentModalProps {
   customer: Customer | null;
@@ -13,8 +15,15 @@ interface ReceivePaymentModalProps {
 }
 
 const ReceivePaymentModal: React.FC<ReceivePaymentModalProps> = ({ customer, onClose, onReceivePayment }) => {
-  const { paymentMethods } = useRestaurantData();
+  const { paymentMethods, currencies, applicationSettings } = useRestaurantData();
   const availablePaymentMethods = useMemo(() => paymentMethods.filter(pm => pm.isEnabled).map(pm => pm.name), [paymentMethods]);
+  const defaultCurrency = useMemo(() => getDefaultCurrency(currencies), [currencies]);
+  const moneySettings = useMemo(() => {
+    return {
+      currencySymbolPosition: applicationSettings?.currencySymbolPosition ?? 'before',
+      decimalPlaces: applicationSettings?.decimalPlaces ?? 2,
+    };
+  }, [applicationSettings?.currencySymbolPosition, applicationSettings?.decimalPlaces]);
 
   const [amount, setAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState(availablePaymentMethods[0] || 'Cash');
@@ -41,7 +50,9 @@ const ReceivePaymentModal: React.FC<ReceivePaymentModalProps> = ({ customer, onC
       return;
     }
     if (numericAmount > (customer.dueAmount || 0)) {
-        if (!window.confirm(`The amount entered ($${numericAmount.toFixed(2)}) is greater than the due amount ($${(customer.dueAmount || 0).toFixed(2)}). Do you want to proceed? This might result in a credit for the customer.`)) {
+        const entered = defaultCurrency ? formatMoney(numericAmount, defaultCurrency, moneySettings) : numericAmount.toFixed(moneySettings.decimalPlaces);
+        const due = defaultCurrency ? formatMoney(customer.dueAmount || 0, defaultCurrency, moneySettings) : (customer.dueAmount || 0).toFixed(moneySettings.decimalPlaces);
+        if (!window.confirm(`The amount entered (${entered}) is greater than the due amount (${due}). Do you want to proceed? This might result in a credit for the customer.`)) {
             return;
         }
     }
@@ -55,7 +66,7 @@ const ReceivePaymentModal: React.FC<ReceivePaymentModalProps> = ({ customer, onC
         Receive Payment from: <span className="text-sky-600">{customer.name}</span>
       </h3>
       <p className="text-sm text-gray-600">
-        Current Due Amount: <span className="font-semibold">${(customer.dueAmount || 0).toFixed(2)}</span>
+        Current Due Amount: <span className="font-semibold"><Money amount={customer.dueAmount || 0} /></span>
       </p>
       
       <Input
@@ -66,7 +77,6 @@ const ReceivePaymentModal: React.FC<ReceivePaymentModalProps> = ({ customer, onC
         onChange={(e) => setAmount(e.target.value)}
         min="0.01"
         step="0.01"
-        leftIcon={<FiDollarSign />}
         required
         autoFocus
       />

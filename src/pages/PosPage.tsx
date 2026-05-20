@@ -87,7 +87,8 @@ const PosPage: React.FC = () => {
     applicationSettings,
     recordSale,
     updateSale,
-    sales
+    sales,
+    applyCustomerDueDelta
   } = useRestaurantData();
 
   const navigate = useNavigate();
@@ -466,6 +467,8 @@ const handleSendKot = useCallback(() => {
     
     const totalTaxAmount = taxDetails.reduce((sum, tax) => sum + tax.amount, 0);
     const totalAmount = totalAfterDiscount + totalTaxAmount + paymentDetails.tip;
+    const totalPaid = paymentDetails.payments.reduce((sum, p) => sum + (typeof p.amount === 'number' ? p.amount : Number(p.amount)), 0);
+    const outstandingAmount = Math.max(0, totalAmount - totalPaid);
     
     let saleToProcess: Sale;
 
@@ -512,13 +515,17 @@ const handleSendKot = useCallback(() => {
         });
     }
 
+    if (!paymentDetails.isSettled && !editingSale && saleToProcess.customerId && outstandingAmount > 0) {
+        void applyCustomerDueDelta(saleToProcess.customerId, outstandingAmount);
+    }
+
     setIsPaymentModalOpen(false);
     setLastCompletedSale(saleToProcess);
     setIsReceiptModalOpen(true);
     clearOrder();
     playSaleFinalizedSound();
     
-  }, [currentOrderItems, orderType, pax, selectedTable, selectedWaiter, selectedCustomer, orderNotes, discountType, discountAmount, selectedDeliveryPartner, singleActiveOutlet, recordSale, updateSale, clearOrder, editingSale]);
+  }, [currentOrderItems, orderType, pax, selectedTable, selectedWaiter, selectedCustomer, orderNotes, discountType, discountAmount, selectedDeliveryPartner, singleActiveOutlet, recordSale, updateSale, clearOrder, editingSale, applyCustomerDueDelta]);
 
   if (!singleActiveOutlet) {
     return <FeatureDisabledPage type="selectOutlet" featureName="Point of Sale" />;

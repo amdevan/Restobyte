@@ -4,7 +4,8 @@ import { StockItem, WasteItem } from '../../types';
 import { useRestaurantData } from '../../hooks/useRestaurantData';
 import Input from '../common/Input';
 import Button from '../common/Button';
-import { FiPlus, FiTrash2, FiSave, FiXCircle, FiCalendar, FiUser, FiInfo, FiDollarSign, FiEdit } from 'react-icons/fi';
+import Money from '../common/Money';
+import { FiPlus, FiTrash2, FiSave, FiXCircle, FiCalendar, FiUser, FiInfo, FiEdit } from 'react-icons/fi';
 
 interface AddWasteRecordFormProps {
   onClose: () => void;
@@ -240,7 +241,7 @@ const AddWasteRecordForm: React.FC<AddWasteRecordFormProps> = ({ onClose, onSubm
       </div>
       
       <div className="pt-2 border-t">
-        <p className="text-sm font-medium text-right">Total Estimated Loss: <span className="text-red-600">${totalEstimatedLoss.toFixed(2)}</span></p>
+        <p className="text-sm font-medium text-right">Total Estimated Loss: <span className="text-red-600"><Money amount={totalEstimatedLoss} /></span></p>
       </div>
 
       <div>

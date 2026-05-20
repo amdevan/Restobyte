@@ -2,7 +2,7 @@
 import React from 'react';
 import { WasteRecord, WasteItem } from '../../types';
 import Button from '../common/Button';
-import { FiXCircle, FiCalendar, FiUser, FiInfo, FiTag, FiDollarSign, FiEdit3, FiList } from 'react-icons/fi';
+import { FiXCircle, FiCalendar, FiUser, FiInfo, FiTag, FiEdit3, FiList } from 'react-icons/fi';
 import { IconBaseProps } from 'react-icons'; // Import IconBaseProps
 import Money from '../common/Money';
 
@@ -80,7 +80,6 @@ const ViewWasteRecordDetailsModal: React.FC<ViewWasteRecordDetailsModalProps> = 
                 label="Total Estimated Loss" 
                 value={<Money amount={wasteRecord.totalEstimatedLoss} />} 
                 className="flex justify-between items-center text-lg font-bold text-red-600" 
-                icon={<FiDollarSign size={16}/>}
             />
           </div>
         )}

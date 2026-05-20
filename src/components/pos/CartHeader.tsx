@@ -1,9 +1,9 @@
 
 
-import React from 'react';
-import { Customer, Table, Waiter, DeliveryPartner } from '../../types';
+import React, { useMemo } from 'react';
+import { Customer, Table, Waiter, DeliveryPartner, TableStatus } from '../../types';
 import Button from '../common/Button';
-import { FiUser, FiGrid, FiTruck, FiShoppingBag, FiEdit2, FiUsers, FiMessageSquare } from 'react-icons/fi';
+import { FiUser, FiGrid, FiTruck, FiShoppingBag, FiMessageSquare } from 'react-icons/fi';
 import { useRestaurantData } from '../../hooks/useRestaurantData';
 
 type OrderType = 'Dine In' | 'Delivery' | 'Pickup' | 'WhatsApp';
@@ -39,9 +39,24 @@ const CartHeader: React.FC<CartHeaderProps> = ({
   selectedDeliveryPartner,
   onDeliveryPartnerSelect
 }) => {
-    const { getSingleActiveOutlet } = useRestaurantData();
+    const { getSingleActiveOutlet, sales } = useRestaurantData();
     const currentOutlet = getSingleActiveOutlet();
     const isCloudKitchen = currentOutlet?.outletType === 'CloudKitchen';
+
+    const blockedTableIds = useMemo(() => {
+      const ids = new Set<string>();
+      for (const sale of sales) {
+        if (sale.assignedTableId && !sale.isSettled) ids.add(sale.assignedTableId);
+      }
+      return ids;
+    }, [sales]);
+
+    const selectableTables = useMemo(() => {
+      return tables.filter(t => {
+        const isBlocked = blockedTableIds.has(t.id) || t.status !== TableStatus.Free;
+        return !isBlocked || t.id === selectedTable?.id;
+      });
+    }, [tables, blockedTableIds, selectedTable?.id]);
 
   return (
     <div className="flex-shrink-0">
@@ -66,7 +81,7 @@ const CartHeader: React.FC<CartHeaderProps> = ({
         <div className="grid grid-cols-2 gap-2 mb-3">
           <select value={selectedTable?.id || ''} onChange={onTableSelect} className="p-2 border rounded-md text-sm bg-white shadow-sm focus:ring-sky-500 focus:border-sky-500">
             <option value="">Select Table</option>
-            {tables.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+            {selectableTables.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
           </select>
           <select value={selectedWaiter?.id || ''} onChange={onWaiterSelect} className="w-full p-2 border rounded-md text-sm bg-white shadow-sm focus:ring-sky-500 focus:border-sky-500">
             <option value="">Select Waiter</option>

@@ -19,6 +19,7 @@ const Button: React.FC<ButtonProps> = ({
   className = '',
   isLoading = false,
   disabled,
+  type,
   ...props
 }) => {
   const baseStyle = 'font-medium rounded-lg focus:outline-none focus:ring-2 focus:ring-opacity-50 transition-all duration-200 ease-in-out hover:-translate-y-px disabled:hover:translate-y-0 flex items-center justify-center';
@@ -42,6 +43,7 @@ const Button: React.FC<ButtonProps> = ({
   return (
     <button
       className={`${baseStyle} ${variantStyles[variant]} ${sizeStyles[size]} ${disabled || isLoading ? disabledStyle : ''} ${className}`}
+      type={type || 'button'}
       disabled={disabled || isLoading}
       {...props}
     >

@@ -124,7 +124,7 @@ const CollapsibleSidebarSection: React.FC<CollapsibleSidebarSectionProps> = ({
 
   return (
     <div>
-      <button onClick={onClick} className={buttonClasses} aria-expanded={isOpen} aria-controls={`sidebar-section-${name}`}>
+      <button type="button" onClick={onClick} className={buttonClasses} aria-expanded={isOpen} aria-controls={`sidebar-section-${name}`}>
         <div className="flex items-center space-x-3 pl-1">
           {isSectionActive && (
             <div className="absolute left-0 top-1/2 -translate-y-1/2 h-6 w-1 bg-amber-300 rounded-r-full"></div>

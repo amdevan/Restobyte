@@ -1386,12 +1386,165 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         getActiveOutlets: () => outlets.filter(o => activeOutletIds.includes(o.id)),
         getSingleActiveOutlet: () => activeOutletIds.length === 1 ? outlets.find(o => o.id === activeOutletIds[0]) : undefined,
         addOutlet: (outletData) => {
-            const newOutlet = { ...outletData, id: `outlet-${Date.now()}` };
-            setOutlets(prev => [...prev, newOutlet]);
-            return newOutlet;
+            const tempId = `tmp-outlet-${Date.now()}`;
+            const optimistic: Outlet = { ...outletData, id: tempId };
+            setOutlets(prev => [...prev, optimistic]);
+
+            void (async () => {
+                const token = localStorage.getItem('authToken');
+                if (!token) {
+                    setOutlets(prev => prev.filter(o => o.id !== tempId));
+                    alert('Unauthorized. Please log in again.');
+                    return;
+                }
+
+                try {
+                    const res = await fetch(`${API_BASE_URL}/outlets`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: `Bearer ${token}`,
+                        },
+                        body: JSON.stringify({
+                            name: outletData.name,
+                            address: outletData.address,
+                            phone: outletData.phone,
+                        }),
+                    });
+
+                    if (res.status === 401) {
+                        logout();
+                        return;
+                    }
+
+                    if (!res.ok) {
+                        const err = await res.json().catch(() => null);
+                        setOutlets(prev => prev.filter(o => o.id !== tempId));
+                        alert(err?.message || `Failed to create outlet (${res.status})`);
+                        return;
+                    }
+
+                    const created = await res.json().catch(() => null);
+                    if (!created) return;
+
+                    const createdOutlet: Outlet = {
+                        ...optimistic,
+                        id: String(created.id),
+                        name: String(created.name),
+                        address: typeof created.address === 'string' ? created.address : optimistic.address,
+                        phone: typeof created.phone === 'string' ? created.phone : optimistic.phone,
+                    };
+
+                    setOutlets(prev => prev.map(o => o.id === tempId ? createdOutlet : o));
+                    setActiveOutletIds([createdOutlet.id]);
+                } catch (err) {
+                    console.error('Failed to create outlet:', err);
+                    setOutlets(prev => prev.filter(o => o.id !== tempId));
+                    alert('Failed to create outlet. Please try again.');
+                }
+            })();
+
+            return optimistic;
         },
-        updateOutlet: (outlet) => setOutlets(prev => prev.map(o => o.id === outlet.id ? outlet : o)),
-        deleteOutlet: (outletId) => setOutlets(prev => prev.filter(o => o.id !== outletId)),
+        updateOutlet: (outlet) => {
+            const prevOutlet = outlets.find(o => o.id === outlet.id);
+            setOutlets(prev => prev.map(o => o.id === outlet.id ? outlet : o));
+
+            void (async () => {
+                const token = localStorage.getItem('authToken');
+                if (!token) {
+                    if (prevOutlet) setOutlets(prev => prev.map(o => o.id === prevOutlet.id ? prevOutlet : o));
+                    alert('Unauthorized. Please log in again.');
+                    return;
+                }
+
+                try {
+                    const res = await fetch(`${API_BASE_URL}/outlets/${outlet.id}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: `Bearer ${token}`,
+                        },
+                        body: JSON.stringify({
+                            name: outlet.name,
+                            address: outlet.address,
+                            phone: outlet.phone,
+                        }),
+                    });
+
+                    if (res.status === 401) {
+                        logout();
+                        return;
+                    }
+
+                    if (!res.ok) {
+                        const err = await res.json().catch(() => null);
+                        if (prevOutlet) setOutlets(prev => prev.map(o => o.id === prevOutlet.id ? prevOutlet : o));
+                        alert(err?.message || `Failed to update outlet (${res.status})`);
+                        return;
+                    }
+
+                    const updated = await res.json().catch(() => null);
+                    if (!updated) return;
+
+                    setOutlets(prev => prev.map(o => {
+                        if (o.id !== outlet.id) return o;
+                        return {
+                            ...o,
+                            id: String(updated.id),
+                            name: String(updated.name),
+                            address: typeof updated.address === 'string' ? updated.address : o.address,
+                            phone: typeof updated.phone === 'string' ? updated.phone : o.phone,
+                        };
+                    }));
+                } catch (err) {
+                    console.error('Failed to update outlet:', err);
+                    if (prevOutlet) setOutlets(prev => prev.map(o => o.id === prevOutlet.id ? prevOutlet : o));
+                    alert('Failed to update outlet. Please try again.');
+                }
+            })();
+        },
+        deleteOutlet: (outletId) => {
+            const prevOutlets = outlets;
+            const prevActive = activeOutletIds;
+            setOutlets(prev => prev.filter(o => o.id !== outletId));
+            setActiveOutletIds(prev => prev.filter(id => id !== outletId));
+
+            void (async () => {
+                const token = localStorage.getItem('authToken');
+                if (!token) {
+                    setOutlets(prevOutlets);
+                    setActiveOutletIds(prevActive);
+                    alert('Unauthorized. Please log in again.');
+                    return;
+                }
+
+                try {
+                    const res = await fetch(`${API_BASE_URL}/outlets/${outletId}`, {
+                        method: 'DELETE',
+                        headers: { Authorization: `Bearer ${token}` },
+                    });
+
+                    if (res.status === 401) {
+                        logout();
+                        return;
+                    }
+
+                    if (!res.ok) {
+                        const err = await res.json().catch(() => null);
+                        setOutlets(prevOutlets);
+                        setActiveOutletIds(prevActive);
+                        alert(err?.message || `Failed to delete outlet (${res.status})`);
+                        return;
+                    }
+                } catch (err) {
+                    console.error('Failed to delete outlet:', err);
+                    setOutlets(prevOutlets);
+                    setActiveOutletIds(prevActive);
+                    alert('Failed to delete outlet. Please try again.');
+                }
+            })();
+        },
         
         roles, users,
         addUser: (userData) => {

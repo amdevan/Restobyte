@@ -90,7 +90,7 @@ export const updateMenuItem = async (req: Request, res: Response) => {
       return;
     }
     const id = req.params.id as string;
-    const { name, description, categoryId, price, imageUrl, isVegetarian } = req.body;
+    const { name, description, categoryId, price, imageUrl, isVegetarian, variations } = req.body;
 
     // Verify item exists and belongs to user's outlet (via category)
     const existingItem = await prisma.menuItem.findFirst({
@@ -129,6 +129,34 @@ export const updateMenuItem = async (req: Request, res: Response) => {
     if (numericPrice !== undefined) data.price = numericPrice;
     if (imageUrl !== undefined) data.imageUrl = imageUrl;
     if (isVegetarian !== undefined) data.isVegetarian = isVegetarian;
+
+    if (variations !== undefined) {
+      if (!Array.isArray(variations)) {
+        res.status(400).json({ message: 'Variations must be an array' });
+        return;
+      }
+
+      const normalized = variations.map((v: any) => {
+        const vName = typeof v?.name === 'string' ? v.name.trim() : '';
+        const vPrice = typeof v?.price === 'number' ? v.price : Number(v?.price);
+        return { name: vName, price: vPrice };
+      });
+
+      if (normalized.length === 0 || normalized.some(v => !v.name || !Number.isFinite(v.price) || v.price < 0)) {
+        res.status(400).json({ message: 'Invalid variations' });
+        return;
+      }
+
+      data.variations = {
+        deleteMany: {},
+        create: normalized.map(v => ({ name: v.name, price: v.price })),
+      };
+
+      if (numericPrice === undefined) {
+        const first = normalized[0];
+        if (first) data.price = first.price;
+      }
+    }
 
     const item = await prisma.menuItem.update({
       where: { id },

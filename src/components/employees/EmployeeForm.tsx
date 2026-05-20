@@ -3,6 +3,7 @@ import React, { useState, useEffect, ChangeEvent } from 'react';
 import { Employee } from '../../types';
 import Input from '../common/Input';
 import Button from '../common/Button';
+import { useRestaurantData } from '../../hooks/useRestaurantData';
 import { FiSave, FiXCircle, FiUser, FiPhone, FiMail, FiMapPin, FiCalendar, FiDollarSign, FiBriefcase, FiShield, FiImage, FiCheckSquare } from 'react-icons/fi';
 
 interface EmployeeFormProps {
@@ -15,6 +16,8 @@ interface EmployeeFormProps {
 const DESIGNATION_OPTIONS = ["Manager", "Chef", "Sous Chef", "Cook", "Waiter/Waitress", "Senior Waiter", "Captain", "Host/Hostess", "Bartender", "Cashier", "Cleaner", "Dishwasher", "Delivery Staff", "Accountant", "HR Specialist", "Other"];
 
 const EmployeeForm: React.FC<EmployeeFormProps> = ({ initialData, onSubmit, onUpdate, onClose }) => {
+  const { outlets, getSingleActiveOutlet } = useRestaurantData();
+  const defaultOutletId = getSingleActiveOutlet()?.id || outlets[0]?.id || '';
   const [name, setName] = useState('');
   const [employeeId, setEmployeeId] = useState(initialData?.employeeId || `EMP-${Date.now().toString().slice(-5)}`);
   const [phone, setPhone] = useState('');
@@ -30,6 +33,7 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ initialData, onSubmit, onUp
   const [isWaiter, setIsWaiter] = useState(false);
   const [photoUrl, setPhotoUrl] = useState<string | undefined>(undefined);
   const [photoPreview, setPhotoPreview] = useState<string | undefined>(undefined);
+  const [outletId, setOutletId] = useState(defaultOutletId);
 
 
   useEffect(() => {
@@ -49,6 +53,7 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ initialData, onSubmit, onUp
       setIsWaiter(initialData.isWaiter);
       setPhotoUrl(initialData.photoUrl);
       setPhotoPreview(initialData.photoUrl);
+      setOutletId(initialData.outletId || defaultOutletId);
     } else {
       // Reset for new entry
       setName('');
@@ -66,8 +71,9 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ initialData, onSubmit, onUp
       setIsWaiter(false);
       setPhotoUrl(undefined);
       setPhotoPreview(undefined);
+      setOutletId(defaultOutletId);
     }
-  }, [initialData]);
+  }, [initialData, defaultOutletId]);
 
   const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -86,12 +92,13 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ initialData, onSubmit, onUp
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !employeeId.trim() || !phone.trim() || !joiningDate || !designation) {
-      alert('Name, Employee ID, Phone, Joining Date, and Designation are required.');
+    if (!name.trim() || !employeeId.trim() || !phone.trim() || !joiningDate || !designation || !outletId) {
+      alert('Name, Employee ID, Phone, Joining Date, Designation, and Outlet are required.');
       return;
     }
-    const numericSalary = salary ? parseFloat(String(salary)) : undefined;
-    if (salary && (isNaN(numericSalary) || numericSalary < 0)) {
+    const hasSalary = String(salary).trim() !== '';
+    const numericSalary = hasSalary ? parseFloat(String(salary)) : undefined;
+    if (numericSalary !== undefined && (!Number.isFinite(numericSalary) || numericSalary < 0)) {
         alert('Please enter a valid salary or leave it blank.');
         return;
     }
@@ -100,7 +107,7 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ initialData, onSubmit, onUp
         name, employeeId, phone, email, address, dob, 
         joiningDate, designation, salary: numericSalary, 
         emergencyContactName, emergencyContactPhone, 
-        isActive, isWaiter, photoUrl,
+        isActive, isWaiter, photoUrl, outletId,
     };
 
     if (initialData) {
@@ -118,6 +125,20 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ initialData, onSubmit, onUp
         <Input label="Full Name *" value={name} onChange={(e) => setName(e.target.value)} required leftIcon={<FiUser />} />
         <Input label="Employee ID *" value={employeeId} onChange={(e) => setEmployeeId(e.target.value)} required leftIcon={<FiBriefcase />} />
         <Input label="Phone Number *" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} required leftIcon={<FiPhone />} />
+      </div>
+
+      <div>
+        <label htmlFor="employeeOutlet" className="block text-sm font-medium text-gray-700 mb-1">Outlet *</label>
+        <select
+          id="employeeOutlet"
+          value={outletId}
+          onChange={(e) => setOutletId(e.target.value)}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500 sm:text-sm"
+          required
+        >
+          <option value="" disabled>Select outlet</option>
+          {outlets.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+        </select>
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

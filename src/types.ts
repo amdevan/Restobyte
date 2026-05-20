@@ -383,6 +383,7 @@ export interface Employee {
   isWaiter: boolean; // True if this employee also functions as a waiter
   waiterId?: string; // ID of the associated Waiter record if isWaiter is true
   photoUrl?: string; // Data URL or actual URL for employee photo
+  outletId: string;
 }
 
 // Attendance Types

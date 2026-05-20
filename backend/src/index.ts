@@ -19,6 +19,8 @@ import crmRoutes from './routes/crmRoutes.js';
 import emailRoutes from './routes/emailRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
 import meRoutes from './routes/meRoutes.js';
+import userRoutes from './routes/userRoutes.js';
+import outletRoutes from './routes/outletRoutes.js';
 import saasWebsiteContentRoutes from './routes/saasWebsiteContentRoutes.js';
 import saasWebsiteContentAdminRoutes from './routes/saasWebsiteContentAdminRoutes.js';
 
@@ -50,6 +52,8 @@ app.use('/api/crm', crmRoutes);
 app.use('/api/email', emailRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/me', meRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/outlets', outletRoutes);
 app.use('/api/public', saasWebsiteContentRoutes);
 app.use('/api/saas', saasWebsiteContentAdminRoutes);
 

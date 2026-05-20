@@ -4,23 +4,64 @@ import { AuthRequest } from '../middleware/authMiddleware.js';
 
 export const getCustomers = async (req: Request, res: Response) => {
   const user = (req as AuthRequest).user;
-  if (!user || !user.outletId) {
+  if (!user) {
     res.status(403).json({ message: 'Unauthorized' });
     return;
   }
+  const queryOutletId = typeof (req.query as any)?.outletId === 'string' ? String((req.query as any).outletId) : undefined;
+  const outletId = user.outletId ? String(user.outletId) : queryOutletId;
+  if (!outletId) {
+    res.status(400).json({ message: 'outletId is required' });
+    return;
+  }
+
+  if (!user.outletId || String(user.outletId) !== outletId) {
+    if (!user.isSuperAdmin) {
+      if (!user.tenantId) {
+        res.status(403).json({ message: 'Unauthorized' });
+        return;
+      }
+      const outlet = await prisma.outlet.findFirst({ where: { id: outletId, tenantId: user.tenantId } });
+      if (!outlet) {
+        res.status(403).json({ message: 'Unauthorized' });
+        return;
+      }
+    }
+  }
+
   const customers = await prisma.customer.findMany({
-    where: { outletId: user.outletId }
+    where: { outletId }
   });
   res.json(customers);
 };
 
 export const createCustomer = async (req: Request, res: Response) => {
   const user = (req as AuthRequest).user;
-  if (!user || !user.outletId) {
+  if (!user) {
     res.status(403).json({ message: 'Unauthorized' });
     return;
   }
-  const { name, email, phone, address, dob, companyName, vatPan, dueAmount } = req.body;
+  const { name, email, phone, address, dob, companyName, vatPan, dueAmount, outletId: bodyOutletId } = req.body;
+  const outletId = user.outletId ? String(user.outletId) : (bodyOutletId ? String(bodyOutletId) : undefined);
+  if (!outletId) {
+    res.status(400).json({ message: 'outletId is required' });
+    return;
+  }
+
+  if (!user.outletId || String(user.outletId) !== outletId) {
+    if (!user.isSuperAdmin) {
+      if (!user.tenantId) {
+        res.status(403).json({ message: 'Unauthorized' });
+        return;
+      }
+      const outlet = await prisma.outlet.findFirst({ where: { id: outletId, tenantId: user.tenantId } });
+      if (!outlet) {
+        res.status(403).json({ message: 'Unauthorized' });
+        return;
+      }
+    }
+  }
+
   const customer = await prisma.customer.create({ 
     data: { 
       name, 
@@ -31,7 +72,7 @@ export const createCustomer = async (req: Request, res: Response) => {
       companyName,
       vatPan,
       dueAmount: dueAmount ? Number(dueAmount) : 0,
-      outletId: user.outletId
+      outletId
     } 
   });
   res.status(201).json(customer);
@@ -39,17 +80,35 @@ export const createCustomer = async (req: Request, res: Response) => {
 
 export const updateCustomer = async (req: Request, res: Response) => {
   const user = (req as AuthRequest).user;
-  if (!user || !user.outletId) {
+  if (!user) {
     res.status(403).json({ message: 'Unauthorized' });
     return;
   }
   const id = req.params.id as string;
   const { name, email, phone, address, dob, companyName, vatPan, dueAmount } = req.body;
   
-  const customer = await prisma.customer.findFirst({ where: { id, outletId: user.outletId } });
+  const customer = await prisma.customer.findFirst({ where: { id } });
   if (!customer) {
     res.status(404).json({ message: 'Customer not found' });
     return;
+  }
+
+  const customerOutletId = customer.outletId ? String(customer.outletId) : undefined;
+  if (user.outletId) {
+    if (!customerOutletId || customerOutletId !== String(user.outletId)) {
+      res.status(403).json({ message: 'Unauthorized' });
+      return;
+    }
+  } else if (!user.isSuperAdmin) {
+    if (!user.tenantId || !customerOutletId) {
+      res.status(403).json({ message: 'Unauthorized' });
+      return;
+    }
+    const outlet = await prisma.outlet.findFirst({ where: { id: customerOutletId, tenantId: user.tenantId } });
+    if (!outlet) {
+      res.status(403).json({ message: 'Unauthorized' });
+      return;
+    }
   }
 
   const updatedCustomer = await prisma.customer.update({
@@ -70,16 +129,34 @@ export const updateCustomer = async (req: Request, res: Response) => {
 
 export const deleteCustomer = async (req: Request, res: Response) => {
   const user = (req as AuthRequest).user;
-  if (!user || !user.outletId) {
+  if (!user) {
     res.status(403).json({ message: 'Unauthorized' });
     return;
   }
   const id = req.params.id as string;
   
-  const customer = await prisma.customer.findFirst({ where: { id, outletId: user.outletId } });
+  const customer = await prisma.customer.findFirst({ where: { id } });
   if (!customer) {
     res.status(404).json({ message: 'Customer not found' });
     return;
+  }
+
+  const customerOutletId = customer.outletId ? String(customer.outletId) : undefined;
+  if (user.outletId) {
+    if (!customerOutletId || customerOutletId !== String(user.outletId)) {
+      res.status(403).json({ message: 'Unauthorized' });
+      return;
+    }
+  } else if (!user.isSuperAdmin) {
+    if (!user.tenantId || !customerOutletId) {
+      res.status(403).json({ message: 'Unauthorized' });
+      return;
+    }
+    const outlet = await prisma.outlet.findFirst({ where: { id: customerOutletId, tenantId: user.tenantId } });
+    if (!outlet) {
+      res.status(403).json({ message: 'Unauthorized' });
+      return;
+    }
   }
 
   await prisma.customer.delete({ where: { id } });

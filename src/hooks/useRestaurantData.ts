@@ -81,9 +81,9 @@ const initialExpenses: Expense[] = [];
 const initialWasteRecords: WasteRecord[] = [];
 
 const initialEmployees: Employee[] = [
-     { id: 'emp-1', name: 'John Doe', employeeId: 'EMP001', phone: '555-0001', joiningDate: '2023-01-15', designation: 'Senior Waiter', isActive: true, isWaiter: true, waiterId: 'waiter-1' },
-    { id: 'emp-2', name: 'Jane Smith', employeeId: 'EMP002', phone: '555-0002', joiningDate: '2023-02-20', designation: 'Waiter/Waitress', isActive: true, isWaiter: true, waiterId: 'waiter-2' },
-    { id: 'emp-3', name: 'Peter Pan', employeeId: 'EMP003', phone: '555-0003', joiningDate: '2023-03-10', designation: 'Manager', isActive: true, isWaiter: false, salary: 50000 },
+     { id: 'emp-1', name: 'John Doe', employeeId: 'EMP001', phone: '555-0001', joiningDate: '2023-01-15', designation: 'Senior Waiter', isActive: true, isWaiter: true, waiterId: 'waiter-1', outletId: 'outlet-1' },
+    { id: 'emp-2', name: 'Jane Smith', employeeId: 'EMP002', phone: '555-0002', joiningDate: '2023-02-20', designation: 'Waiter/Waitress', isActive: true, isWaiter: true, waiterId: 'waiter-2', outletId: 'outlet-1' },
+    { id: 'emp-3', name: 'Peter Pan', employeeId: 'EMP003', phone: '555-0003', joiningDate: '2023-03-10', designation: 'Manager', isActive: true, isWaiter: false, salary: 50000, outletId: 'outlet-1' },
 ];
 const initialAttendanceRecords: AttendanceRecord[] = [];
 const initialPayrollRecords: PayrollRecord[] = [];
@@ -344,13 +344,25 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
     const [customers, setCustomers] = useLocalStorage<Customer[]>(getKey('customers'), []);
 
     useEffect(() => {
-        if (isAuthenticated && user?.outletId) {
+        let selectedOutletId: string | undefined;
+        try {
+            const raw = localStorage.getItem(getKey('activeOutletIds'));
+            const parsed = raw ? JSON.parse(raw) : null;
+            if (Array.isArray(parsed) && parsed.length === 1) {
+                selectedOutletId = String(parsed[0]);
+            }
+        } catch {
+        }
+
+        const outletId = selectedOutletId || (user?.outletId ? String(user.outletId) : undefined);
+
+        if (isAuthenticated && outletId) {
             const token = localStorage.getItem('authToken');
             if (!token) {
                 setCustomers([]);
                 return;
             }
-            fetch(`${API_BASE_URL}/customers`, {
+            fetch(`${API_BASE_URL}/customers?outletId=${encodeURIComponent(outletId)}`, {
                 headers: { Authorization: `Bearer ${token}` }
             })
             .then(res => {
@@ -363,7 +375,12 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             })
             .then(data => {
                 if (Array.isArray(data)) {
-                    setCustomers(data);
+                    const normalized = data.map((c: any) => ({
+                        ...c,
+                        dueAmount: c?.dueAmount === undefined || c?.dueAmount === null ? 0 : Number(c.dueAmount),
+                        dob: c?.dob ? String(c.dob).slice(0, 10) : undefined,
+                    }));
+                    setCustomers(normalized);
                 } else {
                     console.error("Customers data is not an array:", data);
                 }
@@ -417,7 +434,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
     const [outlets, setOutlets] = useLocalStorage<Outlet[]>(getKey('outlets'), initialOutlets);
     const [activeOutletIds, setActiveOutletIds] = useLocalStorage<string[]>(getKey('activeOutletIds'), [initialOutlets[0]?.id].filter(Boolean));
     const [roles, setRoles] = useLocalStorage<Role[]>(getKey('roles'), initialRoles);
-    const [users, setUsers] = useLocalStorage<User[]>(getKey('users'), initialUsers);
+    const [users, setUsers] = useState<User[]>([]);
     const [saasWebsiteContent, setSaasWebsiteContent] = useLocalStorage<SaasWebsiteContent>('saasWebsiteContent', initialSaasWebsiteContent);
     const [plans, setPlans] = useLocalStorage<Plan[]>(getKey('plans'), initialPlans);
     const [saasSettings, setSaaSSettings] = useLocalStorage<SaaSSettings>(getKey('saasSettings'), initialSaasSettings);
@@ -450,6 +467,111 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
     useEffect(() => {
         fetchSaasWebsiteContent();
     }, [isAuthenticated, user?.isSuperAdmin]);
+
+    useEffect(() => {
+        const run = async () => {
+            if (!isAuthenticated) return;
+            const token = localStorage.getItem('authToken');
+            if (!token) return;
+            try {
+                const res = await fetch(`${API_BASE_URL}/outlets`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                if (res.status === 401) {
+                    logout();
+                    return;
+                }
+                if (!res.ok) return;
+                const data = await res.json().catch(() => null);
+                if (!Array.isArray(data)) return;
+
+                const normalized = data.map((o: any) => ({
+                    id: String(o.id),
+                    name: String(o.name),
+                    address: typeof o.address === 'string' ? o.address : '',
+                    phone: typeof o.phone === 'string' ? o.phone : '',
+                }));
+
+                setOutlets(prev => {
+                    return normalized.map(o => {
+                        const existing = prev.find(p => p.id === o.id);
+                        return {
+                            id: o.id,
+                            name: o.name,
+                            restaurantName: existing?.restaurantName || o.name,
+                            address: o.address || existing?.address || '',
+                            phone: o.phone || existing?.phone || '',
+                            email: existing?.email,
+                            logoUrl: existing?.logoUrl,
+                            outletType: existing?.outletType || 'Restaurant',
+                            taxes: existing?.taxes || [],
+                            whatsappNumber: existing?.whatsappNumber,
+                            whatsappOrderingEnabled: existing?.whatsappOrderingEnabled,
+                            whatsappDefaultMessage: existing?.whatsappDefaultMessage,
+                            fonepayIsEnabled: existing?.fonepayIsEnabled,
+                            fonepayMerchantCode: existing?.fonepayMerchantCode,
+                            fonepayTerminalId: existing?.fonepayTerminalId,
+                            fonepayCurrency: existing?.fonepayCurrency,
+                            plan: existing?.plan,
+                            subscriptionStatus: existing?.subscriptionStatus,
+                            registrationDate: existing?.registrationDate,
+                            planExpiryDate: existing?.planExpiryDate,
+                        };
+                    });
+                });
+
+                setActiveOutletIds(prev => {
+                    const allowedIds = new Set(normalized.map(o => o.id));
+                    const next = prev.filter(id => allowedIds.has(id));
+                    if (next.length > 0) return next;
+                    const first = normalized[0]?.id;
+                    return first ? [first] : [];
+                });
+            } catch (err) {
+                console.error('Failed to fetch outlets:', err);
+            }
+        };
+        void run();
+    }, [isAuthenticated, logout, setOutlets, setActiveOutletIds]);
+
+    useEffect(() => {
+        const run = async () => {
+            if (!isAuthenticated) {
+                setUsers([]);
+                return;
+            }
+            const token = localStorage.getItem('authToken');
+            if (!token) {
+                setUsers([]);
+                return;
+            }
+            try {
+                const res = await fetch(`${API_BASE_URL}/users`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                if (res.status === 401) {
+                    logout();
+                    return;
+                }
+                if (!res.ok) return;
+                const data = await res.json().catch(() => null);
+                if (!Array.isArray(data)) return;
+                const normalized = data.map((u: any) => ({
+                    id: String(u.id),
+                    username: String(u.username),
+                    passwordHash: '',
+                    roleId: u.roleId ? String(u.roleId) : '',
+                    outletId: u.outletId ? String(u.outletId) : '',
+                    isActive: Boolean(u.isActive),
+                    isSuperAdmin: Boolean(u.isSuperAdmin),
+                }));
+                setUsers(normalized);
+            } catch (err) {
+                console.error('Failed to fetch users:', err);
+            }
+        };
+        void run();
+    }, [isAuthenticated, logout]);
     
     // Align default currency with tenant preference (fallback to browser locale)
     useEffect(() => {
@@ -921,18 +1043,42 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         customers,
         addCustomer: async (customerData) => {
             try {
+                let selectedOutletId: string | undefined;
+                try {
+                    const raw = localStorage.getItem(getKey('activeOutletIds'));
+                    const parsed = raw ? JSON.parse(raw) : null;
+                    if (Array.isArray(parsed) && parsed.length === 1) {
+                        selectedOutletId = String(parsed[0]);
+                    }
+                } catch {
+                }
+                const outletId = selectedOutletId || (user?.outletId ? String(user.outletId) : undefined);
+                const payload = {
+                    ...customerData,
+                    ...(customerData && typeof customerData === 'object' && 'outletId' in (customerData as any)
+                        ? {}
+                        : outletId
+                            ? { outletId }
+                            : {}),
+                };
+
                 const res = await fetch(`${API_BASE_URL}/customers`, {
                     method: 'POST',
                     headers: { 
                         'Content-Type': 'application/json',
                         Authorization: `Bearer ${localStorage.getItem('authToken')}`
                     },
-                    body: JSON.stringify(customerData)
+                    body: JSON.stringify(payload)
                 });
                 if (res.ok) {
                     const newCustomer = await res.json();
-                    setCustomers(prev => [...prev, newCustomer]);
-                    return newCustomer;
+                    const normalized = {
+                        ...newCustomer,
+                        dueAmount: newCustomer?.dueAmount === undefined || newCustomer?.dueAmount === null ? 0 : Number(newCustomer.dueAmount),
+                        dob: newCustomer?.dob ? String(newCustomer.dob).slice(0, 10) : undefined,
+                    };
+                    setCustomers(prev => [...prev, normalized]);
+                    return normalized;
                 }
             } catch (err) {
                 console.error("Failed to add customer:", err);
@@ -1016,7 +1162,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             setCustomers(prev => prev.map(c => c.id === customerId ? { ...c, dueAmount: newDueAmount } : c));
 
             try {
-                await fetch(`${API_BASE_URL}/customers/${customerId}`, {
+                const res = await fetch(`${API_BASE_URL}/customers/${customerId}`, {
                     method: 'PUT',
                     headers: { 
                         'Content-Type': 'application/json',
@@ -1024,9 +1170,15 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                     },
                     body: JSON.stringify({ dueAmount: newDueAmount })
                 });
+                if (!res.ok) {
+                    const err = await res.json().catch(() => null);
+                    setCustomers(prev => prev.map(c => c.id === customerId ? { ...c, dueAmount: customer.dueAmount || 0 } : c));
+                    alert(err?.message || `Failed to record customer payment (${res.status})`);
+                }
             } catch (err) {
                 console.error("Failed to update customer payment:", err);
-                // Revert on failure? For now, just log.
+                setCustomers(prev => prev.map(c => c.id === customerId ? { ...c, dueAmount: customer.dueAmount || 0 } : c));
+                alert('Failed to record customer payment. Please try again.');
             }
         },
 
@@ -1242,9 +1394,138 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         deleteOutlet: (outletId) => setOutlets(prev => prev.filter(o => o.id !== outletId)),
         
         roles, users,
-        addUser: (userData) => setUsers(prev => [...prev, { ...userData, id: `user-${Date.now()}` }]),
-        updateUser: (user) => setUsers(prev => prev.map(u => u.id === user.id ? user : u)),
-        deleteUser: (userId) => setUsers(prev => prev.filter(u => u.id !== userId)),
+        addUser: (userData) => {
+            void (async () => {
+                const token = localStorage.getItem('authToken');
+                if (!token) {
+                    alert('Unauthorized. Please log in again.');
+                    return;
+                }
+                try {
+                    const res = await fetch(`${API_BASE_URL}/users`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: `Bearer ${token}`
+                        },
+                        body: JSON.stringify({
+                            username: userData.username,
+                            password: userData.passwordHash,
+                            roleId: userData.roleId,
+                            outletId: userData.outletId,
+                            isActive: userData.isActive,
+                            isSuperAdmin: Boolean((userData as any).isSuperAdmin),
+                        })
+                    });
+                    if (res.status === 401) {
+                        logout();
+                        return;
+                    }
+                    if (!res.ok) {
+                        const err = await res.json().catch(() => null);
+                        alert(err?.message || `Failed to add user (${res.status})`);
+                        return;
+                    }
+                    const created = await res.json().catch(() => null);
+                    if (!created) return;
+                    const normalized: User = {
+                        id: String(created.id),
+                        username: String(created.username),
+                        passwordHash: '',
+                        roleId: created.roleId ? String(created.roleId) : '',
+                        outletId: created.outletId ? String(created.outletId) : '',
+                        isActive: Boolean(created.isActive),
+                        isSuperAdmin: Boolean(created.isSuperAdmin),
+                    };
+                    setUsers(prev => [...prev, normalized]);
+                } catch (err) {
+                    console.error('Failed to add user:', err);
+                    alert('Failed to add user. Please try again.');
+                }
+            })();
+        },
+        updateUser: (userToUpdate) => {
+            void (async () => {
+                const token = localStorage.getItem('authToken');
+                if (!token) {
+                    alert('Unauthorized. Please log in again.');
+                    return;
+                }
+                try {
+                    const payload: any = {
+                        username: userToUpdate.username,
+                        roleId: userToUpdate.roleId,
+                        outletId: userToUpdate.outletId,
+                        isActive: userToUpdate.isActive,
+                        isSuperAdmin: Boolean(userToUpdate.isSuperAdmin),
+                    };
+                    if (userToUpdate.passwordHash && userToUpdate.passwordHash.length >= 6) {
+                        payload.password = userToUpdate.passwordHash;
+                    }
+
+                    const res = await fetch(`${API_BASE_URL}/users/${userToUpdate.id}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: `Bearer ${token}`
+                        },
+                        body: JSON.stringify(payload)
+                    });
+                    if (res.status === 401) {
+                        logout();
+                        return;
+                    }
+                    if (!res.ok) {
+                        const err = await res.json().catch(() => null);
+                        alert(err?.message || `Failed to update user (${res.status})`);
+                        return;
+                    }
+                    const updated = await res.json().catch(() => null);
+                    if (!updated) return;
+                    const normalized: User = {
+                        id: String(updated.id),
+                        username: String(updated.username),
+                        passwordHash: '',
+                        roleId: updated.roleId ? String(updated.roleId) : '',
+                        outletId: updated.outletId ? String(updated.outletId) : '',
+                        isActive: Boolean(updated.isActive),
+                        isSuperAdmin: Boolean(updated.isSuperAdmin),
+                    };
+                    setUsers(prev => prev.map(u => u.id === normalized.id ? normalized : u));
+                } catch (err) {
+                    console.error('Failed to update user:', err);
+                    alert('Failed to update user. Please try again.');
+                }
+            })();
+        },
+        deleteUser: (userId) => {
+            void (async () => {
+                const token = localStorage.getItem('authToken');
+                if (!token) {
+                    alert('Unauthorized. Please log in again.');
+                    return;
+                }
+                try {
+                    const res = await fetch(`${API_BASE_URL}/users/${userId}`, {
+                        method: 'DELETE',
+                        headers: { Authorization: `Bearer ${token}` }
+                    });
+                    if (res.status === 401) {
+                        logout();
+                        return;
+                    }
+                    if (!res.ok) {
+                        const err = await res.json().catch(() => null);
+                        alert(err?.message || `Failed to delete user (${res.status})`);
+                        return;
+                    }
+                    setUsers(prev => prev.filter(u => u.id !== userId));
+                } catch (err) {
+                    console.error('Failed to delete user:', err);
+                    alert('Failed to delete user. Please try again.');
+                }
+            })();
+        },
         registerUser: async (username, password, restaurantName, fullName, mobile, address) => {
             console.log('Attempting to register user:', { username, restaurantName });
             const trimmedUsername = username.trim();

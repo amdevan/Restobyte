@@ -71,7 +71,7 @@ const TaxSettingPage: React.FC = () => {
         }));
     };
 
-    const handleSaveAll = () => {
+    const handleSaveAll = async () => {
         for (const localOutlet of localOutlets) {
             const originalOutlet = outlets.find(o => o.id === localOutlet.id);
             if (!originalOutlet) continue;
@@ -98,7 +98,11 @@ const TaxSettingPage: React.FC = () => {
                 ...originalOutlet,
                 taxes: updatedTaxes
             };
-            updateOutlet(updatedOutlet);
+            const result = await updateOutlet(updatedOutlet);
+            if (!result.success) {
+                alert(result.message || `Failed to save taxes for outlet "${originalOutlet.name}".`);
+                return;
+            }
         }
 
         setShowSavedMessage(true);

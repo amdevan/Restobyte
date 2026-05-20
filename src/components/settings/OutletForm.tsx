@@ -12,8 +12,8 @@ interface LocalTax extends Omit<Tax, 'rate'> {
 
 interface OutletFormProps {
   initialData?: Outlet | null;
-  onSubmit: (data: Omit<Outlet, 'id'>) => void;
-  onUpdate: (data: Outlet) => void;
+  onSubmit: (data: Omit<Outlet, 'id'>) => Promise<{ success: boolean; message?: string }>;
+  onUpdate: (data: Outlet) => Promise<{ success: boolean; message?: string }>;
   onClose: () => void;
 }
 
@@ -32,6 +32,8 @@ const OutletForm: React.FC<OutletFormProps> = ({ initialData, onSubmit, onUpdate
     const [fonepayMerchantCode, setFonepayMerchantCode] = useState('');
     const [fonepayTerminalId, setFonepayTerminalId] = useState('');
     const [fonepayCurrency, setFonepayCurrency] = useState('NPR');
+    const [submitError, setSubmitError] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
         if (initialData) {
@@ -49,7 +51,6 @@ const OutletForm: React.FC<OutletFormProps> = ({ initialData, onSubmit, onUpdate
             setFonepayTerminalId(initialData.fonepayTerminalId || '');
             setFonepayCurrency(initialData.fonepayCurrency || 'NPR');
         } else {
-            // Reset for new entry
             setName('');
             setRestaurantName('');
             setOutletType('Restaurant');
@@ -64,6 +65,8 @@ const OutletForm: React.FC<OutletFormProps> = ({ initialData, onSubmit, onUpdate
             setFonepayTerminalId('');
             setFonepayCurrency('NPR');
         }
+        setSubmitError('');
+        setIsSubmitting(false);
     }, [initialData]);
 
     const handleTaxChange = (id: string, field: 'name' | 'rate', value: string) => {
@@ -90,23 +93,29 @@ const OutletForm: React.FC<OutletFormProps> = ({ initialData, onSubmit, onUpdate
     };
 
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setSubmitError('');
+        if (isSubmitting) return;
         
-        if (!name.trim() || !restaurantName.trim() || !address.trim() || !phone.trim()) {
-            alert('Outlet Name, Restaurant Name, Address, and Phone are required.');
+        const trimmedName = name.trim();
+        const trimmedRestaurantName = restaurantName.trim();
+        const trimmedAddress = address.trim();
+        const trimmedPhone = phone.trim();
+        if (!trimmedName || !trimmedRestaurantName || !trimmedAddress || !trimmedPhone) {
+            setSubmitError('Outlet Name, Restaurant Name, Address, and Phone are required.');
             return;
         }
 
         const finalTaxes: Tax[] = [];
         for (const localTax of taxes) {
             if (!localTax.name.trim()) {
-                alert(`Tax name cannot be empty.`);
+                setSubmitError('Tax name cannot be empty.');
                 return;
             }
             const rate = parseFloat(localTax.rate);
             if (isNaN(rate) || rate < 0) {
-                alert(`Invalid tax rate for "${localTax.name}". Please enter a valid non-negative number.`);
+                setSubmitError(`Invalid tax rate for "${localTax.name}".`);
                 return;
             }
             finalTaxes.push({
@@ -117,11 +126,11 @@ const OutletForm: React.FC<OutletFormProps> = ({ initialData, onSubmit, onUpdate
         }
         
         const outletData: Omit<Outlet, 'id'> = {
-            name,
-            restaurantName,
+            name: trimmedName,
+            restaurantName: trimmedRestaurantName,
             outletType,
-            address,
-            phone,
+            address: trimmedAddress,
+            phone: trimmedPhone,
             email: email || undefined,
             logoUrl: logoUrl || undefined,
             whatsappNumber: whatsappNumber || undefined,
@@ -132,12 +141,25 @@ const OutletForm: React.FC<OutletFormProps> = ({ initialData, onSubmit, onUpdate
             fonepayCurrency: fonepayCurrency || undefined,
         };
 
-        if (initialData) {
-            onUpdate({ ...initialData, ...outletData });
-        } else {
-            onSubmit(outletData);
+        setIsSubmitting(true);
+        try {
+            if (initialData) {
+                const result = await onUpdate({ ...initialData, ...outletData });
+                if (!result.success) {
+                    setSubmitError(result.message || 'Failed to update outlet.');
+                    return;
+                }
+            } else {
+                const result = await onSubmit(outletData);
+                if (!result.success) {
+                    setSubmitError(result.message || 'Failed to create outlet.');
+                    return;
+                }
+            }
+            onClose();
+        } finally {
+            setIsSubmitting(false);
         }
-        onClose();
     };
 
     return (
@@ -181,6 +203,8 @@ const OutletForm: React.FC<OutletFormProps> = ({ initialData, onSubmit, onUpdate
                 />
                  {logoUrl && <img src={logoUrl} alt="Logo Preview" className="mt-2 h-20 w-20 object-contain rounded-md border p-1 bg-white" />}
              </div>
+
+            {submitError && <p className="text-xs text-red-600">{submitError}</p>}
 
             <h3 className="text-md font-medium text-gray-700 pt-4 border-t">Tax Settings</h3>
             <div className="space-y-3">
@@ -235,10 +259,10 @@ const OutletForm: React.FC<OutletFormProps> = ({ initialData, onSubmit, onUpdate
             </div>
            
             <div className="flex justify-end space-x-3 pt-4 border-t mt-4">
-                <Button type="button" variant="secondary" onClick={onClose} leftIcon={<FiXCircle />}>
+                <Button type="button" variant="secondary" onClick={onClose} leftIcon={<FiXCircle />} disabled={isSubmitting}>
                 Cancel
                 </Button>
-                <Button type="submit" variant="primary" leftIcon={<FiSave />}>
+                <Button type="submit" variant="primary" leftIcon={<FiSave />} disabled={isSubmitting}>
                 {initialData ? 'Update Outlet' : 'Save Outlet'}
                 </Button>
             </div>

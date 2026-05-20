@@ -25,14 +25,18 @@ const WhatsappSettingsPage: React.FC = () => {
         }
     }, [outlet]);
 
-    const handleSave = () => {
+    const handleSave = async () => {
         if (!outlet) return;
-        updateOutlet({
+        const result = await updateOutlet({
             ...outlet,
             whatsappOrderingEnabled: isEnabled,
             whatsappNumber: number,
             whatsappDefaultMessage: message,
         });
+        if (!result.success) {
+            alert(result.message || 'Failed to save WhatsApp settings.');
+            return;
+        }
         setShowSavedMessage(true);
         setTimeout(() => setShowSavedMessage(false), 2500);
     };

@@ -295,6 +295,8 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
     }, [isAuthenticated, user?.outletId, logout]);
     // Helper to generate outlet-specific keys
     const getKey = (baseKey: string) => user?.outletId ? `${baseKey}_${user.outletId}` : baseKey;
+    // Helper to generate tenant-specific keys (for settings that should not change with active outlet)
+    const getTenantKey = (baseKey: string) => user?.tenantId ? `${baseKey}_${user.tenantId}` : baseKey;
 
     const [reservations, setReservations] = useLocalStorage<Reservation[]>(getKey('reservations'), []);
     const [sales, setSales] = useLocalStorage<Sale[]>(getKey('sales'), []);
@@ -346,7 +348,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
     useEffect(() => {
         let selectedOutletId: string | undefined;
         try {
-            const raw = localStorage.getItem(getKey('activeOutletIds'));
+            const raw = localStorage.getItem(getTenantKey('activeOutletIds'));
             const parsed = raw ? JSON.parse(raw) : null;
             if (Array.isArray(parsed) && parsed.length === 1) {
                 selectedOutletId = String(parsed[0]);
@@ -431,14 +433,29 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
     const [websiteSettings, setWebsiteSettings] = useLocalStorage<WebsiteSettings>(getKey('websiteSettings'), { orderEnabled: true, orderReceivingUserIds: [], whiteLabel: { appName: 'RestoByte', primaryColor: '#0ea5e9' }, homePageContent: { bannerSection: { title: 'Welcome', subtitle: '' }, serviceSection: {services:[]}, exploreMenuSection: {title: 'Explore', subtitle: '', buttonText: 'View Menu'}, gallery: [], socialMedia: []}, availableOnlineFoodIds: [], aboutUsContent: {title: '', content: ''}, contactUsContent: {address: '', phone: '', email: ''}, contactMessages: [], commonMenuPage: {title: 'Our Menu'}, socialLogin: {google: false, facebook: false}, emailSettings: {mailer: 'log'}, paymentSettings: {paypalEnabled: false, stripeEnabled: false, fonepayEnabled: false} });
     const [applicationSettings, setApplicationSettings] = useLocalStorage<ApplicationSettings>(getKey('applicationSettings'), initialApplicationSettings);
     const [soundSettings, setSoundSettings] = useLocalStorage<SoundSettings>(getKey('soundSettings'), { soundsEnabled: true });
-    const [outlets, setOutlets] = useLocalStorage<Outlet[]>(getKey('outlets'), initialOutlets);
-    const [activeOutletIds, setActiveOutletIds] = useLocalStorage<string[]>(getKey('activeOutletIds'), [initialOutlets[0]?.id].filter(Boolean));
+    const [outlets, setOutlets] = useLocalStorage<Outlet[]>(getTenantKey('outlets'), initialOutlets);
+    const [activeOutletIds, setActiveOutletIds] = useLocalStorage<string[]>(getTenantKey('activeOutletIds'), [initialOutlets[0]?.id].filter(Boolean));
     const [roles, setRoles] = useLocalStorage<Role[]>(getKey('roles'), initialRoles);
     const [users, setUsers] = useState<User[]>([]);
     const [saasWebsiteContent, setSaasWebsiteContent] = useLocalStorage<SaasWebsiteContent>('saasWebsiteContent', initialSaasWebsiteContent);
     const [plans, setPlans] = useLocalStorage<Plan[]>(getKey('plans'), initialPlans);
     const [saasSettings, setSaaSSettings] = useLocalStorage<SaaSSettings>(getKey('saasSettings'), initialSaasSettings);
     const [addonGroups, setAddonGroups] = useLocalStorage<AddonGroup[]>(getKey('addonGroups'), initialAddonGroups);
+
+    useEffect(() => {
+        if (!isAuthenticated || !user?.tenantId) return;
+        try {
+            const legacyValue = localStorage.getItem(getKey('activeOutletIds'));
+            if (legacyValue != null) {
+                const currentValue = localStorage.getItem(getTenantKey('activeOutletIds'));
+                if (currentValue == null) {
+                    localStorage.setItem(getTenantKey('activeOutletIds'), legacyValue);
+                }
+                localStorage.removeItem(getKey('activeOutletIds'));
+            }
+        } catch {
+        }
+    }, [isAuthenticated, user?.tenantId]);
 
     const fetchSaasWebsiteContent = async () => {
         const env = 'default';
@@ -485,37 +502,52 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 const data = await res.json().catch(() => null);
                 if (!Array.isArray(data)) return;
 
-                const normalized = data.map((o: any) => ({
-                    id: String(o.id),
-                    name: String(o.name),
-                    address: typeof o.address === 'string' ? o.address : '',
-                    phone: typeof o.phone === 'string' ? o.phone : '',
-                }));
+                const normalized: Outlet[] = data.map((o: any) => {
+                    const outletType = o?.outletType === 'CloudKitchen' ? 'CloudKitchen' : 'Restaurant';
+                    const remoteTaxes = Array.isArray(o?.taxes) ? o.taxes : [];
+                    const taxes: Tax[] = remoteTaxes
+                        .map((t: any) => ({
+                            id: typeof t?.id === 'string' ? t.id : `tax-${Math.random().toString(16).slice(2)}`,
+                            name: typeof t?.name === 'string' ? t.name : '',
+                            rate: typeof t?.rate === 'number' ? t.rate : Number(t?.rate),
+                        }))
+                        .filter((t: any) => typeof t.name === 'string' && t.name.trim() && Number.isFinite(t.rate) && t.rate >= 0);
+
+                    return {
+                        id: String(o.id),
+                        name: String(o.name),
+                        restaurantName: typeof o?.restaurantName === 'string' && o.restaurantName.trim() ? o.restaurantName : String(o.name),
+                        outletType,
+                        address: typeof o.address === 'string' ? o.address : '',
+                        phone: typeof o.phone === 'string' ? o.phone : '',
+                        email: typeof o.email === 'string' ? o.email : undefined,
+                        logoUrl: typeof o.logoUrl === 'string' ? o.logoUrl : undefined,
+                        taxes,
+                        whatsappNumber: typeof o.whatsappNumber === 'string' ? o.whatsappNumber : undefined,
+                        whatsappOrderingEnabled: Boolean(o.whatsappOrderingEnabled),
+                        whatsappDefaultMessage: typeof o.whatsappDefaultMessage === 'string' ? o.whatsappDefaultMessage : undefined,
+                        fonepayIsEnabled: Boolean(o.fonepayIsEnabled),
+                        fonepayMerchantCode: typeof o.fonepayMerchantCode === 'string' ? o.fonepayMerchantCode : undefined,
+                        fonepayTerminalId: typeof o.fonepayTerminalId === 'string' ? o.fonepayTerminalId : undefined,
+                        fonepayCurrency: typeof o.fonepayCurrency === 'string' ? o.fonepayCurrency : undefined,
+                        plan: typeof o.plan === 'string' ? o.plan : undefined,
+                        subscriptionStatus: typeof o.subscriptionStatus === 'string' ? o.subscriptionStatus : undefined,
+                        registrationDate: typeof o.createdAt === 'string' ? o.createdAt : undefined,
+                        planExpiryDate: typeof o.planExpiryDate === 'string' ? o.planExpiryDate : undefined,
+                    };
+                });
 
                 setOutlets(prev => {
                     return normalized.map(o => {
                         const existing = prev.find(p => p.id === o.id);
                         return {
-                            id: o.id,
-                            name: o.name,
-                            restaurantName: existing?.restaurantName || o.name,
+                            ...existing,
+                            ...o,
+                            restaurantName: o.restaurantName || existing?.restaurantName || o.name,
+                            outletType: o.outletType || existing?.outletType || 'Restaurant',
                             address: o.address || existing?.address || '',
                             phone: o.phone || existing?.phone || '',
-                            email: existing?.email,
-                            logoUrl: existing?.logoUrl,
-                            outletType: existing?.outletType || 'Restaurant',
-                            taxes: existing?.taxes || [],
-                            whatsappNumber: existing?.whatsappNumber,
-                            whatsappOrderingEnabled: existing?.whatsappOrderingEnabled,
-                            whatsappDefaultMessage: existing?.whatsappDefaultMessage,
-                            fonepayIsEnabled: existing?.fonepayIsEnabled,
-                            fonepayMerchantCode: existing?.fonepayMerchantCode,
-                            fonepayTerminalId: existing?.fonepayTerminalId,
-                            fonepayCurrency: existing?.fonepayCurrency,
-                            plan: existing?.plan,
-                            subscriptionStatus: existing?.subscriptionStatus,
-                            registrationDate: existing?.registrationDate,
-                            planExpiryDate: existing?.planExpiryDate,
+                            taxes: o.taxes?.length ? o.taxes : (existing?.taxes || []),
                         };
                     });
                 });
@@ -535,7 +567,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             }
         };
         void run();
-    }, [isAuthenticated, logout, setOutlets, setActiveOutletIds, user?.outletId]);
+    }, [isAuthenticated, logout, setOutlets, setActiveOutletIds, user?.outletId, user?.tenantId]);
 
     useEffect(() => {
         const run = async () => {
@@ -1048,7 +1080,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             try {
                 let selectedOutletId: string | undefined;
                 try {
-                    const raw = localStorage.getItem(getKey('activeOutletIds'));
+                    const raw = localStorage.getItem(getTenantKey('activeOutletIds'));
                     const parsed = raw ? JSON.parse(raw) : null;
                     if (Array.isArray(parsed) && parsed.length === 1) {
                         selectedOutletId = String(parsed[0]);
@@ -1388,125 +1420,188 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         outlets, activeOutletIds, setActiveOutletIds,
         getActiveOutlets: () => outlets.filter(o => activeOutletIds.includes(o.id)),
         getSingleActiveOutlet: () => activeOutletIds.length === 1 ? outlets.find(o => o.id === activeOutletIds[0]) : undefined,
-        addOutlet: (outletData) => {
+        addOutlet: async (outletData) => {
             const tempId = `tmp-outlet-${Date.now()}`;
             const optimistic: Outlet = { ...outletData, id: tempId };
             setOutlets(prev => [...prev, optimistic]);
 
-            void (async () => {
-                const token = localStorage.getItem('authToken');
-                if (!token) {
+            const token = localStorage.getItem('authToken');
+            if (!token) {
+                setOutlets(prev => prev.filter(o => o.id !== tempId));
+                return { success: false, message: 'Unauthorized. Please log in again.' };
+            }
+
+            try {
+                const res = await fetch(`${API_BASE_URL}/outlets`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({
+                        name: outletData.name,
+                        restaurantName: outletData.restaurantName,
+                        outletType: outletData.outletType,
+                        address: outletData.address,
+                        phone: outletData.phone,
+                        email: outletData.email,
+                        logoUrl: outletData.logoUrl,
+                        taxes: outletData.taxes,
+                        whatsappNumber: outletData.whatsappNumber,
+                        whatsappOrderingEnabled: outletData.whatsappOrderingEnabled,
+                        whatsappDefaultMessage: outletData.whatsappDefaultMessage,
+                        fonepayIsEnabled: outletData.fonepayIsEnabled,
+                        fonepayMerchantCode: outletData.fonepayMerchantCode,
+                        fonepayTerminalId: outletData.fonepayTerminalId,
+                        fonepayCurrency: outletData.fonepayCurrency,
+                        plan: outletData.plan,
+                        subscriptionStatus: outletData.subscriptionStatus,
+                        planExpiryDate: outletData.planExpiryDate,
+                    }),
+                });
+
+                if (res.status === 401) {
+                    logout();
                     setOutlets(prev => prev.filter(o => o.id !== tempId));
-                    alert('Unauthorized. Please log in again.');
-                    return;
+                    return { success: false, message: 'Unauthorized. Please log in again.' };
                 }
 
-                try {
-                    const res = await fetch(`${API_BASE_URL}/outlets`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            Authorization: `Bearer ${token}`,
-                        },
-                        body: JSON.stringify({
-                            name: outletData.name,
-                            address: outletData.address,
-                            phone: outletData.phone,
-                        }),
-                    });
-
-                    if (res.status === 401) {
-                        logout();
-                        return;
-                    }
-
-                    if (!res.ok) {
-                        const err = await res.json().catch(() => null);
-                        setOutlets(prev => prev.filter(o => o.id !== tempId));
-                        alert(err?.message || `Failed to create outlet (${res.status})`);
-                        return;
-                    }
-
-                    const created = await res.json().catch(() => null);
-                    if (!created) return;
-
-                    const createdOutlet: Outlet = {
-                        ...optimistic,
-                        id: String(created.id),
-                        name: String(created.name),
-                        address: typeof created.address === 'string' ? created.address : optimistic.address,
-                        phone: typeof created.phone === 'string' ? created.phone : optimistic.phone,
-                    };
-
-                    setOutlets(prev => prev.map(o => o.id === tempId ? createdOutlet : o));
-                } catch (err) {
-                    console.error('Failed to create outlet:', err);
+                if (!res.ok) {
+                    const err = await res.json().catch(() => null);
                     setOutlets(prev => prev.filter(o => o.id !== tempId));
-                    alert('Failed to create outlet. Please try again.');
+                    return { success: false, message: err?.message || `Failed to create outlet (${res.status})` };
                 }
-            })();
 
-            return optimistic;
+                const created = await res.json().catch(() => null);
+                if (!created) {
+                    setOutlets(prev => prev.filter(o => o.id !== tempId));
+                    return { success: false, message: 'Failed to create outlet.' };
+                }
+
+                const createdOutlet: Outlet = {
+                    ...optimistic,
+                    id: String(created.id),
+                    name: String(created.name),
+                    restaurantName: typeof created.restaurantName === 'string' && created.restaurantName.trim() ? created.restaurantName : optimistic.restaurantName,
+                    outletType: created.outletType === 'CloudKitchen' ? 'CloudKitchen' : optimistic.outletType,
+                    address: typeof created.address === 'string' ? created.address : optimistic.address,
+                    phone: typeof created.phone === 'string' ? created.phone : optimistic.phone,
+                    email: typeof created.email === 'string' ? created.email : optimistic.email,
+                    logoUrl: typeof created.logoUrl === 'string' ? created.logoUrl : optimistic.logoUrl,
+                    taxes: Array.isArray(created.taxes) ? created.taxes : optimistic.taxes,
+                    whatsappNumber: typeof created.whatsappNumber === 'string' ? created.whatsappNumber : optimistic.whatsappNumber,
+                    whatsappOrderingEnabled: Boolean(created.whatsappOrderingEnabled),
+                    whatsappDefaultMessage: typeof created.whatsappDefaultMessage === 'string' ? created.whatsappDefaultMessage : optimistic.whatsappDefaultMessage,
+                    fonepayIsEnabled: Boolean(created.fonepayIsEnabled),
+                    fonepayMerchantCode: typeof created.fonepayMerchantCode === 'string' ? created.fonepayMerchantCode : optimistic.fonepayMerchantCode,
+                    fonepayTerminalId: typeof created.fonepayTerminalId === 'string' ? created.fonepayTerminalId : optimistic.fonepayTerminalId,
+                    fonepayCurrency: typeof created.fonepayCurrency === 'string' ? created.fonepayCurrency : optimistic.fonepayCurrency,
+                    plan: typeof created.plan === 'string' ? created.plan : optimistic.plan,
+                    subscriptionStatus: typeof created.subscriptionStatus === 'string' ? created.subscriptionStatus : optimistic.subscriptionStatus,
+                    registrationDate: typeof created.createdAt === 'string' ? created.createdAt : optimistic.registrationDate,
+                    planExpiryDate: typeof created.planExpiryDate === 'string' ? created.planExpiryDate : optimistic.planExpiryDate,
+                };
+
+                setOutlets(prev => prev.map(o => (o.id === tempId ? createdOutlet : o)));
+                return { success: true };
+            } catch (err) {
+                console.error('Failed to create outlet:', err);
+                setOutlets(prev => prev.filter(o => o.id !== tempId));
+                return { success: false, message: 'Failed to create outlet. Please try again.' };
+            }
         },
-        updateOutlet: (outlet) => {
+        updateOutlet: async (outlet) => {
             const prevOutlet = outlets.find(o => o.id === outlet.id);
             setOutlets(prev => prev.map(o => o.id === outlet.id ? outlet : o));
 
-            void (async () => {
-                const token = localStorage.getItem('authToken');
-                if (!token) {
+            const token = localStorage.getItem('authToken');
+            if (!token) {
+                if (prevOutlet) setOutlets(prev => prev.map(o => o.id === prevOutlet.id ? prevOutlet : o));
+                return { success: false, message: 'Unauthorized. Please log in again.' };
+            }
+
+            try {
+                const res = await fetch(`${API_BASE_URL}/outlets/${outlet.id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({
+                        name: outlet.name,
+                        restaurantName: outlet.restaurantName,
+                        outletType: outlet.outletType,
+                        address: outlet.address,
+                        phone: outlet.phone,
+                        email: outlet.email,
+                        logoUrl: outlet.logoUrl,
+                        taxes: outlet.taxes,
+                        whatsappNumber: outlet.whatsappNumber,
+                        whatsappOrderingEnabled: outlet.whatsappOrderingEnabled,
+                        whatsappDefaultMessage: outlet.whatsappDefaultMessage,
+                        fonepayIsEnabled: outlet.fonepayIsEnabled,
+                        fonepayMerchantCode: outlet.fonepayMerchantCode,
+                        fonepayTerminalId: outlet.fonepayTerminalId,
+                        fonepayCurrency: outlet.fonepayCurrency,
+                        plan: outlet.plan,
+                        subscriptionStatus: outlet.subscriptionStatus,
+                        planExpiryDate: outlet.planExpiryDate,
+                    }),
+                });
+
+                if (res.status === 401) {
+                    logout();
                     if (prevOutlet) setOutlets(prev => prev.map(o => o.id === prevOutlet.id ? prevOutlet : o));
-                    alert('Unauthorized. Please log in again.');
-                    return;
+                    return { success: false, message: 'Unauthorized. Please log in again.' };
                 }
 
-                try {
-                    const res = await fetch(`${API_BASE_URL}/outlets/${outlet.id}`, {
-                        method: 'PUT',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            Authorization: `Bearer ${token}`,
-                        },
-                        body: JSON.stringify({
-                            name: outlet.name,
-                            address: outlet.address,
-                            phone: outlet.phone,
-                        }),
-                    });
-
-                    if (res.status === 401) {
-                        logout();
-                        return;
-                    }
-
-                    if (!res.ok) {
-                        const err = await res.json().catch(() => null);
-                        if (prevOutlet) setOutlets(prev => prev.map(o => o.id === prevOutlet.id ? prevOutlet : o));
-                        alert(err?.message || `Failed to update outlet (${res.status})`);
-                        return;
-                    }
-
-                    const updated = await res.json().catch(() => null);
-                    if (!updated) return;
-
-                    setOutlets(prev => prev.map(o => {
-                        if (o.id !== outlet.id) return o;
-                        return {
-                            ...o,
-                            id: String(updated.id),
-                            name: String(updated.name),
-                            address: typeof updated.address === 'string' ? updated.address : o.address,
-                            phone: typeof updated.phone === 'string' ? updated.phone : o.phone,
-                        };
-                    }));
-                } catch (err) {
-                    console.error('Failed to update outlet:', err);
+                if (!res.ok) {
+                    const err = await res.json().catch(() => null);
                     if (prevOutlet) setOutlets(prev => prev.map(o => o.id === prevOutlet.id ? prevOutlet : o));
-                    alert('Failed to update outlet. Please try again.');
+                    return { success: false, message: err?.message || `Failed to update outlet (${res.status})` };
                 }
-            })();
+
+                const updated = await res.json().catch(() => null);
+                if (!updated) {
+                    if (prevOutlet) setOutlets(prev => prev.map(o => o.id === prevOutlet.id ? prevOutlet : o));
+                    return { success: false, message: 'Failed to update outlet.' };
+                }
+
+                setOutlets(prev => prev.map(o => {
+                    if (o.id !== outlet.id) return o;
+                    const outletType = updated.outletType === 'CloudKitchen' ? 'CloudKitchen' : 'Restaurant';
+                    return {
+                        ...o,
+                        id: String(updated.id),
+                        name: String(updated.name),
+                        restaurantName: typeof updated.restaurantName === 'string' && updated.restaurantName.trim() ? updated.restaurantName : o.restaurantName,
+                        outletType,
+                        address: typeof updated.address === 'string' ? updated.address : o.address,
+                        phone: typeof updated.phone === 'string' ? updated.phone : o.phone,
+                        email: typeof updated.email === 'string' ? updated.email : o.email,
+                        logoUrl: typeof updated.logoUrl === 'string' ? updated.logoUrl : o.logoUrl,
+                        taxes: Array.isArray(updated.taxes) ? updated.taxes : o.taxes,
+                        whatsappNumber: typeof updated.whatsappNumber === 'string' ? updated.whatsappNumber : o.whatsappNumber,
+                        whatsappOrderingEnabled: Boolean(updated.whatsappOrderingEnabled),
+                        whatsappDefaultMessage: typeof updated.whatsappDefaultMessage === 'string' ? updated.whatsappDefaultMessage : o.whatsappDefaultMessage,
+                        fonepayIsEnabled: Boolean(updated.fonepayIsEnabled),
+                        fonepayMerchantCode: typeof updated.fonepayMerchantCode === 'string' ? updated.fonepayMerchantCode : o.fonepayMerchantCode,
+                        fonepayTerminalId: typeof updated.fonepayTerminalId === 'string' ? updated.fonepayTerminalId : o.fonepayTerminalId,
+                        fonepayCurrency: typeof updated.fonepayCurrency === 'string' ? updated.fonepayCurrency : o.fonepayCurrency,
+                        plan: typeof updated.plan === 'string' ? updated.plan : o.plan,
+                        subscriptionStatus: typeof updated.subscriptionStatus === 'string' ? updated.subscriptionStatus : o.subscriptionStatus,
+                        registrationDate: typeof updated.createdAt === 'string' ? updated.createdAt : o.registrationDate,
+                        planExpiryDate: typeof updated.planExpiryDate === 'string' ? updated.planExpiryDate : o.planExpiryDate,
+                    };
+                }));
+                return { success: true };
+            } catch (err) {
+                console.error('Failed to update outlet:', err);
+                if (prevOutlet) setOutlets(prev => prev.map(o => o.id === prevOutlet.id ? prevOutlet : o));
+                return { success: false, message: 'Failed to update outlet. Please try again.' };
+            }
         },
-        deleteOutlet: (outletId) => {
+        deleteOutlet: async (outletId) => {
             const prevOutlets = outlets;
             const prevActive = activeOutletIds;
             setOutlets(prev => prev.filter(o => o.id !== outletId));
@@ -1518,40 +1613,40 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 return first ? [first] : [];
             });
 
-            void (async () => {
-                const token = localStorage.getItem('authToken');
-                if (!token) {
+            const token = localStorage.getItem('authToken');
+            if (!token) {
+                setOutlets(prevOutlets);
+                setActiveOutletIds(prevActive);
+                return { success: false, message: 'Unauthorized. Please log in again.' };
+            }
+
+            try {
+                const res = await fetch(`${API_BASE_URL}/outlets/${outletId}`, {
+                    method: 'DELETE',
+                    headers: { Authorization: `Bearer ${token}` },
+                });
+
+                if (res.status === 401) {
+                    logout();
                     setOutlets(prevOutlets);
                     setActiveOutletIds(prevActive);
-                    alert('Unauthorized. Please log in again.');
-                    return;
+                    return { success: false, message: 'Unauthorized. Please log in again.' };
                 }
 
-                try {
-                    const res = await fetch(`${API_BASE_URL}/outlets/${outletId}`, {
-                        method: 'DELETE',
-                        headers: { Authorization: `Bearer ${token}` },
-                    });
-
-                    if (res.status === 401) {
-                        logout();
-                        return;
-                    }
-
-                    if (!res.ok) {
-                        const err = await res.json().catch(() => null);
-                        setOutlets(prevOutlets);
-                        setActiveOutletIds(prevActive);
-                        alert(err?.message || `Failed to delete outlet (${res.status})`);
-                        return;
-                    }
-                } catch (err) {
-                    console.error('Failed to delete outlet:', err);
+                if (!res.ok) {
+                    const err = await res.json().catch(() => null);
                     setOutlets(prevOutlets);
                     setActiveOutletIds(prevActive);
-                    alert('Failed to delete outlet. Please try again.');
+                    return { success: false, message: err?.message || `Failed to delete outlet (${res.status})` };
                 }
-            })();
+
+                return { success: true };
+            } catch (err) {
+                console.error('Failed to delete outlet:', err);
+                setOutlets(prevOutlets);
+                setActiveOutletIds(prevActive);
+                return { success: false, message: 'Failed to delete outlet. Please try again.' };
+            }
         },
         
         roles, users,

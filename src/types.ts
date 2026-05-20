@@ -638,6 +638,7 @@ export interface User {
   passwordHash: string; // This would be a salted hash in a real app
   roleId: string;
   outletId: string; // Every user is assigned to one outlet
+  tenantId?: string;
   isActive: boolean;
   isSuperAdmin?: boolean;
 }
@@ -996,9 +997,9 @@ export interface RestaurantDataContextType {
     setActiveOutletIds: (outletIds: string[]) => void;
     getActiveOutlets: () => Outlet[];
     getSingleActiveOutlet: () => Outlet | undefined;
-    addOutlet: (outletData: Omit<Outlet, 'id'>) => Outlet;
-    updateOutlet: (outlet: Outlet) => void;
-    deleteOutlet: (outletId: string) => void;
+    addOutlet: (outletData: Omit<Outlet, 'id'>) => Promise<{ success: boolean; message?: string }>;
+    updateOutlet: (outlet: Outlet) => Promise<{ success: boolean; message?: string }>;
+    deleteOutlet: (outletId: string) => Promise<{ success: boolean; message?: string }>;
     
     // User Management
     roles: Role[];

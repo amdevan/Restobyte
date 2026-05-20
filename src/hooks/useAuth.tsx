@@ -79,6 +79,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         isSuperAdmin: !!data.user.isSuperAdmin,
         roleId: data.user.roleId || '',
         outletId: data.user.outletId || '',
+        tenantId: data.user.tenantId || '',
         isActive: data.user.isActive,
         passwordHash: ''
       };
@@ -172,6 +173,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         isSuperAdmin: false,
         roleId: 'role-admin',
         outletId: data.outlet?.id || '',
+        tenantId: data.tenant?.id || '',
         isActive: true,
         passwordHash: ''
       };

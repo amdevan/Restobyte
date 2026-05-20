@@ -45,7 +45,7 @@ const WhiteLabelPage: React.FC = () => {
         }
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
         if (!outlet) {
             alert('No outlet selected!');
             return;
@@ -57,7 +57,11 @@ const WhiteLabelPage: React.FC = () => {
             logoUrl: logoUrl,
         };
         
-        updateOutlet(updatedOutlet);
+        const result = await updateOutlet(updatedOutlet);
+        if (!result.success) {
+            alert(result.message || 'Failed to save white label settings.');
+            return;
+        }
         setShowSavedMessage(true);
         setIsDirty(false);
         setTimeout(() => setShowSavedMessage(false), 2500);

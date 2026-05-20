@@ -35,13 +35,16 @@ const OutletSettingPage: React.FC = () => {
         setEditingOutlet(null);
     };
 
-    const handleDelete = (outletId: string) => {
+    const handleDelete = async (outletId: string) => {
         if (outlets.length <= 1) {
             alert("You cannot delete the last remaining outlet.");
             return;
         }
         if (window.confirm('Are you sure you want to delete this outlet? This action cannot be undone.')) {
-            deleteOutlet(outletId);
+            const result = await deleteOutlet(outletId);
+            if (!result.success) {
+                alert(result.message || 'Failed to delete outlet.');
+            }
         }
     };
     

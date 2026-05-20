@@ -1,11 +1,9 @@
 import express from 'express';
-import type { Express, Request, Response } from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
-import prisma from './db/prisma.js';
 import bcrypt from 'bcryptjs';
+import prisma from './db/prisma.js';
 
-// Import routes
 import helloRoutes from './routes/helloRoutes.js';
 import categoryRoutes from './routes/categoryRoutes.js';
 import menuItemRoutes from './routes/menuItemRoutes.js';
@@ -26,18 +24,17 @@ import saasWebsiteContentAdminRoutes from './routes/saasWebsiteContentAdminRoute
 
 dotenv.config();
 
-const app: Express = express();
+const app = express();
 const port = Number(process.env.PORT || 3000);
 const host = process.env.HOST || '0.0.0.0';
 
 app.use(cors());
 app.use(express.json());
 
-app.get('/', (req: Request, res: Response) => {
+app.get('/', (_req, res) => {
   res.send('RestoByte Backend is running!');
 });
 
-// API Routes
 app.use('/api', helloRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/menu-items', menuItemRoutes);
@@ -75,7 +72,7 @@ async function start() {
           name: 'Demo Tenant',
           plan: 'Pro',
           subscriptionStatus: 'active',
-        },
+        } as any,
       });
 
       const outlet = await prisma.outlet.upsert({
@@ -92,6 +89,7 @@ async function start() {
 
       const adminUsername = process.env.DEMO_ADMIN_USERNAME || 'admin';
       const adminPassword = process.env.DEMO_ADMIN_PASSWORD || 'admin123';
+
       const existingAdmin = await prisma.user.findUnique({ where: { username: adminUsername } });
       if (!existingAdmin) {
         const hashed = await bcrypt.hash(adminPassword, 10);
@@ -111,6 +109,7 @@ async function start() {
 
       const superUsername = process.env.DEMO_SUPERADMIN_USERNAME || 'superadmin';
       const superPassword = process.env.DEMO_SUPERADMIN_PASSWORD || 'superadmin123';
+
       const existingSuper = await prisma.user.findUnique({ where: { username: superUsername } });
       if (!existingSuper) {
         const hashed = await bcrypt.hash(superPassword, 10);

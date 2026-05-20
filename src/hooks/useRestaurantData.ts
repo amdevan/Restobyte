@@ -471,11 +471,15 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 const inferredCountry = (explicitCountry && typeof explicitCountry === 'string' ? explicitCountry : undefined)
                     || (localeRegion && localeRegion.length === 2 ? localeRegion.toUpperCase() : undefined);
 
-                const code = explicitCode
-                    || (inferredCountry ? DEFAULT_CURRENCY_BY_COUNTRY[inferredCountry] : undefined)
-                    || 'USD';
-
                 setCurrencies(prev => {
+                    if (!explicitCode && prev.some(c => c.isDefault)) {
+                        return prev;
+                    }
+
+                    const code = explicitCode
+                        || (inferredCountry ? DEFAULT_CURRENCY_BY_COUNTRY[inferredCountry] : undefined)
+                        || 'USD';
+
                     const exists = prev.find(c => c.code === code);
                     if (exists) {
                         return prev.map(c => ({ ...c, isDefault: c.code === code }));
@@ -585,12 +589,20 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                     },
                     body: JSON.stringify(item)
                 });
-                if (res.ok) {
-                    const updatedItem = await res.json();
-                    setMenuItems(prev => prev.map(i => i.id === item.id ? updatedItem : i));
+                if (!res.ok) {
+                    const err = await res.json().catch(() => null);
+                    alert(err?.message || `Failed to update menu item (${res.status})`);
+                    return;
                 }
+                const updatedItem = await res.json();
+                setMenuItems(prev => prev.map(i => i.id === item.id ? updatedItem : i));
             } catch (err) {
+                const message =
+                    err instanceof Error
+                        ? `Failed to update menu item. (${err.message})`
+                        : 'Failed to update menu item.';
                 console.error("Failed to update menu item:", err);
+                alert(message);
             }
         },
         deleteMenuItem: async (itemId) => {
@@ -1037,10 +1049,13 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(currency),
                 });
-                if (res.ok) {
-                    const updated = await res.json();
-                    setCurrencies(prev => prev.map(c => c.id === currency.id ? updated : c));
+                if (!res.ok) {
+                    const err = await res.json().catch(() => null);
+                    alert(err?.message || `Failed to update currency (${res.status})`);
+                    return;
                 }
+                const updated = await res.json();
+                setCurrencies(prev => prev.map(c => c.id === currency.id ? updated : c));
             } catch (error) {
                 console.error('Failed to update currency:', error);
             }
@@ -1065,14 +1080,16 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 const res = await fetch(`${API_BASE_URL}/currencies/${currencyId}/set-default`, {
                     method: 'POST',
                 });
-                if (res.ok) {
-                    const updatedCurrency = await res.json();
-                     // Since setting default changes other currencies (isDefault=false), we should reload all
-                     const allRes = await fetch(`${API_BASE_URL}/currencies`);
-                     const allData = await allRes.json();
-                     if (Array.isArray(allData)) {
-                        setCurrencies(allData);
-                     }
+                if (!res.ok) {
+                    const err = await res.json().catch(() => null);
+                    alert(err?.message || `Failed to set default currency (${res.status})`);
+                    return;
+                }
+                await res.json().catch(() => null);
+                const allRes = await fetch(`${API_BASE_URL}/currencies`);
+                const allData = await allRes.json().catch(() => null);
+                if (Array.isArray(allData)) {
+                    setCurrencies(allData);
                 }
             } catch (error) {
                 console.error('Failed to set default currency:', error);

@@ -22,7 +22,7 @@ const Button: React.FC<ButtonProps> = ({
   type,
   ...props
 }) => {
-  const baseStyle = 'font-medium rounded-lg focus:outline-none focus:ring-2 focus:ring-opacity-50 transition-all duration-200 ease-in-out hover:-translate-y-px disabled:hover:translate-y-0 flex items-center justify-center';
+  const baseStyle = 'font-medium rounded-lg focus:outline-none focus:ring-2 focus:ring-opacity-50 transition-colors duration-200 ease-in-out flex items-center justify-center';
   
   const variantStyles = {
     primary: 'bg-sky-600 hover:bg-sky-700 text-white focus:ring-sky-500 hover:shadow-md',

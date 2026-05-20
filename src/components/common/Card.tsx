@@ -20,7 +20,7 @@ interface CardProps {
 const Card: React.FC<CardProps> = ({ children, className = '', title, actions, icon, onClick }) => {
   return (
     <div 
-      className={`bg-white shadow-lg rounded-xl overflow-hidden transition-all duration-300 flex flex-col ${onClick ? 'cursor-pointer hover:shadow-2xl hover:-translate-y-1' : ''} ${className}`}
+      className={`bg-white shadow-lg rounded-xl overflow-hidden transition-shadow duration-300 flex flex-col ${onClick ? 'cursor-pointer hover:shadow-2xl' : ''} ${className}`}
       onClick={onClick}
     >
       {(title || actions || icon) && (

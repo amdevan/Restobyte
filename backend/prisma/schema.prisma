@@ -27,10 +27,25 @@ model Tenant {
 model Outlet {
   id        String   @id @default(uuid())
   name      String
+  restaurantName String?
+  outletType String @default("Restaurant")
   tenantId  String
   tenant    Tenant   @relation(fields: [tenantId], references: [id])
   address   String?
   phone     String?
+  email     String?
+  logoUrl   String?
+  taxes     Json?
+  whatsappNumber String?
+  whatsappOrderingEnabled Boolean @default(false)
+  whatsappDefaultMessage String?
+  fonepayIsEnabled Boolean @default(false)
+  fonepayMerchantCode String?
+  fonepayTerminalId String?
+  fonepayCurrency String?
+  plan String?
+  subscriptionStatus String?
+  planExpiryDate DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   users     User[]

@@ -597,6 +597,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                     passwordHash: '',
                     roleId: u.roleId ? String(u.roleId) : '',
                     outletId: u.outletId ? String(u.outletId) : '',
+                    tenantId: u.tenantId ? String(u.tenantId) : '',
                     isActive: Boolean(u.isActive),
                     isSuperAdmin: Boolean(u.isSuperAdmin),
                 }));
@@ -1690,6 +1691,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                     passwordHash: '',
                     roleId: created.roleId ? String(created.roleId) : '',
                     outletId: created.outletId ? String(created.outletId) : '',
+                    tenantId: created.tenantId ? String(created.tenantId) : '',
                     isActive: Boolean(created.isActive),
                     isSuperAdmin: Boolean(created.isSuperAdmin),
                 };
@@ -1745,6 +1747,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                     passwordHash: '',
                     roleId: updated.roleId ? String(updated.roleId) : '',
                     outletId: updated.outletId ? String(updated.outletId) : '',
+                    tenantId: updated.tenantId ? String(updated.tenantId) : '',
                     isActive: Boolean(updated.isActive),
                     isSuperAdmin: Boolean(updated.isSuperAdmin),
                 };

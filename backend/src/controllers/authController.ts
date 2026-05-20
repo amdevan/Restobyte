@@ -60,6 +60,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
         isSuperAdmin: user.isSuperAdmin,
         roleId: user.roleId,
         outletId: user.outletId,
+        tenantId: user.tenantId,
         isActive: user.isActive
       },
       message: 'User registered successfully'
@@ -100,6 +101,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
         isSuperAdmin: user.isSuperAdmin,
         roleId: user.roleId,
         outletId: user.outletId,
+        tenantId: user.tenantId,
         isActive: user.isActive
       },
       message: 'Login successful'

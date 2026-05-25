@@ -37,6 +37,10 @@ app.get('/', (_req, res) => {
   res.send('RestoByte Backend is running!');
 });
 
+app.get('/api', (_req, res) => {
+  res.json({ ok: true });
+});
+
 app.use('/api', helloRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/menu-items', menuItemRoutes);

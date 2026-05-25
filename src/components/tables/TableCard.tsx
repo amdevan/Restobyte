@@ -140,7 +140,7 @@ const TableCard: React.FC<TableCardProps> = ({ table, onStatusChange }) => {
         initialNotes={table.notes}
         tableName={table.name}
       />
-      <div className={`relative rounded-lg overflow-hidden shadow-md border ${borderColor} ${bgColor} transition-all duration-300 transform hover:-translate-y-1 hover:shadow-lg`}>
+      <div className={`relative rounded-lg overflow-hidden shadow-md border ${borderColor} ${bgColor} transition-shadow duration-300 hover:shadow-lg`}>
         <div className="absolute top-2 right-2 flex flex-col space-y-1.5">
             <div className={`p-1.5 rounded-full text-white/80 ${table.status === TableStatus.Free ? 'bg-green-500' : table.status === TableStatus.Occupied ? 'bg-red-500' : 'bg-amber-500'}`}>
               <FiCircle size={10} />
@@ -148,7 +148,7 @@ const TableCard: React.FC<TableCardProps> = ({ table, onStatusChange }) => {
              {table.foodReady && (
                 <button 
                     onClick={() => resolveFoodReady(table.id)}
-                    className="p-1.5 rounded-full bg-green-500 text-white animate-bounce" 
+                    className="p-1.5 rounded-full bg-green-500 text-white" 
                     title="Food is ready for pickup!">
                     <FiShoppingBag size={12} />
                 </button>
@@ -157,7 +157,7 @@ const TableCard: React.FC<TableCardProps> = ({ table, onStatusChange }) => {
         
         {/* Assistance Bell */}
         {table.assistanceRequested && (
-            <div className="absolute top-2 left-2 p-1.5 rounded-full bg-amber-500 animate-pulse text-white" title={`Assistance requested at ${new Date(table.assistanceRequestedAt!).toLocaleTimeString()}`}>
+            <div className="absolute top-2 left-2 p-1.5 rounded-full bg-amber-500 text-white" title={`Assistance requested at ${new Date(table.assistanceRequestedAt!).toLocaleTimeString()}`}>
                 <FiBell size={12} />
             </div>
         )}

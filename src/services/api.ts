@@ -104,5 +104,5 @@ export type SaasWebsiteContent = {
 };
 
 export async function getSaasWebsiteContent(): Promise<{ content: SaasWebsiteContent }> {
-  return fetchJson<{ content: SaasWebsiteContent }>('/saas-website-content');
+  return fetchJson<{ content: SaasWebsiteContent }>('/public/saas-website-content?env=default');
 }

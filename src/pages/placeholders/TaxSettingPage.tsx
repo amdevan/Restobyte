@@ -21,6 +21,21 @@ const TaxSettingPage: React.FC = () => {
     const [selectedOutletId, setSelectedOutletId] = useState<string>('');
     const [showSavedMessage, setShowSavedMessage] = useState(false);
 
+    const outletsSignature = useMemo(() => {
+        return JSON.stringify(
+            outlets.map(o => ({
+                id: o.id,
+                name: o.name,
+                restaurantName: o.restaurantName,
+                outletType: o.outletType,
+                address: o.address,
+                phone: o.phone,
+                email: o.email,
+                taxes: o.taxes.map(t => ({ id: t.id, name: t.name, rate: t.rate })),
+            }))
+        );
+    }, [outlets]);
+
     useEffect(() => {
         // Map the global outlets state to a local, form-friendly state
         setLocalOutlets(outlets.map(o => ({
@@ -28,12 +43,17 @@ const TaxSettingPage: React.FC = () => {
             taxes: o.taxes.map(t => ({...t, rate: String(t.rate)}))
         })));
 
-        if (outlets.length > 0 && !outlets.some(o => o.id === selectedOutletId)) {
-            setSelectedOutletId(outlets[0].id);
-        } else if (outlets.length === 0) {
-            setSelectedOutletId('');
+        if (outlets.length === 0) {
+            if (selectedOutletId !== '') setSelectedOutletId('');
+            return;
         }
-    }, [outlets, selectedOutletId]); // Added selectedOutletId dependency to re-sync if it becomes invalid
+
+        const stillValid = outlets.some(o => o.id === selectedOutletId);
+        if (!stillValid) {
+            const nextId = outlets[0]?.id || '';
+            if (nextId && nextId !== selectedOutletId) setSelectedOutletId(nextId);
+        }
+    }, [outletsSignature]);
 
     const isDirty = useMemo(() => {
         if (!outlets.length && !localOutlets.length) return false;

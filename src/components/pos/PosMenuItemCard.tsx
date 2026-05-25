@@ -17,7 +17,7 @@ const PosMenuItemCard: React.FC<{ item: MenuItem; onAddItem: (item: MenuItem) =>
 
   return (
     <div 
-      className="bg-white rounded-xl shadow-md overflow-hidden transform hover:-translate-y-1 transition-transform duration-200 cursor-pointer group border border-gray-200/80"
+      className="bg-white rounded-xl shadow-md overflow-hidden cursor-pointer group border border-gray-200/80 transition-shadow duration-200 hover:shadow-lg"
       onClick={() => onAddItem(item)}
       role="button"
       aria-label={`Add ${item.name} to order`}

@@ -33,7 +33,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, size = 
           <h3 className="text-xl font-semibold text-gray-800">{title}</h3>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-red-500 hover:scale-110 hover:rotate-90 transition-all duration-300"
+            className="text-gray-400 hover:text-red-500 transition-colors duration-200"
             aria-label="Close modal"
           >
             <FiX size={24} />

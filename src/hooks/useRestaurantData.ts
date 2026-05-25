@@ -1,5 +1,5 @@
 
-import React, { createContext, useState, useEffect, useContext, useCallback, ReactNode } from 'react';
+import React, { createContext, useState, useEffect, useContext, useCallback, ReactNode, useRef } from 'react';
 import { 
     MenuItem, Table, TableStatus, Reservation, Sale, SaleItem, FoodMenuCategory, PreMadeFoodItem, 
     StockItem, StockEntry, StockEntryItem, StockAdjustment, StockAdjustmentItem, StockAdjustmentType,
@@ -181,12 +181,23 @@ const useLocalStorage = <T,>(key: string, initialValue: T): [T, React.Dispatch<R
       }
     });
 
+    const storedValueRef = useRef(storedValue);
+    const initialValueRef = useRef(initialValue);
+
+    useEffect(() => {
+        storedValueRef.current = storedValue;
+    }, [storedValue]);
+
+    useEffect(() => {
+        initialValueRef.current = initialValue;
+    }, [initialValue]);
+
     // Listen for changes in other tabs/windows
     useEffect(() => {
         const handleStorageChange = (e: StorageEvent) => {
             if (e.key === key) {
                 try {
-                    setStoredValue(e.newValue ? JSON.parse(e.newValue) : initialValue);
+                    setStoredValue(e.newValue ? JSON.parse(e.newValue) : initialValueRef.current);
                 } catch (error) {
                     console.error(error);
                 }
@@ -195,7 +206,7 @@ const useLocalStorage = <T,>(key: string, initialValue: T): [T, React.Dispatch<R
 
         window.addEventListener('storage', handleStorageChange);
         return () => window.removeEventListener('storage', handleStorageChange);
-    }, [key, initialValue]);
+    }, [key]);
 
     // Update stored value if key changes
     useEffect(() => {
@@ -209,9 +220,9 @@ const useLocalStorage = <T,>(key: string, initialValue: T): [T, React.Dispatch<R
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [key]);
   
-    const setValue: React.Dispatch<React.SetStateAction<T>> = value => {
+    const setValue: React.Dispatch<React.SetStateAction<T>> = useCallback(value => {
       try {
-        const valueToStore = value instanceof Function ? value(storedValue) : value;
+        const valueToStore = value instanceof Function ? value(storedValueRef.current) : value;
         setStoredValue(valueToStore);
         if (typeof window !== 'undefined') {
           window.localStorage.setItem(key, JSON.stringify(valueToStore));
@@ -221,7 +232,7 @@ const useLocalStorage = <T,>(key: string, initialValue: T): [T, React.Dispatch<R
       } catch (error) {
         console.error(error);
       }
-    };
+    }, [key]);
   
     return [storedValue, setValue];
 };

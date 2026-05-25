@@ -39,7 +39,7 @@ interface NavLinkProps {
 const NavLink: React.FC<NavLinkProps> = ({ to, icon, label, currentPath, isSubItem = false, isCollapsed = false, onCollapsedNavigate }) => {
   const isActive = currentPath === to;
 
-  const linkClasses = `w-full flex items-center rounded-lg transition-all duration-200 ease-in-out relative transform hover:-translate-y-px ${isCollapsed ? 'justify-center p-2' : (isSubItem ? 'pl-9 space-x-2 p-1.5' : 'pl-3 space-x-3 p-2')
+  const linkClasses = `w-full flex items-center rounded-lg transition-all duration-200 ease-in-out relative ${isCollapsed ? 'justify-center p-2' : (isSubItem ? 'pl-9 space-x-2 p-1.5' : 'pl-3 space-x-3 p-2')
     } ${isSubItem && isCollapsed ? 'hidden' : ''} ${isActive
       ? 'bg-[#131a22] text-amber-200 shadow-md ring-1 ring-amber-400/25'
       : 'text-slate-200 hover:bg-white/5 hover:text-amber-100'
@@ -119,7 +119,7 @@ const CollapsibleSidebarSection: React.FC<CollapsibleSidebarSectionProps> = ({
     );
   }
 
-  const buttonClasses = `w-full flex items-center justify-between space-x-3 p-2 rounded-lg text-slate-200 hover:bg-white/5 hover:text-amber-100 transition-all duration-200 ease-in-out focus:outline-none relative transform hover:-translate-y-px ${isSectionActive ? 'bg-[#131a22] text-amber-200 ring-1 ring-amber-400/25' : ''
+  const buttonClasses = `w-full flex items-center justify-between space-x-3 p-2 rounded-lg text-slate-200 hover:bg-white/5 hover:text-amber-100 transition-all duration-200 ease-in-out focus:outline-none relative ${isSectionActive ? 'bg-[#131a22] text-amber-200 ring-1 ring-amber-400/25' : ''
     }`;
 
   return (

@@ -23,9 +23,68 @@ const getErrorMessage = (error: any): string => {
     }
 };
 
+const GEMINI_COOLDOWN_UNTIL_KEY = 'restoByteGeminiCooldownUntilMs';
+
+const getCooldownUntilMs = (): number => {
+  try {
+    if (typeof localStorage === 'undefined') return 0;
+    const raw = localStorage.getItem(GEMINI_COOLDOWN_UNTIL_KEY);
+    const parsed = raw ? Number(raw) : 0;
+    return Number.isFinite(parsed) ? parsed : 0;
+  } catch {
+    return 0;
+  }
+};
+
+const setCooldownUntilMs = (untilMs: number) => {
+  try {
+    if (typeof localStorage === 'undefined') return;
+    localStorage.setItem(GEMINI_COOLDOWN_UNTIL_KEY, String(untilMs));
+  } catch {
+    return;
+  }
+};
+
+const getRetryAfterSeconds = (error: any): number | null => {
+  const msg = getErrorMessage(error);
+  const match = msg.match(/RETRY IN\s+(\d+(?:\.\d+)?)S/i);
+  if (match?.[1]) {
+    const sec = Number(match[1]);
+    if (Number.isFinite(sec) && sec > 0) return sec;
+  }
+
+  const details = error?.error?.details;
+  if (Array.isArray(details)) {
+    for (const d of details) {
+      const retryDelay = d?.retryDelay;
+      if (typeof retryDelay === 'string') {
+        const m = retryDelay.match(/(\d+(?:\.\d+)?)s/i);
+        if (m?.[1]) {
+          const sec = Number(m[1]);
+          if (Number.isFinite(sec) && sec > 0) return sec;
+        }
+      }
+    }
+  }
+
+  return null;
+};
+
+const getRemainingCooldownSeconds = (): number => {
+  const until = getCooldownUntilMs();
+  if (!until) return 0;
+  const remainingMs = until - Date.now();
+  if (remainingMs <= 0) return 0;
+  return Math.ceil(remainingMs / 1000);
+};
+
 export const generateMenuItemDescription = async (itemName: string, category: string): Promise<string> => {
   if (!API_KEY || API_KEY === "MISSING_API_KEY") {
     return "AI service is unavailable (API key missing). Please enter a description manually.";
+  }
+  const remainingCooldownSeconds = getRemainingCooldownSeconds();
+  if (remainingCooldownSeconds > 0) {
+    return `AI service is temporarily rate-limited. Please try again in ${remainingCooldownSeconds}s.`;
   }
   try {
     const prompt = `Generate a captivating and concise menu item description (2-3 sentences) for a dish named "${itemName}" which is in the category "${category}". Highlight its best qualities.`;
@@ -36,13 +95,13 @@ export const generateMenuItemDescription = async (itemName: string, category: st
     const text = response.text ?? "";
     return text || "Description could not be generated. Please enter manually.";
   } catch (error: any) {
-    console.error("Error generating menu item description:", error);
-    
     const errorMessage = getErrorMessage(error);
     const upperCaseMessage = errorMessage.toUpperCase();
 
     if (upperCaseMessage.includes('429') || upperCaseMessage.includes('RESOURCE_EXHAUSTED') || upperCaseMessage.includes('QUOTA')) {
-       return "AI service quota exceeded. Please check your plan. Description could not be generated.";
+       const retryAfterSeconds = getRetryAfterSeconds(error) ?? 60;
+       setCooldownUntilMs(Date.now() + Math.ceil(retryAfterSeconds) * 1000);
+       return `AI quota exceeded. Please try again in ${Math.ceil(retryAfterSeconds)}s.`;
     }
     if (upperCaseMessage.includes('API_KEY_INVALID') || upperCaseMessage.includes('APIKEYNOTVALID')) {
         return "The provided API key is invalid. Please check your .env.local file.";
@@ -57,6 +116,10 @@ export const generateMenuItemDescription = async (itemName: string, category: st
 export const suggestDailySpecial = async (): Promise<{ name: string; description: string } | null> => {
   if (!API_KEY || API_KEY === "MISSING_API_KEY") {
     return { name: "Daily Special Unavailable", description: "AI service is unavailable (API key missing)." };
+  }
+  const remainingCooldownSeconds = getRemainingCooldownSeconds();
+  if (remainingCooldownSeconds > 0) {
+    return { name: "Quota Exceeded", description: `AI quota exceeded. Please try again in ${remainingCooldownSeconds}s.` };
   }
   try {
     const prompt = `Suggest a creative and appealing "Daily Special" dish for a restaurant. 
@@ -99,14 +162,14 @@ export const suggestDailySpecial = async (): Promise<{ name: string; description
     return parsedData;
 
   } catch (error: any) {
-    console.error("Error suggesting daily special:", error);
-
     const errorMessage = getErrorMessage(error);
     const upperCaseMessage = errorMessage.toUpperCase();
     let userFriendlyDescription = "Could not fetch AI suggestion due to an API error. Please try again later.";
     
     if (upperCaseMessage.includes('429') || upperCaseMessage.includes('RESOURCE_EXHAUSTED') || upperCaseMessage.includes('QUOTA')) {
-       userFriendlyDescription = "You have exceeded your API quota. Please check your plan and billing details.";
+       const retryAfterSeconds = getRetryAfterSeconds(error) ?? 60;
+       setCooldownUntilMs(Date.now() + Math.ceil(retryAfterSeconds) * 1000);
+       userFriendlyDescription = `You have exceeded your API quota. Please try again in ${Math.ceil(retryAfterSeconds)}s.`;
        return { name: "Quota Exceeded", description: userFriendlyDescription };
     }
     if (upperCaseMessage.includes('API_KEY_INVALID') || upperCaseMessage.includes('APIKEYNOTVALID')) {

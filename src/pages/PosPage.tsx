@@ -83,6 +83,9 @@ const PosPage: React.FC = () => {
     tables,
     waiters,
     deliveryPartners,
+    outlets,
+    activeOutletIds,
+    setActiveOutletIds,
     getSingleActiveOutlet,
     applicationSettings,
     recordSale,
@@ -95,6 +98,16 @@ const PosPage: React.FC = () => {
   const { tableId } = useParams<{ tableId?: string }>();
   
   const singleActiveOutlet = getSingleActiveOutlet();
+
+  useEffect(() => {
+    if (activeOutletIds.length === 1) return;
+    if (outlets.length === 0) return;
+
+    const preferredId = activeOutletIds.find(id => outlets.some(o => o.id === id)) || outlets[0]!.id;
+    if (preferredId && (activeOutletIds.length !== 1 || activeOutletIds[0] !== preferredId)) {
+      setActiveOutletIds([preferredId]);
+    }
+  }, [activeOutletIds, outlets, setActiveOutletIds]);
   
   // UI State
   const [selectedCategory, setSelectedCategory] = useState('All');
@@ -114,6 +127,13 @@ const PosPage: React.FC = () => {
   const [orderType, setOrderType] = useState<'Dine In' | 'Delivery' | 'Pickup' | 'WhatsApp'>(
     singleActiveOutlet?.outletType === 'CloudKitchen' ? 'Delivery' : (applicationSettings.defaultOrderType || 'Dine In')
   );
+
+  useEffect(() => {
+    if (singleActiveOutlet?.outletType === 'CloudKitchen' && orderType === 'Dine In') {
+      setOrderType('Delivery');
+    }
+  }, [singleActiveOutlet?.outletType, orderType]);
+
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [selectedTable, setSelectedTable] = useState<Table | null>(null);
   const [selectedWaiter, setSelectedWaiter] = useState<Waiter | null>(null);
@@ -612,7 +632,7 @@ const handleSendKot = useCallback(() => {
        <div className="fixed bottom-6 right-6 z-30">
            <Button 
                onClick={() => setIsAiAssistantOpen(true)} 
-               className="!rounded-full !p-4 !h-16 !w-16 shadow-lg bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-500 animate-pulse-glow" 
+               className="!rounded-full !p-4 !h-16 !w-16 shadow-lg bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-500" 
                title="Open AI Assistant"
            >
                <FiZap size={28} />

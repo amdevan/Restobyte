@@ -31,7 +31,7 @@ const MenuItemCard: React.FC<MenuItemCardProps> = ({ item, onEdit, onDelete }) =
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-md overflow-hidden transform hover:scale-102 hover:shadow-lg transition-all duration-300 flex flex-col">
+    <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 flex flex-col">
       <div className="relative">
         <img 
           src={item.imageUrl || `https://picsum.photos/seed/${item.id}/400/300`} 

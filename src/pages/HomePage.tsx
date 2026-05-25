@@ -27,7 +27,7 @@ interface QuickLinkProps {
 }
 
 const QuickLink: React.FC<QuickLinkProps> = ({ to, icon, title, description, bgColorClass, textColorClass }) => (
-    <Link to={to} className={`group flex items-start p-4 rounded-xl shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 ${bgColorClass}`}>
+    <Link to={to} className={`group flex items-start p-4 rounded-xl shadow-sm hover:shadow-lg transition-shadow duration-300 ${bgColorClass}`}>
         <div className={`p-3 rounded-lg mr-4 ${textColorClass} bg-white/30 transition-transform duration-300 group-hover:scale-110`}>
             {React.cloneElement(icon, { size: 24 })}
         </div>

@@ -39,7 +39,7 @@ const UserMenuDropdown: React.FC = () => {
         <div ref={menuRef} className="relative">
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="flex items-center space-x-2 p-1.5 rounded-full hover:bg-gray-100 transition-all duration-200 hover:scale-105"
+                className="flex items-center space-x-2 p-1.5 rounded-full hover:bg-gray-100 transition-colors duration-200"
             >
                 <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(user.username)}&background=0ea5e9&color=fff&size=36`} alt="User Avatar" className="w-9 h-9 rounded-full" />
                 <span className="hidden md:block text-sm font-semibold text-gray-700">{user.username}</span>

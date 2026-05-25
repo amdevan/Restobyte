@@ -47,7 +47,7 @@ const UserMenuDropdown: React.FC = () => {
             </button>
 
             {isOpen && (
-                <div className="absolute right-0 mt-2 w-56 origin-top-right bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none py-1 z-50">
+                <div className="absolute right-0 mt-2 w-56 origin-top-right bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none py-1 z-[1100]">
                     <div className="px-4 py-2 border-b">
                         <p className="text-sm font-semibold text-gray-800 capitalize">{user.username}</p>
                         <p className="text-xs text-gray-500">{user.username}@restobyte.app</p>
@@ -100,7 +100,7 @@ const Header: React.FC<HeaderProps> = ({ title, onToggleSidebar, isSidebarCollap
         : `${window.location.origin}/#/public/restaurant`;
 
   return (
-    <header className="bg-white shadow-sm p-3 flex-shrink-0 grid grid-cols-3 items-center z-20 border-b">
+    <header className="bg-white shadow-sm p-3 flex-shrink-0 grid grid-cols-3 items-center relative z-[1000] border-b">
         {/* Left side: Title */}
         <div className="flex items-center space-x-4">
             {onToggleSidebar && (

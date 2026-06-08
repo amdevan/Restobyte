@@ -90,7 +90,7 @@ const TableCard: React.FC<TableCardProps> = ({ table, onStatusChange }) => {
 
   const openBillAmount = useMemo(() => {
     return sales
-      .filter((s: Sale) => s.assignedTableId === table.id && !s.isSettled)
+      .filter((s: Sale) => s.assignedTableId === table.id && !(s.isClosed ?? s.isSettled))
       .reduce((sum, s) => sum + s.totalAmount, 0);
   }, [sales, table.id]);
 

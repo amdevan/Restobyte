@@ -46,7 +46,7 @@ const CartHeader: React.FC<CartHeaderProps> = ({
     const blockedTableIds = useMemo(() => {
       const ids = new Set<string>();
       for (const sale of sales) {
-        if (sale.assignedTableId && !sale.isSettled) ids.add(sale.assignedTableId);
+        if (sale.assignedTableId && !(sale.isClosed ?? sale.isSettled)) ids.add(sale.assignedTableId);
       }
       return ids;
     }, [sales]);

@@ -148,6 +148,7 @@ export interface Sale {
   paymentMethod?: string; // e.g., "Cash", "Card", "Online", "Split"
   partialPayments?: PartialPayment[]; // For split payments
   isSettled?: boolean; // True if payment complete, false if due (e.g., 'Other' payment method)
+  isClosed?: boolean; // True if order is finalized (table can be freed) even if payment is due
 
   // Delivery Partner Info
   deliveryPartnerId?: string;

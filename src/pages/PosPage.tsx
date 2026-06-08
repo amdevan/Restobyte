@@ -217,6 +217,7 @@ const handleSendKot = useCallback(() => {
             taxDetails,
             totalAmount,
             isSettled: false,
+            isClosed: false,
         });
     } else {
         const newSale = recordSale({
@@ -226,6 +227,7 @@ const handleSendKot = useCallback(() => {
             totalAmount,
             orderType,
             isSettled: false,
+            isClosed: false,
             pax: orderType === 'Dine In' ? pax : undefined,
             assignedTableId: selectedTable?.id,
             assignedTableName: selectedTable?.name,
@@ -300,7 +302,7 @@ const handleSendKot = useCallback(() => {
     if (tableId && singleActiveOutlet?.outletType !== 'CloudKitchen') {
       const tableFromUrl = tables.find(t => t.id === tableId);
       if (tableFromUrl) {
-          const openOrderForTable = sales.find(s => s.assignedTableId === tableId && !s.isSettled);
+          const openOrderForTable = sales.find(s => s.assignedTableId === tableId && !(s.isClosed ?? s.isSettled));
           
           if (openOrderForTable) {
             // Load existing order
@@ -502,6 +504,7 @@ const handleSendKot = useCallback(() => {
             partialPayments: paymentDetails.payments,
             paymentMethod: paymentDetails.splitDetails ? 'Split' : paymentDetails.payments[0]?.method || 'Other',
             isSettled: paymentDetails.isSettled,
+            isClosed: true,
             tipAmount: paymentDetails.tip > 0 ? paymentDetails.tip : undefined,
             splitDetails: paymentDetails.splitDetails,
         };
@@ -516,6 +519,7 @@ const handleSendKot = useCallback(() => {
           partialPayments: paymentDetails.payments,
           paymentMethod: paymentDetails.splitDetails ? 'Split' : paymentDetails.payments[0]?.method || 'Other',
           isSettled: paymentDetails.isSettled,
+          isClosed: true,
           pax: orderType === 'Dine In' ? pax : undefined,
           assignedTableId: selectedTable?.id,
           assignedTableName: selectedTable?.name,
@@ -535,7 +539,7 @@ const handleSendKot = useCallback(() => {
         });
     }
 
-    if (!paymentDetails.isSettled && !editingSale && saleToProcess.customerId && outstandingAmount > 0) {
+    if (!paymentDetails.isSettled && saleToProcess.customerId && outstandingAmount > 0) {
         void applyCustomerDueDelta(saleToProcess.customerId, outstandingAmount);
     }
 

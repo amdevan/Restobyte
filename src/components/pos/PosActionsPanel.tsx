@@ -44,7 +44,7 @@ const PosActionsPanel: React.FC<PosActionsPanelProps> = ({ searchTerm, onSearchC
     const { sales, reservations, tables, resolveTableAssistance } = useRestaurantData();
     const navigate = useNavigate();
 
-    const runningOrders = useMemo(() => sales.filter(s => s.assignedTableId && !s.isSettled).sort((a,b) => new Date(b.saleDate).getTime() - new Date(a.saleDate).getTime()), [sales]);
+    const runningOrders = useMemo(() => sales.filter(s => s.assignedTableId && !(s.isClosed ?? s.isSettled)).sort((a,b) => new Date(b.saleDate).getTime() - new Date(a.saleDate).getTime()), [sales]);
     
     const todaysReservations = useMemo(() => {
         const today = new Date();

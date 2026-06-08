@@ -949,25 +949,28 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         
         sales,
         recordSale: (saleData) => {
-            const newSale = { ...saleData, id: `sale-${Date.now()}`, saleDate: new Date().toISOString() };
+            const isClosed = saleData.isClosed ?? saleData.isSettled ?? false;
+            const newSale = { ...saleData, isClosed, id: `sale-${Date.now()}`, saleDate: new Date().toISOString() };
             setSales(prev => [...prev, newSale]);
             if (saleData.assignedTableId && saleData.orderType === 'Dine In') {
-                const nextStatus = saleData.isSettled ? TableStatus.Free : TableStatus.Occupied;
+                const nextStatus = isClosed ? TableStatus.Free : TableStatus.Occupied;
                 void setAndPersistTableStatus(saleData.assignedTableId, nextStatus);
             }
             return newSale;
         },
         updateSale: (updatedSale) => {
             const existing = sales.find(s => s.id === updatedSale.id);
-            setSales(prev => prev.map(s => s.id === updatedSale.id ? updatedSale : s));
+            const isClosed = updatedSale.isClosed ?? updatedSale.isSettled ?? false;
+            const normalized = { ...updatedSale, isClosed };
+            setSales(prev => prev.map(s => s.id === updatedSale.id ? normalized : s));
 
             if (updatedSale.orderType === 'Dine In' && updatedSale.assignedTableId) {
-                const wasSettled = Boolean(existing?.isSettled);
-                const isSettled = Boolean(updatedSale.isSettled);
+                const wasClosed = Boolean(existing?.isClosed ?? existing?.isSettled);
+                const nextClosed = Boolean(isClosed);
 
-                if (!wasSettled && isSettled) {
+                if (!wasClosed && nextClosed) {
                     void setAndPersistTableStatus(updatedSale.assignedTableId, TableStatus.Free);
-                } else if (wasSettled && !isSettled) {
+                } else if (wasClosed && !nextClosed) {
                     void setAndPersistTableStatus(updatedSale.assignedTableId, TableStatus.Occupied);
                 }
             }

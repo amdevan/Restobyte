@@ -5,4 +5,4 @@ nixPkgs = ["nodejs_22", "openssl"]
 cmds = ["npx prisma generate", "npm run build"]
 
 [start]
-cmd = "sh -c 'npm start'"
+cmd = "sh -c 'npm run migrate:deploy && npm start'"

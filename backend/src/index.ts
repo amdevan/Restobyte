@@ -70,8 +70,37 @@ async function start() {
     process.exit(1);
   }
 
-  if (process.env.SEED_DEMO_USERS === 'true') {
+  if (typeof process.env.RESET_SUPERADMIN_PASSWORD === 'string' && process.env.RESET_SUPERADMIN_PASSWORD.trim()) {
+    const username = typeof process.env.RESET_SUPERADMIN_USERNAME === 'string' && process.env.RESET_SUPERADMIN_USERNAME.trim()
+      ? process.env.RESET_SUPERADMIN_USERNAME.trim()
+      : 'superadmin';
     try {
+      const hashed = await bcrypt.hash(process.env.RESET_SUPERADMIN_PASSWORD, 10);
+      const existing = await prisma.user.findUnique({ where: { username } });
+      if (existing) {
+        await prisma.user.update({
+          where: { username },
+          data: { password: hashed, isSuperAdmin: true, isActive: true },
+        } as any);
+        console.log('[bootstrap]: Updated superadmin password');
+      } else {
+        await prisma.user.create({
+          data: { username, password: hashed, roleId: 'role-superadmin', isSuperAdmin: true, isActive: true },
+        } as any);
+        console.log('[bootstrap]: Created superadmin user');
+      }
+    } catch (error) {
+      console.error('[bootstrap]: Failed to reset superadmin password', error);
+    }
+  }
+
+  const shouldSeedDemoUsers = process.env.SEED_DEMO_USERS === 'true';
+  if (shouldSeedDemoUsers) {
+    try {
+      const userCount = await prisma.user.count();
+      if (userCount > 0) {
+        console.log('[seed]: Skipping demo seed because database already has users');
+      } else {
       const tenant = await prisma.tenant.upsert({
         where: { id: 'tenant-1' },
         update: {},
@@ -133,6 +162,7 @@ async function start() {
           },
         });
         console.log('[seed]: Created demo superadmin user');
+      }
       }
     } catch (error) {
       console.error('[seed]: Failed to seed demo users', error);

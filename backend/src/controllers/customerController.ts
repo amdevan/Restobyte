@@ -9,7 +9,7 @@ export const getCustomers = async (req: Request, res: Response) => {
     return;
   }
   const queryOutletId = typeof (req.query as any)?.outletId === 'string' ? String((req.query as any).outletId) : undefined;
-  const outletId = (user.outletId ? String(user.outletId) : undefined) || queryOutletId;
+  const outletId = queryOutletId || (user.outletId ? String(user.outletId) : undefined);
   if (!outletId) {
     res.status(400).json({ message: 'outletId is required' });
     return;
@@ -50,7 +50,7 @@ export const createCustomer = async (req: Request, res: Response) => {
     return;
   }
   const { name, email, phone, address, dob, companyName, vatPan, dueAmount, outletId: bodyOutletId } = req.body;
-  const outletId = user.outletId ? String(user.outletId) : (bodyOutletId ? String(bodyOutletId) : undefined);
+  const outletId = bodyOutletId ? String(bodyOutletId) : (user.outletId ? String(user.outletId) : undefined);
   if (!outletId) {
     res.status(400).json({ message: 'outletId is required' });
     return;

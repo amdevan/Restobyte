@@ -570,7 +570,7 @@ const handleSendKot = useCallback(() => {
       
       <div className="flex flex-1 overflow-hidden h-full">
         {/* Left Panel: Categories */}
-        <aside className="w-1/4 lg:w-1/5 bg-white p-4 flex flex-col shadow-lg z-10">
+        <aside className="w-1/5 lg:w-1/6 bg-white p-4 flex flex-col shadow-lg z-10">
             <header className="mb-4">
             <Link to="/" className="text-2xl font-bold text-sky-600">Resto<span className="text-amber-500">Byte</span></Link>
             <p className="text-xs text-gray-500">POS: {singleActiveOutlet.name}</p>

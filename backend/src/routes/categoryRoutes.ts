@@ -4,9 +4,10 @@ import { authenticate } from '../middleware/authMiddleware.js';
 
 const router = Router();
 
+router.get('/', getCategories);
+
 router.use(authenticate);
 
-router.get('/', getCategories);
 router.post('/', createCategory);
 router.put('/:id', updateCategory);
 router.delete('/:id', deleteCategory);

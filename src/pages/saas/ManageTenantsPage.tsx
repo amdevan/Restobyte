@@ -89,7 +89,7 @@ const ManageTenantsPage: React.FC = () => {
         const data = await res.json();
         localStorage.setItem('authUser', JSON.stringify(data.user));
         localStorage.setItem('authToken', data.token);
-        window.location.href = '/app/dashboard';
+        window.location.hash = '/app/dashboard';
       } catch {
         alert('Network error');
       }

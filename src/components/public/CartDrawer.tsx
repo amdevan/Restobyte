@@ -1,8 +1,8 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { useCart } from '../../hooks/useCart';
-import Button from '../common/Button';
 import { FiX, FiTrash2, FiPlus, FiMinus, FiShoppingBag } from 'react-icons/fi';
-import Money from '../common/Money';
+import { formatMoney } from '@/utils/currency';
+import type { Currency, ApplicationSettings } from '@/types';
 
 interface CartDrawerProps {
   isOpen: boolean;
@@ -11,6 +11,8 @@ interface CartDrawerProps {
   removeFromCart: ReturnType<typeof useCart>['removeFromCart'];
   updateQuantity: ReturnType<typeof useCart>['updateQuantity'];
   cartTotal: number;
+  currency?: Currency;
+  applicationSettings: ApplicationSettings;
 }
 
 const CartDrawer: React.FC<CartDrawerProps> = ({ 
@@ -19,7 +21,9 @@ const CartDrawer: React.FC<CartDrawerProps> = ({
     cart, 
     removeFromCart, 
     updateQuantity, 
-    cartTotal 
+    cartTotal,
+    currency,
+    applicationSettings,
 }) => {
   
   if (!isOpen) return null;
@@ -80,7 +84,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({
                                     <p className="text-xs text-gray-500 mb-2 line-clamp-1">{item.description}</p>
                                 </div>
                                 <div className="flex justify-between items-center">
-                                    <span className="font-bold text-orange-500 text-sm"><Money amount={item.price * item.quantity} /></span>
+                                    <span className="font-bold text-orange-500 text-sm">{formatMoney((Number(item.price) || 0) * item.quantity, currency, applicationSettings)}</span>
                                     
                                     <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden bg-white">
                                         <button 
@@ -111,7 +115,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({
                     <div className="space-y-3 mb-6">
                         <div className="flex justify-between text-sm text-gray-600">
                             <span>Subtotal</span>
-                            <span className="font-medium"><Money amount={cartTotal} /></span>
+                            <span className="font-medium">{formatMoney(cartTotal, currency, applicationSettings)}</span>
                         </div>
                         <div className="flex justify-between text-sm text-gray-600">
                             <span>Delivery Fee</span>
@@ -119,12 +123,12 @@ const CartDrawer: React.FC<CartDrawerProps> = ({
                         </div>
                         <div className="border-t border-dashed border-gray-200 pt-3 flex justify-between text-lg font-bold text-gray-900">
                             <span>Total</span>
-                            <span className="text-orange-500"><Money amount={cartTotal} /></span>
+                            <span className="text-orange-500">{formatMoney(cartTotal, currency, applicationSettings)}</span>
                         </div>
                     </div>
                     <button className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-4 rounded-xl shadow-lg shadow-orange-500/30 transition-all transform active:scale-95 flex justify-between px-6 items-center group">
                         <span>Checkout</span>
-                        <span className="bg-white/20 px-3 py-1 rounded-lg text-sm font-mono group-hover:bg-white/30 transition-colors"><Money amount={cartTotal} /></span>
+                        <span className="bg-white/20 px-3 py-1 rounded-lg text-sm font-mono group-hover:bg-white/30 transition-colors">{formatMoney(cartTotal, currency, applicationSettings)}</span>
                     </button>
                 </div>
             )}

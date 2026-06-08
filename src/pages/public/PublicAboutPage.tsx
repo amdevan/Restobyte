@@ -1,13 +1,13 @@
 import React from 'react';
 import { useOutletContext, Link } from 'react-router-dom';
-import { useRestaurantData } from '@/hooks/useRestaurantData';
 import { FiPlay, FiStar, FiArrowRight } from 'react-icons/fi';
+import type { WebsiteSettings } from '@/types';
 
 const PublicAboutPage: React.FC = () => {
-  const { outlet } = useOutletContext<{ outlet: any }>();
-  const { websiteSettings } = useRestaurantData();
+  const { outlet, baseUrl, websiteSettings } = useOutletContext<{ outlet: any; baseUrl: string; websiteSettings: WebsiteSettings }>();
   const { aboutUsContent } = websiteSettings;
   const restaurantName = outlet?.restaurantName || websiteSettings.whiteLabel?.appName || 'Food Village';
+  const accent = websiteSettings.whiteLabel?.primaryColor || '#f97316';
 
   // Mock Chefs Data
   const chefs = [
@@ -43,7 +43,7 @@ const PublicAboutPage: React.FC = () => {
          <div className="container mx-auto relative z-10">
             <h1 className="text-4xl md:text-5xl font-serif font-bold text-gray-900 mb-4">About Us</h1>
             <div className="flex justify-center items-center space-x-2 text-sm font-medium text-gray-600">
-                <Link to="/public/restaurant" className="hover:text-orange-500 transition-colors">Home</Link>
+                <Link to={baseUrl} className="hover:text-orange-500 transition-colors">Home</Link>
                 <span>&gt;</span>
                 <span className="text-orange-500">About Us</span>
             </div>
@@ -53,11 +53,9 @@ const PublicAboutPage: React.FC = () => {
       {/* Welcome Section */}
       <section className="py-24 px-4 bg-white">
         <div className="container mx-auto max-w-6xl text-center">
-            <h2 className="text-3xl md:text-5xl font-serif font-bold text-gray-900 mb-6">Welcome To {restaurantName}</h2>
-            <p className="text-gray-600 text-lg leading-relaxed max-w-3xl mx-auto mb-12">
-                Place where you can have a great time with your family and friends, and, of course, try the best steaks and wine in 14 King Street, Charleston South Carolina.
-                <br/><br/>
-                Quality view makes lovers eyes as walls, or provide not value. However us, let us not here often corporation. Is non versus loyal. Does fringilla sollicitudin porta. Vivamus fringilla laoreet velit car sodales, ullamcorper nunc pharetra. Vestibulum ultricies pulvinar lectus non condimentum nisl consequat in.
+            <h2 className="text-3xl md:text-5xl font-serif font-bold text-gray-900 mb-6">{aboutUsContent?.title || `Welcome To ${restaurantName}`}</h2>
+            <p className="text-gray-600 text-lg leading-relaxed max-w-3xl mx-auto mb-12 whitespace-pre-line">
+                {aboutUsContent?.content || `Welcome to ${restaurantName}.`}
             </p>
 
             <div className="relative rounded-3xl overflow-hidden shadow-2xl mx-auto max-w-5xl group cursor-pointer">
@@ -68,7 +66,7 @@ const PublicAboutPage: React.FC = () => {
                     className="w-full h-[500px] object-cover"
                 />
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20">
-                    <div className="w-20 h-20 bg-white/90 rounded-full flex items-center justify-center text-orange-500 hover:scale-110 transition-transform duration-300 shadow-lg cursor-pointer">
+                    <div className="w-20 h-20 bg-white/90 rounded-full flex items-center justify-center hover:scale-110 transition-transform duration-300 shadow-lg cursor-pointer" style={{ color: accent }}>
                         <FiPlay size={32} className="ml-1 fill-current" />
                     </div>
                 </div>

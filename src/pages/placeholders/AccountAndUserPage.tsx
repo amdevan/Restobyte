@@ -46,6 +46,13 @@ const AccountAndUserPage: React.FC = () => {
   
   const getRoleName = (roleId: string) => roles.find(r => r.id === roleId)?.name || 'Unknown Role';
   const getOutletName = (outletId: string) => outlets.find(o => o.id === outletId)?.name || 'Unknown Outlet';
+  const getOutletNames = (user: User) => {
+    const ids = Array.isArray((user as any).outletIds) && (user as any).outletIds.length > 0
+      ? (user as any).outletIds
+      : (user.outletId ? [user.outletId] : []);
+    const names = ids.map((id: string) => getOutletName(id));
+    return names.join(', ');
+  };
 
   const filteredUsers = useMemo(() => {
     if (!searchTerm) {
@@ -54,7 +61,7 @@ const AccountAndUserPage: React.FC = () => {
     return users.filter(user =>
       user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
       getRoleName(user.roleId).toLowerCase().includes(searchTerm.toLowerCase()) ||
-      getOutletName(user.outletId).toLowerCase().includes(searchTerm.toLowerCase())
+      getOutletNames(user).toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [users, roles, outlets, searchTerm]);
 
@@ -97,7 +104,7 @@ const AccountAndUserPage: React.FC = () => {
               <tr>
                 <th className="py-3 px-4 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Username</th>
                 <th className="py-3 px-4 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Role</th>
-                <th className="py-3 px-4 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Assigned Outlet</th>
+                <th className="py-3 px-4 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Assigned Outlets</th>
                 <th className="py-3 px-4 text-center text-xs font-medium text-gray-600 uppercase tracking-wider">Status</th>
                 <th className="py-3 px-4 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Actions</th>
               </tr>
@@ -107,7 +114,7 @@ const AccountAndUserPage: React.FC = () => {
                 <tr key={user.id} className="hover:bg-gray-50 transition-colors">
                   <td className="py-3 px-4 text-sm font-medium text-gray-800">{user.username}</td>
                   <td className="py-3 px-4 text-sm text-gray-600">{getRoleName(user.roleId)}</td>
-                  <td className="py-3 px-4 text-sm text-gray-600">{getOutletName(user.outletId)}</td>
+                  <td className="py-3 px-4 text-sm text-gray-600 max-w-xs truncate">{getOutletNames(user)}</td>
                   <td className="py-3 px-4 text-center">
                     <span className={`px-2 py-0.5 inline-flex items-center text-xs leading-5 font-semibold rounded-full ${user.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                       {user.isActive ? <FiCheckCircle className="mr-1" /> : <FiStatusX className="mr-1" />}

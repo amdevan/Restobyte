@@ -7,7 +7,7 @@ import type { AuthRequest } from '../middleware/authMiddleware.js';
 const JWT_SECRET = process.env.JWT_SECRET || 'your_super_secret_key';
 
 export const register = async (req: Request, res: Response): Promise<void> => {
-  const { username, password, roleId, outletId, isSuperAdmin, name, mobile, address } = req.body;
+  const { username, password, roleId, outletId, outletIds, isSuperAdmin, name, mobile, address } = req.body;
 
   try {
     const existingUser = await prisma.user.findUnique({ where: { username } });
@@ -19,15 +19,20 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
+    const requestedOutletIds = Array.isArray(outletIds)
+      ? outletIds.map((v: any) => String(v)).filter(Boolean)
+      : (typeof outletId === 'string' && outletId ? [String(outletId)] : []);
+
     const user = await prisma.user.create({
       data: {
         username,
         password: hashedPassword,
         roleId,
-        outletId,
+        outletId: requestedOutletIds[0] || outletId,
+        outletIds: requestedOutletIds,
         isSuperAdmin: isSuperAdmin || false
       }
-    });
+    } as any);
 
     if (roleId === 'role-customer') {
       try {
@@ -60,6 +65,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
         isSuperAdmin: user.isSuperAdmin,
         roleId: user.roleId,
         outletId: user.outletId,
+        outletIds: Array.isArray((user as any).outletIds) ? (user as any).outletIds : (user.outletId ? [user.outletId] : []),
         tenantId: user.tenantId,
         isActive: user.isActive
       },
@@ -75,7 +81,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
   const { username, password } = req.body;
 
   try {
-    const user = await prisma.user.findUnique({ where: { username } });
+    const user = await prisma.user.findUnique({ where: { username } } as any);
     if (!user) {
       res.status(400).json({ message: 'Invalid credentials' });
       return;
@@ -101,6 +107,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
         isSuperAdmin: user.isSuperAdmin,
         roleId: user.roleId,
         outletId: user.outletId,
+        outletIds: Array.isArray((user as any).outletIds) ? (user as any).outletIds : (user.outletId ? [user.outletId] : []),
         tenantId: user.tenantId,
         isActive: user.isActive
       },
@@ -152,6 +159,7 @@ export const impersonate = async (req: Request, res: Response): Promise<void> =>
         isSuperAdmin: false,
         roleId: adminUser.roleId,
         outletId: adminUser.outletId,
+        outletIds: Array.isArray((adminUser as any).outletIds) ? (adminUser as any).outletIds : (adminUser.outletId ? [adminUser.outletId] : []),
         isActive: adminUser.isActive
       },
       message: 'Impersonation successful'

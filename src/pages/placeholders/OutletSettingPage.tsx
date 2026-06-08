@@ -19,6 +19,15 @@ const OutletSettingPage: React.FC = () => {
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingOutlet, setEditingOutlet] = useState<Outlet | null>(null);
+    const activeCount = activeOutletIds.length;
+    const totalCount = outlets.length;
+
+    const toggleOutletActive = (outletId: string) => {
+        const isActive = activeOutletIds.includes(outletId);
+        const next = isActive ? activeOutletIds.filter(id => id !== outletId) : [...activeOutletIds, outletId];
+        if (next.length === 0) return;
+        setActiveOutletIds(next);
+    };
 
     const handleOpenModalForAdd = () => {
         setEditingOutlet(null);
@@ -54,9 +63,14 @@ const OutletSettingPage: React.FC = () => {
                 <h1 className="text-2xl font-semibold text-gray-800 flex items-center">
                     <FiTool className="mr-3 text-sky-600"/> Outlet Management
                 </h1>
-                <Button onClick={handleOpenModalForAdd} leftIcon={<FiPlusCircle />}>
-                    Add New Outlet
-                </Button>
+                <div className="flex items-center gap-3">
+                    <span className="text-sm font-semibold text-gray-600">
+                        Active: {activeCount}/{totalCount}
+                    </span>
+                    <Button onClick={handleOpenModalForAdd} leftIcon={<FiPlusCircle />}>
+                        Add New Outlet
+                    </Button>
+                </div>
             </div>
             <Card>
                 <div className="overflow-x-auto">
@@ -78,13 +92,21 @@ const OutletSettingPage: React.FC = () => {
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 max-w-xs truncate">{outlet.address}</td>
                                     <td className="px-6 py-4 whitespace-nowrap">
-                                        {activeOutletIds.length === 1 && activeOutletIds[0] === outlet.id ? (
-                                            <span className="px-2.5 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 items-center">
-                                                <FiCheckCircle className="mr-1.5"/> Active
-                                            </span>
-                                        ) : (
-                                            <Button variant="outline" size="sm" onClick={() => setActiveOutletIds([outlet.id])}>Set as Active</Button>
-                                        )}
+                                        <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+                                            <input
+                                                type="checkbox"
+                                                checked={activeOutletIds.includes(outlet.id)}
+                                                onChange={() => toggleOutletActive(outlet.id)}
+                                                className="h-4 w-4 rounded text-sky-600 focus:ring-sky-500 border-gray-300"
+                                            />
+                                            {activeOutletIds.includes(outlet.id) ? (
+                                                <span className="px-2.5 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 items-center">
+                                                    <FiCheckCircle className="mr-1.5"/> Active
+                                                </span>
+                                            ) : (
+                                                <span className="text-xs text-gray-500">Inactive</span>
+                                            )}
+                                        </label>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                         <div className="flex items-center space-x-2">

@@ -2,13 +2,35 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useOutletContext, useNavigate } from 'react-router-dom';
 import { useRestaurantData } from '@/hooks/useRestaurantData';
 import { getMenuItems } from '@/services/api';
-import { FiSmartphone, FiTruck, FiAward, FiStar, FiShoppingBag, FiHeart, FiArrowRight } from 'react-icons/fi';
-import Money from '@/components/common/Money';
+import { FiSmartphone, FiTruck, FiAward, FiStar, FiShoppingBag, FiHeart, FiArrowRight, FiCoffee, FiGift } from 'react-icons/fi';
+import type { WebsiteSettings } from '@/types';
+import { formatMoney, getDefaultCurrency } from '@/utils/currency';
 
 const PublicHomePage: React.FC = () => {
   const navigate = useNavigate();
-  const { outlet, baseUrl, addToCart } = useOutletContext<{ outlet: any, baseUrl: string, addToCart: (item: any) => void }>();
-  const { websiteSettings, preMadeFoodItems } = useRestaurantData();
+  const { outlet, baseUrl, addToCart, websiteSettings, applicationSettings } = useOutletContext<{ outlet: any, baseUrl: string, addToCart: (item: any) => void, websiteSettings: WebsiteSettings, applicationSettings: any }>();
+  const { preMadeFoodItems, currencies } = useRestaurantData();
+  const defaultCurrency = useMemo(() => getDefaultCurrency(currencies), [currencies]);
+  const accent = useMemo(() => websiteSettings.whiteLabel?.primaryColor || '#f97316', [websiteSettings.whiteLabel?.primaryColor]);
+
+  const banner = websiteSettings.homePageContent?.bannerSection;
+  const servicesFromSettings = websiteSettings.homePageContent?.serviceSection?.services || [];
+  const services = servicesFromSettings.length > 0 ? servicesFromSettings : [
+    { id: 'svc-1', title: 'Order Food', description: 'Seamless ordering process through our app or website. Just a few clicks to satisfy your hunger.', icon: 'FiSmartphone' },
+    { id: 'svc-2', title: 'Fast Delivery', description: 'Delivery that is always on time even faster. We value your time and hunger.', icon: 'FiTruck' },
+    { id: 'svc-3', title: 'Best Quality', description: 'The best quality of food for you. Fresh ingredients and hygienic preparation.', icon: 'FiAward' },
+  ];
+
+  const iconMap: Record<string, any> = {
+    FiSmartphone,
+    FiTruck,
+    FiAward,
+    FiShoppingBag,
+    FiCoffee,
+    FiGift,
+    FiStar,
+    FiHeart,
+  };
 
   // Remote menu fetch state
   const [remoteMenu, setRemoteMenu] = useState<typeof preMadeFoodItems>([]);
@@ -59,17 +81,17 @@ const PublicHomePage: React.FC = () => {
               <span className="w-8 h-0.5 bg-orange-500"></span> Hello Food Lovers
             </span>
             <h1 className="text-5xl md:text-6xl font-serif font-bold text-gray-900 leading-tight">
-              Welcome To <br /> Your Food <br /> <span className="text-orange-500">Village</span>
+              {banner?.title || 'Welcome'}
             </h1>
             <p className="text-gray-600 text-lg max-w-md leading-relaxed">
-              {websiteSettings.homePageContent?.bannerSection?.subtitle || 'Delicious food for every mood. Chef\'s special recipes made with love and passion. Order now and enjoy!'}
+              {banner?.subtitle || 'Delicious food for every mood. Chef\'s special recipes made with love and passion. Order now and enjoy!'}
             </p>
             <div className="flex gap-4 pt-4">
-              <button onClick={() => navigate(`${baseUrl}/menu`)} className="bg-orange-500 hover:bg-orange-600 text-white px-8 py-3 rounded-full font-semibold shadow-lg shadow-orange-500/30 transition-all transform hover:-translate-y-1">
+              <button onClick={() => navigate(`${baseUrl}/menu`)} className="text-white px-8 py-3 rounded-full font-semibold shadow-lg transition-all transform hover:-translate-y-1" style={{ backgroundColor: accent }}>
                 Check Menu
               </button>
               <button onClick={() => navigate(`${baseUrl}/menu`)} className="bg-white hover:bg-gray-50 text-gray-800 px-8 py-3 rounded-full font-semibold shadow-md border border-gray-100 transition-all flex items-center gap-2">
-                <span className="bg-orange-100 text-orange-500 p-1 rounded-full"><FiShoppingBag /></span> Order Now
+                <span className="p-1 rounded-full" style={{ backgroundColor: `${accent}22`, color: accent }}><FiShoppingBag /></span> Order Now
               </button>
             </div>
           </div>
@@ -77,7 +99,7 @@ const PublicHomePage: React.FC = () => {
             <div className="relative">
               <div className="absolute -top-10 -right-10 w-64 h-64 bg-orange-200 rounded-full filter blur-3xl opacity-50"></div>
               <img 
-                src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80" 
+                src={banner?.imageUrl || "https://images.unsplash.com/photo-1504674900247-0877df9cc836?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"} 
                 alt="Delicious Food" 
                 className="relative z-10 w-full h-auto rounded-3xl shadow-2xl transform rotate-2 hover:rotate-0 transition-all duration-500 object-cover aspect-[4/3]"
                 crossOrigin="anonymous"
@@ -111,27 +133,18 @@ const PublicHomePage: React.FC = () => {
             <h2 className="text-3xl md:text-4xl font-serif font-bold text-gray-900">Your Favorite Food Delivery <br /> Partner</h2>
         </div>
         <div className="container mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="group p-8 rounded-3xl bg-white border border-gray-100 hover:shadow-xl hover:border-orange-100 transition-all duration-300 text-center">
-                <div className="w-20 h-20 mx-auto bg-orange-50 rounded-full flex items-center justify-center text-orange-500 mb-6 group-hover:bg-orange-500 group-hover:text-white transition-colors duration-300">
-                    <FiSmartphone size={32} />
+            {services.map((service) => {
+              const Icon = iconMap[service.icon] || FiAward;
+              return (
+                <div key={service.id} className="group p-8 rounded-3xl bg-white border border-gray-100 hover:shadow-xl transition-all duration-300 text-center">
+                  <div className="w-20 h-20 mx-auto rounded-full flex items-center justify-center mb-6 transition-colors duration-300" style={{ backgroundColor: `${accent}14`, color: accent }}>
+                    <Icon size={32} />
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-800 mb-3">{service.title || 'Service'}</h3>
+                  <p className="text-gray-500 leading-relaxed">{service.description || ''}</p>
                 </div>
-                <h3 className="text-xl font-bold text-gray-800 mb-3">Order Food</h3>
-                <p className="text-gray-500 leading-relaxed">Seamless ordering process through our app or website. Just a few clicks to satisfy your hunger.</p>
-            </div>
-            <div className="group p-8 rounded-3xl bg-white border border-gray-100 hover:shadow-xl hover:border-orange-100 transition-all duration-300 text-center">
-                <div className="w-20 h-20 mx-auto bg-orange-50 rounded-full flex items-center justify-center text-orange-500 mb-6 group-hover:bg-orange-500 group-hover:text-white transition-colors duration-300">
-                    <FiTruck size={32} />
-                </div>
-                <h3 className="text-xl font-bold text-gray-800 mb-3">Fast Delivery</h3>
-                <p className="text-gray-500 leading-relaxed">Delivery that is always on time even faster. We value your time and hunger.</p>
-            </div>
-            <div className="group p-8 rounded-3xl bg-white border border-gray-100 hover:shadow-xl hover:border-orange-100 transition-all duration-300 text-center">
-                <div className="w-20 h-20 mx-auto bg-orange-50 rounded-full flex items-center justify-center text-orange-500 mb-6 group-hover:bg-orange-500 group-hover:text-white transition-colors duration-300">
-                    <FiAward size={32} />
-                </div>
-                <h3 className="text-xl font-bold text-gray-800 mb-3">Best Quality</h3>
-                <p className="text-gray-500 leading-relaxed">The best quality of food for you. Fresh ingredients and hygienic preparation.</p>
-            </div>
+              );
+            })}
         </div>
       </section>
 
@@ -166,7 +179,7 @@ const PublicHomePage: React.FC = () => {
                                 <div className="flex-1 min-w-0">
                                     <div className="flex justify-between items-start">
                                         <h4 className="font-bold text-sm mb-0.5 truncate text-gray-100 pr-2">{item.name}</h4>
-                                        <span className="font-bold text-orange-500 text-sm whitespace-nowrap"><Money amount={item.price} /></span>
+                                        <span className="font-bold text-orange-500 text-sm whitespace-nowrap">{formatMoney(Number(item.price) || 0, defaultCurrency, applicationSettings)}</span>
                                     </div>
                                     <div className="flex items-center justify-between mt-1">
                                         <div className="flex items-center gap-0.5 text-yellow-400 text-[10px]">

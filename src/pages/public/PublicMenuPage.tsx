@@ -1,15 +1,16 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useOutletContext, Link } from 'react-router-dom';
 import { useRestaurantData } from '@/hooks/useRestaurantData';
-import { useCart } from '@/hooks/useCart';
 import { getMenuItems } from '@/services/api';
-import { FiStar, FiArrowRight, FiShoppingCart } from 'react-icons/fi';
-import Money from '@/components/common/Money';
+import { FiStar, FiArrowRight, FiShoppingBag } from 'react-icons/fi';
+import type { WebsiteSettings } from '@/types';
+import { formatMoney, getDefaultCurrency } from '@/utils/currency';
 
 const PublicMenuPage: React.FC = () => {
-  const { outlet } = useOutletContext<{ outlet: any }>();
-  const { websiteSettings, preMadeFoodItems } = useRestaurantData();
-  const { addToCart } = useCart();
+  const { outlet, baseUrl, websiteSettings, addToCart, applicationSettings } = useOutletContext<{ outlet: any; baseUrl: string; websiteSettings: WebsiteSettings; addToCart: (item: any) => void; applicationSettings: any }>();
+  const { preMadeFoodItems, currencies } = useRestaurantData();
+
+  const defaultCurrency = useMemo(() => getDefaultCurrency(currencies), [currencies]);
 
   // Remote menu fetch state
   const [remoteMenu, setRemoteMenu] = useState<typeof preMadeFoodItems>([]);
@@ -64,9 +65,9 @@ const PublicMenuPage: React.FC = () => {
          </div>
 
          <div className="container mx-auto relative z-10">
-            <h1 className="text-4xl md:text-5xl font-serif font-bold text-gray-900 mb-4">Food Menu</h1>
+            <h1 className="text-4xl md:text-5xl font-serif font-bold text-gray-900 mb-4">{websiteSettings.commonMenuPage?.title || 'Food Menu'}</h1>
             <div className="flex justify-center items-center space-x-2 text-sm font-medium text-gray-600">
-                <Link to="/public/restaurant" className="hover:text-orange-500 transition-colors">Home</Link>
+                <Link to={baseUrl} className="hover:text-orange-500 transition-colors">Home</Link>
                 <span>&gt;</span>
                 <span className="text-gray-900 font-bold">Food Menu</span>
             </div>
@@ -106,11 +107,11 @@ const PublicMenuPage: React.FC = () => {
             </div>
 
             {/* Menu Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5 lg:gap-6">
                 {filteredItems.length > 0 ? (
                     filteredItems.map(item => (
-                        <div key={item.id} className="bg-white rounded-lg p-2 shadow-sm hover:shadow-md transition-all duration-300 group text-center border border-gray-100 relative flex flex-col items-center">
-                            <div className="relative mb-1 overflow-hidden rounded-full mx-auto w-28 h-28 shadow-sm group-hover:scale-105 transition-transform duration-300">
+                        <div key={item.id} className="bg-white rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-300 group text-center border border-gray-100 relative flex flex-col items-center">
+                            <div className="relative mb-3 overflow-hidden rounded-xl mx-auto w-36 h-36 md:w-40 md:h-40 shadow-sm group-hover:scale-[1.02] transition-transform duration-300">
                                 <img 
                                     src={item.imageUrl || `https://picsum.photos/seed/${item.id}/400/400`} 
                                     alt={item.name} 
@@ -119,20 +120,25 @@ const PublicMenuPage: React.FC = () => {
                                 />
                             </div>
                             
-                            <h3 className="font-bold text-gray-900 text-xs mb-0.5 truncate w-full px-1">{item.name}</h3>
+                            <h3 className="font-bold text-gray-900 text-sm mb-1 truncate w-full px-1">{item.name}</h3>
                             
-                            <div className="flex justify-center items-center gap-0.5 text-yellow-400 text-[8px] mb-1">
-                                <FiStar fill="currentColor" size={8} />
-                                <FiStar fill="currentColor" size={8} />
-                                <FiStar fill="currentColor" size={8} />
-                                <FiStar fill="currentColor" size={8} />
-                                <FiStar fill="currentColor" size={8} />
+                            <div className="flex justify-center items-center gap-0.5 text-yellow-400 text-[10px] mb-3">
+                                <FiStar fill="currentColor" size={10} />
+                                <FiStar fill="currentColor" size={10} />
+                                <FiStar fill="currentColor" size={10} />
+                                <FiStar fill="currentColor" size={10} />
+                                <FiStar fill="currentColor" size={10} />
                             </div>
                             
                             <div className="flex items-center justify-between w-full px-1 mt-auto">
-                                <span className="font-bold text-orange-500 text-sm"><Money amount={item.price} /></span>
-                                <button onClick={() => addToCart(item)} className="p-1 bg-orange-100 rounded-full text-orange-600 hover:bg-orange-500 hover:text-white transition-colors shadow-sm" title="Add to Cart">
-                                    <FiShoppingCart size={12} />
+                                <div className="flex items-baseline gap-2">
+                                    <span className="font-bold text-orange-500 text-lg">{formatMoney(Number(item.price) || 0, defaultCurrency, applicationSettings)}</span>
+                                    {defaultCurrency?.code && (
+                                        <span className="text-[11px] font-semibold text-gray-400">{defaultCurrency.code}</span>
+                                    )}
+                                </div>
+                                <button onClick={() => addToCart(item)} className="p-2.5 bg-orange-100 rounded-xl text-orange-600 hover:bg-orange-500 hover:text-white transition-colors shadow-sm" title="Add to Cart">
+                                    <FiShoppingBag size={16} />
                                 </button>
                             </div>
                         </div>

@@ -34,19 +34,20 @@ export const getUsers = async (req: Request, res: Response) => {
         ...(tenantId ? { tenantId } : {}),
         ...(outletId ? { outletId } : {}),
       },
-      select: {
+      select: ({
         id: true,
         username: true,
         roleId: true,
         outletId: true,
+        outletIds: true,
         tenantId: true,
         isActive: true,
         isSuperAdmin: true,
         createdAt: true,
         updatedAt: true,
-      },
+      } as any),
       orderBy: { createdAt: 'asc' },
-    });
+    } as any);
     res.json(users);
     return;
   }
@@ -66,19 +67,20 @@ export const getUsers = async (req: Request, res: Response) => {
 
   const users = await prisma.user.findMany({
     where: { tenantId: user.tenantId, ...(outletId ? { outletId } : {}) },
-    select: {
+    select: ({
       id: true,
       username: true,
       roleId: true,
       outletId: true,
+      outletIds: true,
       tenantId: true,
       isActive: true,
       isSuperAdmin: true,
       createdAt: true,
       updatedAt: true,
-    },
+    } as any),
     orderBy: { createdAt: 'asc' },
-  });
+  } as any);
   res.json(users);
 };
 
@@ -90,13 +92,16 @@ export const createUser = async (req: Request, res: Response) => {
     return;
   }
 
-  const { username, password, roleId, outletId, isActive, isSuperAdmin, tenantId: bodyTenantId } = req.body || {};
+  const { username, password, roleId, outletId, outletIds, isActive, isSuperAdmin, tenantId: bodyTenantId } = req.body || {};
   const trimmedUsername = typeof username === 'string' ? username.trim() : '';
   const rawPassword = typeof password === 'string' ? password : '';
-  const targetOutletId = typeof outletId === 'string' ? outletId : '';
+  const requestedOutletIds: string[] = Array.isArray(outletIds)
+    ? outletIds.map((v: any) => String(v)).filter(Boolean)
+    : (typeof outletId === 'string' && outletId ? [String(outletId)] : []);
+  const targetOutletId = requestedOutletIds[0] || '';
 
-  if (!trimmedUsername || !rawPassword || rawPassword.length < 6 || !targetOutletId) {
-    res.status(400).json({ message: 'username, password (min 6), and outletId are required' });
+  if (!trimmedUsername || !rawPassword || rawPassword.length < 6 || requestedOutletIds.length === 0) {
+    res.status(400).json({ message: 'username, password (min 6), and outletIds are required' });
     return;
   }
 
@@ -117,8 +122,8 @@ export const createUser = async (req: Request, res: Response) => {
     return;
   }
 
-  const allowedOutlet = await ensureOutletBelongsToTenant(targetOutletId, tenantId);
-  if (!allowedOutlet) {
+  const allowChecks = await Promise.all(requestedOutletIds.map(id => ensureOutletBelongsToTenant(id, tenantId)));
+  if (allowChecks.some(ok => !ok)) {
     res.status(403).json({ message: 'Unauthorized' });
     return;
   }
@@ -138,6 +143,7 @@ export const createUser = async (req: Request, res: Response) => {
       password: hashedPassword,
       roleId: typeof roleId === 'string' ? roleId : null,
       outletId: targetOutletId,
+      outletIds: requestedOutletIds,
       tenantId,
       isActive: typeof isActive === 'boolean' ? isActive : true,
       isSuperAdmin: user?.isSuperAdmin ? Boolean(isSuperAdmin) : false,
@@ -147,13 +153,14 @@ export const createUser = async (req: Request, res: Response) => {
       username: true,
       roleId: true,
       outletId: true,
+      outletIds: true,
       tenantId: true,
       isActive: true,
       isSuperAdmin: true,
       createdAt: true,
       updatedAt: true,
     },
-  });
+  } as any);
 
   res.status(201).json(created);
 };
@@ -180,9 +187,12 @@ export const updateUser = async (req: Request, res: Response) => {
     }
   }
 
-  const { username, password, roleId, outletId, isActive, isSuperAdmin } = req.body || {};
+  const { username, password, roleId, outletId, outletIds, isActive, isSuperAdmin } = req.body || {};
   const nextUsername = typeof username === 'string' ? username.trim() : undefined;
   const nextOutletId = typeof outletId === 'string' ? outletId : undefined;
+  const nextOutletIds: string[] | undefined = Array.isArray(outletIds)
+    ? outletIds.map((v: any) => String(v)).filter(Boolean)
+    : undefined;
 
   if (nextUsername && nextUsername !== existing.username) {
     const taken = await prisma.user.findUnique({ where: { username: nextUsername } });
@@ -193,13 +203,14 @@ export const updateUser = async (req: Request, res: Response) => {
   }
 
   const tenantId = existing.tenantId;
-  if (nextOutletId) {
+  if (nextOutletId || nextOutletIds) {
     if (!tenantId) {
       res.status(400).json({ message: 'User has no tenantId; cannot change outlet' });
       return;
     }
-    const allowedOutlet = await ensureOutletBelongsToTenant(nextOutletId, tenantId);
-    if (!allowedOutlet) {
+    const toValidate = nextOutletIds && nextOutletIds.length > 0 ? nextOutletIds : (nextOutletId ? [nextOutletId] : []);
+    const allowChecks = await Promise.all(toValidate.map(id => ensureOutletBelongsToTenant(id, tenantId)));
+    if (allowChecks.some(ok => !ok)) {
       res.status(403).json({ message: 'Unauthorized' });
       return;
     }
@@ -210,6 +221,7 @@ export const updateUser = async (req: Request, res: Response) => {
     ...(typeof roleId === 'string' ? { roleId } : {}),
     ...(typeof isActive === 'boolean' ? { isActive } : {}),
     ...(nextOutletId ? { outletId: nextOutletId } : {}),
+    ...(nextOutletIds ? { outletIds: nextOutletIds, outletId: (nextOutletIds[0] || nextOutletId || existing.outletId) } : {}),
     ...(actor?.isSuperAdmin ? { isSuperAdmin: Boolean(isSuperAdmin) } : {}),
   };
 
@@ -230,13 +242,14 @@ export const updateUser = async (req: Request, res: Response) => {
       username: true,
       roleId: true,
       outletId: true,
+      outletIds: true,
       tenantId: true,
       isActive: true,
       isSuperAdmin: true,
       createdAt: true,
       updatedAt: true,
     },
-  });
+  } as any);
   res.json(updated);
 };
 

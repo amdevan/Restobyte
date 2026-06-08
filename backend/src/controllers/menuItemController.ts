@@ -12,6 +12,28 @@ export const getMenuItems = async (req: Request, res: Response) => {
       return;
     }
 
+    // Allow public access to GET menu items for an outlet
+    // If user is authenticated, we can do stricter checks, but for public website we need it open
+    if (user && !user.isSuperAdmin) {
+      if (user.roleId === 'role-admin') {
+        if (user.tenantId) {
+          const outlet = await prisma.outlet.findFirst({ where: { id: String(outletId), tenantId: user.tenantId } });
+          if (!outlet) {
+            res.status(403).json({ message: 'Unauthorized' });
+            return;
+          }
+        }
+      } else {
+        const allowedOutletIds = Array.isArray((user as any).outletIds) && (user as any).outletIds.length > 0
+          ? (user as any).outletIds.map(String)
+          : (user.outletId ? [String(user.outletId)] : []);
+        if (!allowedOutletIds.includes(String(outletId))) {
+          res.status(403).json({ message: 'Unauthorized' });
+          return;
+        }
+      }
+    }
+
     const items = await prisma.menuItem.findMany({
       where: {
         category: {
@@ -30,7 +52,7 @@ export const getMenuItems = async (req: Request, res: Response) => {
 export const createMenuItem = async (req: Request, res: Response) => {
   try {
     const user = (req as AuthRequest).user;
-    if (!user || !user.outletId) {
+    if (!user) {
       res.status(403).json({ message: 'Unauthorized' });
       return;
     }
@@ -45,9 +67,15 @@ export const createMenuItem = async (req: Request, res: Response) => {
       return;
     }
 
-    // Verify category belongs to user's outlet
+    const allowedOutletIds = user.isSuperAdmin
+      ? null
+      : (user.roleId === 'role-admin'
+          ? (user.tenantId ? (await prisma.outlet.findMany({ where: { tenantId: user.tenantId }, select: { id: true } })).map(o => o.id) : [])
+          : (Array.isArray((user as any).outletIds) && (user as any).outletIds.length > 0 ? (user as any).outletIds.map(String) : (user.outletId ? [String(user.outletId)] : [])));
+
+    // Verify category belongs to an allowed outlet
     const category = await prisma.category.findFirst({
-      where: { id: categoryId, outletId: user.outletId },
+      where: { id: categoryId, ...(allowedOutletIds ? { outletId: { in: allowedOutletIds } } : {}) },
     });
 
     if (!category) {
@@ -85,18 +113,24 @@ export const createMenuItem = async (req: Request, res: Response) => {
 export const updateMenuItem = async (req: Request, res: Response) => {
   try {
     const user = (req as AuthRequest).user;
-    if (!user || !user.outletId) {
+    if (!user) {
       res.status(403).json({ message: 'Unauthorized' });
       return;
     }
     const id = req.params.id as string;
     const { name, description, categoryId, price, imageUrl, isVegetarian, variations } = req.body;
 
+    const allowedOutletIds = user.isSuperAdmin
+      ? null
+      : (user.roleId === 'role-admin'
+          ? (user.tenantId ? (await prisma.outlet.findMany({ where: { tenantId: user.tenantId }, select: { id: true } })).map(o => o.id) : [])
+          : (Array.isArray((user as any).outletIds) && (user as any).outletIds.length > 0 ? (user as any).outletIds.map(String) : (user.outletId ? [String(user.outletId)] : [])));
+
     // Verify item exists and belongs to user's outlet (via category)
     const existingItem = await prisma.menuItem.findFirst({
       where: {
         id,
-        category: { outletId: user.outletId },
+        category: { ...(allowedOutletIds ? { outletId: { in: allowedOutletIds } } : {}) },
       },
     });
 
@@ -108,7 +142,7 @@ export const updateMenuItem = async (req: Request, res: Response) => {
     // If changing category, verify new category belongs to outlet
     if (categoryId && categoryId !== existingItem.categoryId) {
       const category = await prisma.category.findFirst({
-        where: { id: categoryId, outletId: user.outletId },
+        where: { id: categoryId, ...(allowedOutletIds ? { outletId: { in: allowedOutletIds } } : {}) },
       });
       if (!category) {
         res.status(400).json({ message: 'Invalid category' });
@@ -173,16 +207,22 @@ export const updateMenuItem = async (req: Request, res: Response) => {
 export const deleteMenuItem = async (req: Request, res: Response) => {
   try {
     const user = (req as AuthRequest).user;
-    if (!user || !user.outletId) {
+    if (!user) {
       res.status(403).json({ message: 'Unauthorized' });
       return;
     }
     const id = req.params.id as string;
 
+    const allowedOutletIds = user.isSuperAdmin
+      ? null
+      : (user.roleId === 'role-admin'
+          ? (user.tenantId ? (await prisma.outlet.findMany({ where: { tenantId: user.tenantId }, select: { id: true } })).map(o => o.id) : [])
+          : (Array.isArray((user as any).outletIds) && (user as any).outletIds.length > 0 ? (user as any).outletIds.map(String) : (user.outletId ? [String(user.outletId)] : [])));
+
     const existingItem = await prisma.menuItem.findFirst({
       where: {
         id,
-        category: { outletId: user.outletId },
+        category: { ...(allowedOutletIds ? { outletId: { in: allowedOutletIds } } : {}) },
       },
     });
 

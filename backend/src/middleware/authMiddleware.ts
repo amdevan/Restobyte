@@ -10,6 +10,7 @@ export interface AuthRequest extends Request {
     username: string;
     roleId: string | null;
     outletId: string | null;
+    outletIds?: string[];
     isSuperAdmin: boolean;
     tenantId: string | null;
   };
@@ -28,14 +29,15 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
     
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
-      select: {
+      select: ({
         id: true,
         username: true,
         roleId: true,
         outletId: true,
+        outletIds: true,
         isSuperAdmin: true,
         tenantId: true
-      }
+      } as any)
     });
 
     if (!user) {
@@ -43,7 +45,10 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
       return;
     }
 
-    (req as AuthRequest).user = user;
+    (req as AuthRequest).user = {
+      ...(user as any),
+      outletIds: Array.isArray((user as any)?.outletIds) ? (user as any).outletIds : [],
+    };
     next();
   } catch (err) {
     res.status(401).json({ message: 'Token is not valid' });

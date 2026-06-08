@@ -73,12 +73,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return { success: false, message };
       }
       const data = await res.json();
+      const outletIds = Array.isArray(data?.user?.outletIds)
+        ? data.user.outletIds.map((v: any) => String(v)).filter(Boolean)
+        : (data?.user?.outletId ? [String(data.user.outletId)] : []);
       const authUser: User = {
         id: data.user.id,
         username: data.user.username,
         isSuperAdmin: !!data.user.isSuperAdmin,
         roleId: data.user.roleId || '',
         outletId: data.user.outletId || '',
+        outletIds,
         tenantId: data.user.tenantId || '',
         isActive: data.user.isActive,
         passwordHash: ''

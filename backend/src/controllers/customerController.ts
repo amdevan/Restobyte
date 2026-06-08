@@ -9,20 +9,28 @@ export const getCustomers = async (req: Request, res: Response) => {
     return;
   }
   const queryOutletId = typeof (req.query as any)?.outletId === 'string' ? String((req.query as any).outletId) : undefined;
-  const outletId = user.outletId ? String(user.outletId) : queryOutletId;
+  const outletId = (user.outletId ? String(user.outletId) : undefined) || queryOutletId;
   if (!outletId) {
     res.status(400).json({ message: 'outletId is required' });
     return;
   }
 
-  if (!user.outletId || String(user.outletId) !== outletId) {
-    if (!user.isSuperAdmin) {
+  if (!user.isSuperAdmin) {
+    if (user.roleId === 'role-admin') {
       if (!user.tenantId) {
         res.status(403).json({ message: 'Unauthorized' });
         return;
       }
       const outlet = await prisma.outlet.findFirst({ where: { id: outletId, tenantId: user.tenantId } });
       if (!outlet) {
+        res.status(403).json({ message: 'Unauthorized' });
+        return;
+      }
+    } else {
+      const allowedOutletIds = Array.isArray((user as any).outletIds) && (user as any).outletIds.length > 0
+        ? (user as any).outletIds.map(String)
+        : (user.outletId ? [String(user.outletId)] : []);
+      if (!allowedOutletIds.includes(outletId)) {
         res.status(403).json({ message: 'Unauthorized' });
         return;
       }
@@ -94,20 +102,25 @@ export const updateCustomer = async (req: Request, res: Response) => {
   }
 
   const customerOutletId = customer.outletId ? String(customer.outletId) : undefined;
-  if (user.outletId) {
-    if (!customerOutletId || customerOutletId !== String(user.outletId)) {
-      res.status(403).json({ message: 'Unauthorized' });
-      return;
-    }
-  } else if (!user.isSuperAdmin) {
-    if (!user.tenantId || !customerOutletId) {
-      res.status(403).json({ message: 'Unauthorized' });
-      return;
-    }
-    const outlet = await prisma.outlet.findFirst({ where: { id: customerOutletId, tenantId: user.tenantId } });
-    if (!outlet) {
-      res.status(403).json({ message: 'Unauthorized' });
-      return;
+  if (!user.isSuperAdmin) {
+    if (user.roleId === 'role-admin') {
+      if (!user.tenantId || !customerOutletId) {
+        res.status(403).json({ message: 'Unauthorized' });
+        return;
+      }
+      const outlet = await prisma.outlet.findFirst({ where: { id: customerOutletId, tenantId: user.tenantId } });
+      if (!outlet) {
+        res.status(403).json({ message: 'Unauthorized' });
+        return;
+      }
+    } else {
+      const allowedOutletIds = Array.isArray((user as any).outletIds) && (user as any).outletIds.length > 0
+        ? (user as any).outletIds.map(String)
+        : (user.outletId ? [String(user.outletId)] : []);
+      if (!customerOutletId || !allowedOutletIds.includes(customerOutletId)) {
+        res.status(403).json({ message: 'Unauthorized' });
+        return;
+      }
     }
   }
 
@@ -142,20 +155,25 @@ export const deleteCustomer = async (req: Request, res: Response) => {
   }
 
   const customerOutletId = customer.outletId ? String(customer.outletId) : undefined;
-  if (user.outletId) {
-    if (!customerOutletId || customerOutletId !== String(user.outletId)) {
-      res.status(403).json({ message: 'Unauthorized' });
-      return;
-    }
-  } else if (!user.isSuperAdmin) {
-    if (!user.tenantId || !customerOutletId) {
-      res.status(403).json({ message: 'Unauthorized' });
-      return;
-    }
-    const outlet = await prisma.outlet.findFirst({ where: { id: customerOutletId, tenantId: user.tenantId } });
-    if (!outlet) {
-      res.status(403).json({ message: 'Unauthorized' });
-      return;
+  if (!user.isSuperAdmin) {
+    if (user.roleId === 'role-admin') {
+      if (!user.tenantId || !customerOutletId) {
+        res.status(403).json({ message: 'Unauthorized' });
+        return;
+      }
+      const outlet = await prisma.outlet.findFirst({ where: { id: customerOutletId, tenantId: user.tenantId } });
+      if (!outlet) {
+        res.status(403).json({ message: 'Unauthorized' });
+        return;
+      }
+    } else {
+      const allowedOutletIds = Array.isArray((user as any).outletIds) && (user as any).outletIds.length > 0
+        ? (user as any).outletIds.map(String)
+        : (user.outletId ? [String(user.outletId)] : []);
+      if (!customerOutletId || !allowedOutletIds.includes(customerOutletId)) {
+        res.status(403).json({ message: 'Unauthorized' });
+        return;
+      }
     }
   }
 

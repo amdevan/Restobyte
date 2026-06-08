@@ -49,6 +49,18 @@ export const listOutlets = async (req: Request, res: Response) => {
     return;
   }
 
+  if (user.roleId !== 'role-admin') {
+    const allowedOutletIds = Array.isArray((user as any).outletIds) && (user as any).outletIds.length > 0
+      ? (user as any).outletIds.map(String)
+      : (user.outletId ? [String(user.outletId)] : []);
+    const outlets = await prisma.outlet.findMany({
+      where: { tenantId: user.tenantId, ...(allowedOutletIds.length > 0 ? { id: { in: allowedOutletIds } } : {}) },
+      orderBy: { createdAt: 'asc' },
+    });
+    res.json(outlets);
+    return;
+  }
+
   const outlets = await prisma.outlet.findMany({
     where: { tenantId: user.tenantId },
     orderBy: { createdAt: 'asc' },
@@ -272,7 +284,14 @@ export const deleteOutlet = async (req: Request, res: Response) => {
     return;
   }
 
-  const usersOnOutlet = await prisma.user.count({ where: { outletId: outlet.id } });
+  const usersOnOutlet = await prisma.user.count({
+    where: {
+      OR: [
+        { outletId: outlet.id },
+        { outletIds: { has: outlet.id } },
+      ],
+    },
+  } as any);
   if (usersOnOutlet > 0) {
     res.status(400).json({ message: 'Cannot delete outlet with users assigned. Reassign users first.' });
     return;

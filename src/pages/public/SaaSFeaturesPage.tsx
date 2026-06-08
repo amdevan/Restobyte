@@ -130,7 +130,7 @@ const SaaSFeaturesPage: React.FC = () => {
                                             </div>
                                         ))}
                                     </div>
-                                    <Button onClick={() => window.location.href='/register'} className="mt-12 !bg-[#2d1510] text-white rounded-xl px-8 py-4 font-bold border-none">
+                                    <Button onClick={() => { window.location.hash = '/register'; }} className="mt-12 !bg-[#2d1510] text-white rounded-xl px-8 py-4 font-bold border-none">
                                         Get Started with {f.title.split(' ')[0]}
                                     </Button>
                                 </div>

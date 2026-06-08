@@ -637,7 +637,8 @@ export interface User {
   username: string;
   passwordHash: string; // This would be a salted hash in a real app
   roleId: string;
-  outletId: string; // Every user is assigned to one outlet
+  outletId: string; // Primary outlet
+  outletIds?: string[]; // Allowed outlets (branches)
   tenantId?: string;
   isActive: boolean;
   isSuperAdmin?: boolean;

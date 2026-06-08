@@ -19,6 +19,8 @@ export const createCurrency = async (req: Request, res: Response): Promise<void>
   const { name, code, symbol, exchangeRate, isDefault } = req.body;
 
   try {
+   const numericExchangeRate = typeof exchangeRate === 'string' ? parseFloat(exchangeRate) : exchangeRate;
+
     // If setting as default, unset others
     if (isDefault) {
       await prisma.currency.updateMany({
@@ -32,15 +34,15 @@ export const createCurrency = async (req: Request, res: Response): Promise<void>
         name,
         code,
         symbol,
-        exchangeRate: isDefault ? 1.0 : exchangeRate,
-        isDefault: isDefault || false,
+        exchangeRate: isDefault ? 1.0 : numericExchangeRate,
+        isDefault: !!isDefault,
       },
     });
 
     res.status(201).json(currency);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Server error' });
+    console.error('Create currency error:', error);
+    res.status(500).json({ message: 'Server error', error: error instanceof Error ? error.message : String(error) });
   }
 };
 
@@ -53,6 +55,8 @@ export const updateCurrency = async (req: Request, res: Response): Promise<void>
   const { name, code, symbol, exchangeRate, isDefault } = req.body;
 
   try {
+    const numericExchangeRate = typeof exchangeRate === 'string' ? parseFloat(exchangeRate) : exchangeRate;
+
     if (isDefault) {
       await prisma.currency.updateMany({
         where: { id: { not: id }, isDefault: true },
@@ -66,15 +70,15 @@ export const updateCurrency = async (req: Request, res: Response): Promise<void>
         name,
         code,
         symbol,
-        exchangeRate: isDefault ? 1.0 : exchangeRate,
-        isDefault,
+        exchangeRate: isDefault ? 1.0 : numericExchangeRate,
+        isDefault: !!isDefault,
       },
     });
 
     res.json(currency);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Server error' });
+    console.error('Update currency error:', error);
+    res.status(500).json({ message: 'Server error', error: error instanceof Error ? error.message : String(error) });
   }
 };
 
@@ -115,15 +119,15 @@ export const setDefaultCurrency = async (req: Request, res: Response): Promise<v
     }
 
     const baseRate = newDefault.exchangeRate;
-    if (baseRate === 0) {
-        res.status(400).json({ message: 'Cannot set currency with 0 exchange rate as default' });
+    if (!baseRate || baseRate === 0) {
+        res.status(400).json({ message: 'Cannot set currency with 0 or invalid exchange rate as default' });
         return;
     }
 
     const allCurrencies = await prisma.currency.findMany();
 
     // Prepare updates to recalculate all exchange rates relative to the new default
-    const updates = allCurrencies.map((currency: Currency) => {
+    const updates = allCurrencies.map((currency: any) => {
       return prisma.currency.update({
         where: { id: currency.id },
         data: {
@@ -138,7 +142,7 @@ export const setDefaultCurrency = async (req: Request, res: Response): Promise<v
     const updatedCurrency = await prisma.currency.findUnique({ where: { id } });
     res.json(updatedCurrency);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Server error' });
+    console.error('Set default currency error:', error);
+    res.status(500).json({ message: 'Server error', error: error instanceof Error ? error.message : String(error) });
   }
 };

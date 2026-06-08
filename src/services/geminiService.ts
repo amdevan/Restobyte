@@ -1,6 +1,6 @@
 import { GoogleGenAI, GenerateContentResponse, Type } from "@google/genai";
 import { GEMINI_TEXT_MODEL } from '../constants';
-import type { WebsiteHomePageContent, WebsiteWhiteLabelSettings, WebsiteContactUsContent, WebsiteAboutUsContent, WebsiteSettings } from '@/types';
+import type { WebsiteHomePageContent, WebsiteWhiteLabelSettings, WebsiteContactUsContent, WebsiteAboutUsContent, WebsiteSettings, WebsiteService, WebsiteSocialMediaLink } from '@/types';
 
 // Read API key from Vite env or Node env for flexibility
 const API_KEY = (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_GOOGLE_GENAI_API_KEY) || process.env.GEMINI_API_KEY || process.env.API_KEY;
@@ -417,28 +417,70 @@ export const generateAdvancedWebsiteSettingsFromPrompt = async (
     includeSocial?: boolean;
   }
 ): Promise<Partial<WebsiteSettings> | null> => {
-  if (!API_KEY || API_KEY === 'MISSING_API_KEY') {
+  const buildFallback = (subtitleOverride?: string): Partial<WebsiteSettings> => {
     const whiteLabel: WebsiteWhiteLabelSettings = {
       appName: options?.brandName || 'Your Restaurant',
       primaryColor: options?.primaryColor || '#0ea5e9',
+      logoUrl: undefined,
+      faviconUrl: undefined,
     };
+
+    const serviceDefaults: WebsiteService[] = [
+      { id: 'svc-1', title: 'Dine-In', description: 'Comfortable seating with attentive service.', icon: 'FiCoffee' },
+      { id: 'svc-2', title: 'Takeaway', description: 'Quick and convenient orders to-go.', icon: 'FiShoppingBag' },
+      { id: 'svc-3', title: 'Delivery', description: 'Hot meals delivered to your door.', icon: 'FiTruck' },
+    ];
+
     const homePageContent: WebsiteHomePageContent = {
       bannerSection: {
         title: whiteLabel.appName,
-        subtitle: options?.cuisine ? `Authentic ${options.cuisine} cuisine.` : 'Delicious food, great ambience.'
+        subtitle: subtitleOverride || (options?.cuisine ? `Authentic ${options.cuisine} cuisine.` : 'Delicious food, great ambience.'),
+        imageUrl: '',
       },
-      serviceSection: { services: [] },
-      exploreMenuSection: { title: 'Explore Menu', subtitle: 'Browse our favorites', buttonText: 'Explore Menu' },
-      gallery: [],
-      socialMedia: []
+      serviceSection: { services: serviceDefaults },
+      exploreMenuSection: {
+        title: 'Explore Menu',
+        subtitle: 'Browse our favorites',
+        buttonText: 'Explore Menu',
+        imageUrl: '',
+      },
+      gallery: options?.includeGallery
+        ? [
+            { id: 'gal-1', url: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=1200&q=80', caption: 'Signature dish' },
+            { id: 'gal-2', url: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1200&q=80', caption: 'Dining experience' },
+            { id: 'gal-3', url: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=1200&q=80', caption: 'Fresh ingredients' },
+          ]
+        : [],
+      socialMedia: options?.includeSocial
+        ? ([
+            { id: 'sm-1', platform: 'Facebook', url: 'https://facebook.com' },
+            { id: 'sm-2', platform: 'Instagram', url: 'https://instagram.com' },
+          ] as WebsiteSocialMediaLink[])
+        : [],
     };
+
     const aboutUsContent: WebsiteAboutUsContent | undefined = options?.includeAboutUs
-      ? { title: 'About Us', content: 'We serve great food with warm hospitality.', imageUrl: '' }
+      ? {
+          title: `About ${whiteLabel.appName}`,
+          content: `Welcome to ${whiteLabel.appName}.\n\nWe serve great food with warm hospitality.`,
+          imageUrl: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1600&q=80',
+        }
       : undefined;
+
     const contactUsContent: WebsiteContactUsContent | undefined = options?.includeContact
-      ? { address: 'Your Address', phone: '000-000000', email: 'info@example.com', mapUrl: '' }
+      ? {
+          address: 'Your Address',
+          phone: '000-000000',
+          email: 'info@example.com',
+          mapUrl: '',
+        }
       : undefined;
+
     return { whiteLabel, homePageContent, aboutUsContent, contactUsContent };
+  };
+
+  if (!API_KEY || API_KEY === 'MISSING_API_KEY') {
+    return buildFallback();
   }
 
   try {
@@ -469,12 +511,19 @@ Return strict JSON matching this shape (omit sections if not included):
   "contactUsContent"?: { "address": string, "phone": string, "email": string, "mapUrl"?: string }
 }`;
 
-    const response: GenerateContentResponse = await ai.models.generateContent({
-      model: GEMINI_TEXT_MODEL,
-      contents: userPrompt,
-      config: {
-        responseMimeType: 'application/json',
-        responseSchema: {
+    const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+    let response: GenerateContentResponse | null = null;
+    let lastError: unknown = null;
+
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        response = await ai.models.generateContent({
+          model: GEMINI_TEXT_MODEL,
+          contents: userPrompt,
+          config: {
+            responseMimeType: 'application/json',
+            responseSchema: {
           type: Type.OBJECT,
           properties: {
             whiteLabel: {
@@ -573,22 +622,34 @@ Return strict JSON matching this shape (omit sections if not included):
             }
           },
           required: ['whiteLabel', 'homePageContent']
-        }
+            }
+          }
+        });
+        lastError = null;
+        break;
+      } catch (e) {
+        lastError = e;
+        const msg = getErrorMessage(e);
+        const upper = msg.toUpperCase();
+        const retryable =
+          upper.includes('503') ||
+          upper.includes('UNAVAILABLE') ||
+          upper.includes('SERVICE UNAVAILABLE') ||
+          upper.includes('500') ||
+          upper.includes('INTERNAL');
+        if (!retryable || attempt === 2) break;
+        await sleep(800 * (attempt + 1));
       }
-    });
+    }
+
+    if (!response) {
+      if (lastError) throw lastError;
+      return buildFallback('AI is temporarily unavailable. Using default design.');
+    }
 
     let raw = (response.text ?? '').trim();
     if (!raw) {
-      return {
-        whiteLabel: { appName: options?.brandName || 'Your Restaurant', primaryColor: options?.primaryColor || '#0ea5e9' },
-        homePageContent: {
-          bannerSection: { title: options?.brandName || 'Welcome', subtitle: options?.cuisine ? `Authentic ${options.cuisine} cuisine.` : 'Delicious food, great ambience.' },
-          serviceSection: { services: [] },
-          exploreMenuSection: { title: 'Explore Menu', subtitle: 'Browse our favorites', buttonText: 'Explore Menu' },
-          gallery: [],
-          socialMedia: []
-        }
-      };
+      return buildFallback();
     }
     const fenceRegex = /^```(\w*)?\s*\n?(.*?)\n?\s*```$/s;
     const match = raw.match(fenceRegex);
@@ -597,45 +658,20 @@ Return strict JSON matching this shape (omit sections if not included):
     const parsed = JSON.parse(raw) as Partial<WebsiteSettings>;
     return parsed;
   } catch (error: any) {
-    console.error('Error generating advanced website settings:', error);
     const errorMessage = getErrorMessage(error);
     const upperCaseMessage = errorMessage.toUpperCase();
 
     if (upperCaseMessage.includes('429') || upperCaseMessage.includes('RESOURCE_EXHAUSTED') || upperCaseMessage.includes('QUOTA')) {
-      return {
-        whiteLabel: { appName: options?.brandName || 'Quota Exceeded', primaryColor: options?.primaryColor || '#f59e0b' },
-        homePageContent: {
-          bannerSection: { title: 'API quota exceeded', subtitle: 'Please check your plan and billing.' },
-          serviceSection: { services: [] },
-          exploreMenuSection: { title: 'Explore Menu', subtitle: 'Try again later', buttonText: 'Explore Menu' },
-          gallery: [],
-          socialMedia: []
-        }
-      };
+      return buildFallback('AI quota exceeded. Using default design.');
     }
     if (upperCaseMessage.includes('API_KEY_INVALID') || upperCaseMessage.includes('APIKEYNOTVALID')) {
-      return {
-        whiteLabel: { appName: options?.brandName || 'Invalid API Key', primaryColor: options?.primaryColor || '#ef4444' },
-        homePageContent: {
-          bannerSection: { title: 'Invalid API key', subtitle: 'Check .env.local configuration.' },
-          serviceSection: { services: [] },
-          exploreMenuSection: { title: 'Explore Menu', subtitle: 'Configure API key first', buttonText: 'Explore Menu' },
-          gallery: [],
-          socialMedia: []
-        }
-      };
+      return buildFallback('Invalid API key. Using default design.');
     }
     if (upperCaseMessage.includes('XHR ERROR') || upperCaseMessage.includes('FETCH_ERROR') || upperCaseMessage.includes('NETWORK')) {
-      return {
-        whiteLabel: { appName: options?.brandName || 'Network Error', primaryColor: options?.primaryColor || '#f97316' },
-        homePageContent: {
-          bannerSection: { title: 'Network error', subtitle: 'Check internet/firewall/referrer restrictions.' },
-          serviceSection: { services: [] },
-          exploreMenuSection: { title: 'Explore Menu', subtitle: 'Verify connectivity', buttonText: 'Explore Menu' },
-          gallery: [],
-          socialMedia: []
-        }
-      };
+      return buildFallback('Network error. Using default design.');
+    }
+    if (upperCaseMessage.includes('503') || upperCaseMessage.includes('UNAVAILABLE')) {
+      return buildFallback('AI is busy right now. Using default design.');
     }
     return null;
   }

@@ -418,8 +418,8 @@ const AppContent: React.FC = () => {
             </Route>
             
             {/* Auth Routes */}
-            <Route path="/login" element={isAuthenticated ? <Navigate to={user?.isSuperAdmin ? "/saas/dashboard" : "/app/dashboard"} replace /> : <LoginPage onSwitchToRegister={() => window.location.href = '/register'} />} />
-            <Route path="/register" element={isAuthenticated ? <Navigate to={user?.isSuperAdmin ? "/saas/dashboard" : "/app/dashboard"} replace /> : <RegisterPage onSwitchToLogin={() => window.location.href = '/login'} />} />
+            <Route path="/login" element={isAuthenticated ? <Navigate to={user?.isSuperAdmin ? "/saas/dashboard" : "/app/dashboard"} replace /> : <LoginPage onSwitchToRegister={() => { window.location.hash = '/register'; }} />} />
+            <Route path="/register" element={isAuthenticated ? <Navigate to={user?.isSuperAdmin ? "/saas/dashboard" : "/app/dashboard"} replace /> : <RegisterPage onSwitchToLogin={() => { window.location.hash = '/login'; }} />} />
 
             <Route
                 path="/saas/login"

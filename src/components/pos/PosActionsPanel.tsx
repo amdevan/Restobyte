@@ -7,6 +7,7 @@ import Modal from '../common/Modal';
 import Input from '../common/Input';
 import TodaySummaryModal from '../dashboard/TodaySummaryModal';
 import RegisterDetailsModal from '../dashboard/RegisterDetailsModal';
+import Money from '../common/Money';
 
 
 const timeSince = (dateString?: string) => {
@@ -81,7 +82,7 @@ const PosActionsPanel: React.FC<PosActionsPanelProps> = ({ searchTerm, onSearchC
                                     >
                                         <div className="flex justify-between items-center text-base">
                                             <span className="font-semibold flex items-center text-gray-800"><FiGrid size={15} className="mr-2"/>{order.assignedTableName}</span>
-                                            <span className="font-bold text-sky-700 text-lg">${order.totalAmount.toFixed(2)}</span>
+                                            <span className="font-bold text-sky-700 text-lg"><Money amount={order.totalAmount} /></span>
                                         </div>
                                         <div className="text-gray-500 flex items-center justify-between text-sm mt-1 pl-7">
                                             <span><FiUser size={13} className="inline mr-1.5"/>{order.customerName || 'Walk-in'}</span>

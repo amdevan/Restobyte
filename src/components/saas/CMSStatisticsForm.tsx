@@ -12,8 +12,21 @@ interface CMSStatisticsFormProps {
 const CMSStatisticsForm: React.FC<CMSStatisticsFormProps> = ({ statistics, onUpdate }) => {
     const [localStats, setLocalStats] = useState(statistics);
 
+    const generateStatId = () => {
+        if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+            return crypto.randomUUID();
+        }
+        return `new-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    };
+
     useEffect(() => {
-        setLocalStats(statistics);
+        const seen = new Set<string>();
+        const normalized = statistics.map((stat) => {
+            const nextId = stat.id && !seen.has(stat.id) ? stat.id : generateStatId();
+            seen.add(nextId);
+            return { ...stat, id: nextId };
+        });
+        setLocalStats(normalized);
     }, [statistics]);
 
     const updateStats = (updatedStats: SaasStatistic[]) => {
@@ -26,7 +39,7 @@ const CMSStatisticsForm: React.FC<CMSStatisticsFormProps> = ({ statistics, onUpd
     };
 
     const handleAddStat = () => {
-        const newStat: SaasStatistic = { id: `new-${Date.now()}`, value: '0', label: '' };
+        const newStat: SaasStatistic = { id: generateStatId(), value: '0', label: '' };
         updateStats([...localStats, newStat]);
     };
 

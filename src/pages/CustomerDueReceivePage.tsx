@@ -18,7 +18,10 @@ const CustomerDueReceivePage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
 
   const customersWithDues = useMemo(() => {
-    return customers.filter(c => c.dueAmount && c.dueAmount > 0);
+    return customers.filter(c => {
+      const dueAmount = Number((c as any).dueAmount);
+      return Number.isFinite(dueAmount) && dueAmount > 0;
+    });
   }, [customers]);
 
   const filteredCustomersWithDues = useMemo(() => {
@@ -27,7 +30,7 @@ const CustomerDueReceivePage: React.FC = () => {
     }
     return customersWithDues.filter(customer =>
       customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      customer.phone.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (customer.phone || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (customer.email && customer.email.toLowerCase().includes(searchTerm.toLowerCase()))
     );
   }, [customersWithDues, searchTerm]);
@@ -42,13 +45,12 @@ const CustomerDueReceivePage: React.FC = () => {
     setSelectedCustomer(null);
   };
 
-  const handleReceivePayment = (customerId: string, amountReceived: number, paymentMethod: string, notes?: string) => {
-    receiveCustomerPayment(customerId, amountReceived, paymentMethod, notes);
-    // Optionally: show a success message
+  const handleReceivePayment = async (customerId: string, amountReceived: number, paymentMethod: string, notes?: string) => {
+    await receiveCustomerPayment(customerId, amountReceived, paymentMethod, notes);
   };
   
   const totalDueAmount = useMemo(() => {
-    return filteredCustomersWithDues.reduce((sum, cust) => sum + (cust.dueAmount || 0), 0);
+    return filteredCustomersWithDues.reduce((sum, cust) => sum + (Number((cust as any).dueAmount) || 0), 0);
   }, [filteredCustomersWithDues]);
 
   return (
@@ -117,7 +119,7 @@ const CustomerDueReceivePage: React.FC = () => {
                           </a>
                       ) : '-'}
                     </td>
-                    <td className="py-3 px-4 text-sm text-red-600 font-semibold text-right"><Money amount={customer.dueAmount || 0} /></td>
+                    <td className="py-3 px-4 text-sm text-red-600 font-semibold text-right"><Money amount={Number((customer as any).dueAmount) || 0} /></td>
                     <td className="py-3 px-4 text-center">
                       <Button onClick={() => handleOpenModal(customer)} variant="primary" size="sm" leftIcon={<FiDollarSign />}>
                         Receive Payment

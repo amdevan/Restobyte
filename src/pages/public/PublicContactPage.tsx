@@ -1,11 +1,10 @@
 import React from 'react';
 import { useOutletContext, Link } from 'react-router-dom';
-import { useRestaurantData } from '@/hooks/useRestaurantData';
 import { FiMapPin, FiPhone, FiMail, FiFacebook, FiTwitter, FiInstagram, FiLinkedin, FiArrowRight } from 'react-icons/fi';
+import type { WebsiteSettings } from '@/types';
 
 const PublicContactPage: React.FC = () => {
-  const { outlet } = useOutletContext<{ outlet: any }>();
-  const { websiteSettings } = useRestaurantData();
+  const { baseUrl, websiteSettings } = useOutletContext<{ outlet: any; baseUrl: string; websiteSettings: WebsiteSettings }>();
   const { contactUsContent } = websiteSettings;
 
   return (
@@ -20,7 +19,7 @@ const PublicContactPage: React.FC = () => {
          <div className="container mx-auto relative z-10">
             <h1 className="text-4xl md:text-5xl font-serif font-bold text-gray-900 mb-4">Contact Us</h1>
             <div className="flex justify-center items-center space-x-2 text-sm font-medium text-gray-600">
-                <Link to="/public/restaurant" className="hover:text-orange-500 transition-colors">Home</Link>
+                <Link to={baseUrl} className="hover:text-orange-500 transition-colors">Home</Link>
                 <span>&gt;</span>
                 <span className="text-orange-500">Contact Us</span>
             </div>

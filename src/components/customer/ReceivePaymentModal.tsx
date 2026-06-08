@@ -11,7 +11,7 @@ import { formatMoney, getDefaultCurrency } from '../../utils/currency';
 interface ReceivePaymentModalProps {
   customer: Customer | null;
   onClose: () => void;
-  onReceivePayment: (customerId: string, amountReceived: number, paymentMethod: string, notes?: string) => void;
+  onReceivePayment: (customerId: string, amountReceived: number, paymentMethod: string, notes?: string) => void | Promise<void>;
 }
 
 const ReceivePaymentModal: React.FC<ReceivePaymentModalProps> = ({ customer, onClose, onReceivePayment }) => {
@@ -28,11 +28,13 @@ const ReceivePaymentModal: React.FC<ReceivePaymentModalProps> = ({ customer, onC
   const [amount, setAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState(availablePaymentMethods[0] || 'Cash');
   const [notes, setNotes] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    if (customer && customer.dueAmount) {
+    const dueAmount = customer ? Number((customer as any).dueAmount) : 0;
+    if (customer && Number.isFinite(dueAmount) && dueAmount > 0) {
       // Pre-fill amount with current due, but allow editing
-      setAmount(String(customer.dueAmount.toFixed(2)));
+      setAmount(String(dueAmount.toFixed(2)));
     } else {
       setAmount('');
     }
@@ -42,22 +44,30 @@ const ReceivePaymentModal: React.FC<ReceivePaymentModalProps> = ({ customer, onC
 
   if (!customer) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
+
     const numericAmount = parseFloat(amount);
     if (isNaN(numericAmount) || numericAmount <= 0) {
       alert('Please enter a valid positive amount.');
       return;
     }
-    if (numericAmount > (customer.dueAmount || 0)) {
+    const dueAmount = Number((customer as any).dueAmount) || 0;
+    if (numericAmount > dueAmount) {
         const entered = defaultCurrency ? formatMoney(numericAmount, defaultCurrency, moneySettings) : numericAmount.toFixed(moneySettings.decimalPlaces);
-        const due = defaultCurrency ? formatMoney(customer.dueAmount || 0, defaultCurrency, moneySettings) : (customer.dueAmount || 0).toFixed(moneySettings.decimalPlaces);
+        const due = defaultCurrency ? formatMoney(dueAmount, defaultCurrency, moneySettings) : dueAmount.toFixed(moneySettings.decimalPlaces);
         if (!window.confirm(`The amount entered (${entered}) is greater than the due amount (${due}). Do you want to proceed? This might result in a credit for the customer.`)) {
             return;
         }
     }
-    onReceivePayment(customer.id, numericAmount, paymentMethod, notes);
-    onClose();
+    try {
+      setIsSubmitting(true);
+      await onReceivePayment(customer.id, numericAmount, paymentMethod, notes);
+      onClose();
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -66,7 +76,7 @@ const ReceivePaymentModal: React.FC<ReceivePaymentModalProps> = ({ customer, onC
         Receive Payment from: <span className="text-sky-600">{customer.name}</span>
       </h3>
       <p className="text-sm text-gray-600">
-        Current Due Amount: <span className="font-semibold"><Money amount={customer.dueAmount || 0} /></span>
+        Current Due Amount: <span className="font-semibold"><Money amount={Number((customer as any).dueAmount) || 0} /></span>
       </p>
       
       <Input
@@ -109,10 +119,10 @@ const ReceivePaymentModal: React.FC<ReceivePaymentModalProps> = ({ customer, onC
       </div>
 
       <div className="flex justify-end space-x-3 pt-4">
-        <Button type="button" variant="secondary" onClick={onClose} leftIcon={<FiXCircle />}>
+        <Button type="button" variant="secondary" onClick={onClose} leftIcon={<FiXCircle />} disabled={isSubmitting}>
           Cancel
         </Button>
-        <Button type="submit" variant="primary" leftIcon={<FiSave />}>
+        <Button type="submit" variant="primary" leftIcon={<FiSave />} disabled={isSubmitting}>
           Record Payment
         </Button>
       </div>

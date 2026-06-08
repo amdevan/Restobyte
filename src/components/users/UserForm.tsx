@@ -19,7 +19,7 @@ const UserForm: React.FC<UserFormProps> = ({ initialData, onSubmit, onUpdate, on
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [roleId, setRoleId] = useState('');
-  const [outletId, setOutletId] = useState('');
+  const [outletIds, setOutletIds] = useState<string[]>([]);
   const [isActive, setIsActive] = useState(true);
   const [passwordError, setPasswordError] = useState('');
   const [submitError, setSubmitError] = useState('');
@@ -30,7 +30,10 @@ const UserForm: React.FC<UserFormProps> = ({ initialData, onSubmit, onUpdate, on
     if (initialData) {
       setUsername(initialData.username);
       setRoleId(initialData.roleId);
-      setOutletId(initialData.outletId);
+      const initialOutletIds = Array.isArray((initialData as any).outletIds) && (initialData as any).outletIds.length > 0
+        ? (initialData as any).outletIds.map((v: any) => String(v)).filter(Boolean)
+        : (initialData.outletId ? [String(initialData.outletId)] : []);
+      setOutletIds(initialOutletIds);
       setIsActive(initialData.isActive);
       // Password fields are intentionally left blank for editing
       setPassword('');
@@ -40,7 +43,7 @@ const UserForm: React.FC<UserFormProps> = ({ initialData, onSubmit, onUpdate, on
       setPassword('');
       setConfirmPassword('');
       setRoleId('');
-      setOutletId('');
+      setOutletIds([]);
       setIsActive(true);
     }
     setPasswordError('');
@@ -52,7 +55,7 @@ const UserForm: React.FC<UserFormProps> = ({ initialData, onSubmit, onUpdate, on
   useEffect(() => {
     if (initialData) return;
     setRoleId(prev => prev || roles[0]?.id || '');
-    setOutletId(prev => prev || outlets[0]?.id || '');
+    setOutletIds(prev => (prev.length > 0 ? prev : (outlets[0]?.id ? [outlets[0].id] : [])));
   }, [initialData, roles, outlets]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -62,7 +65,7 @@ const UserForm: React.FC<UserFormProps> = ({ initialData, onSubmit, onUpdate, on
     if (isSubmitting) return;
     
     const trimmedUsername = username.trim();
-    if (!trimmedUsername || !roleId || !outletId) return setSubmitError('Username, Role, and Outlet are required.');
+    if (!trimmedUsername || !roleId || outletIds.length === 0) return setSubmitError('Username, Role, and Outlet are required.');
 
     // Password validation
     if (!initialData && !password) { // Required for new users
@@ -84,7 +87,8 @@ const UserForm: React.FC<UserFormProps> = ({ initialData, onSubmit, onUpdate, on
         // We'll use the plain text here for simplicity, but name the property `passwordHash`.
         passwordHash: password || initialData?.passwordHash || '', 
         roleId,
-        outletId,
+        outletId: outletIds[0] || '',
+        outletIds,
         isActive,
     };
     
@@ -134,10 +138,30 @@ const UserForm: React.FC<UserFormProps> = ({ initialData, onSubmit, onUpdate, on
           </select>
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Assigned Outlet *</label>
-          <select value={outletId} onChange={(e) => setOutletId(e.target.value)} className="w-full p-2 border border-gray-300 rounded-md" required>
-            {outlets.map(outlet => <option key={outlet.id} value={outlet.id}>{outlet.name}</option>)}
-          </select>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Assigned Outlets *</label>
+          <div className="w-full p-2 border border-gray-300 rounded-md max-h-32 overflow-y-auto space-y-2">
+            {outlets.map(outlet => {
+              const checked = outletIds.includes(outlet.id);
+              return (
+                <label key={outlet.id} className="flex items-center text-sm text-gray-700">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded text-sky-600 focus:ring-sky-500 border-gray-300"
+                    checked={checked}
+                    onChange={() => {
+                      setOutletIds(prev => {
+                        const next = prev.includes(outlet.id)
+                          ? prev.filter(id => id !== outlet.id)
+                          : [...prev, outlet.id];
+                        return next.length > 0 ? next : prev;
+                      });
+                    }}
+                  />
+                  <span className="ml-2">{outlet.name}</span>
+                </label>
+              );
+            })}
+          </div>
         </div>
       </div>
 

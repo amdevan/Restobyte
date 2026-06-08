@@ -74,7 +74,7 @@ const PayrollPage: React.FC = () => {
   };
   
   const handleProcessPayment = (record: DisplayPayrollRecord) => {
-    if(window.confirm(`Process payment of $${record.netSalary.toFixed(2)} for ${record.employeeName}?`)) {
+    if(window.confirm(`Process payment of Rs ${record.netSalary.toFixed(2)} for ${record.employeeName}?`)) {
       const finalRecord: PayrollRecord = {
         ...record,
         id: `${record.employeeId}-${record.year}-${record.month}`,

@@ -13,15 +13,20 @@ model Tenant {
   name               String
   address            String?
   phone              String?
+  adminEmail         String?
   countryCode        String?  // ISO 3166-1 alpha-2 (e.g., US, IN)
   currencyCode       String?  // ISO 4217 (e.g., USD, INR)
   subscriptionStatus String   @default("trialing")
   plan               String   @default("Basic")
+  trialDays          Int?     @default(14)
+  trialEndsAt        DateTime?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
   outlets            Outlet[]
   users              User[]
   payments           Payment[]
+  loginHistory       TenantLoginHistory[]
+  invoices           SubscriptionInvoice[]
 }
 
 model Outlet {
@@ -170,6 +175,7 @@ model User {
   isActive     Boolean  @default(true)
   isSuperAdmin Boolean  @default(false)
   customer     Customer?
+  loginHistory TenantLoginHistory[]
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
@@ -185,6 +191,22 @@ model Currency {
   updatedAt    DateTime @updatedAt
 }
 
+model PlanDefinition {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  price       Float
+  period      String   @default("monthly")
+  features    Json?
+  featureKeys Json?
+  limits      Json?
+  trialDays   Int      @default(14)
+  isPublic    Boolean  @default(true)
+  isActive    Boolean  @default(true)
+  isFeatured  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
 model Payment {
   id        String   @id @default(uuid())
   tenantId  String
@@ -193,7 +215,40 @@ model Payment {
   status    String   @default("paid") // paid, failed, refunded
   method    String?  // stripe, cash, etc.
   notes     String?
+  invoice   SubscriptionInvoice?
   createdAt DateTime @default(now())
+}
+
+model SubscriptionInvoice {
+  id            String   @id @default(uuid())
+  invoiceNumber String   @unique
+  tenantId       String
+  tenant         Tenant   @relation(fields: [tenantId], references: [id])
+  paymentId      String?  @unique
+  payment        Payment? @relation(fields: [paymentId], references: [id])
+  amount         Float
+  currencyCode   String   @default("NPR")
+  status         String   @default("issued") // issued, paid, failed, refunded
+  method         String?
+  notes          String?
+  issuedAt       DateTime @default(now())
+  paidAt         DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model TenantLoginHistory {
+  id         String   @id @default(uuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id])
+  username    String
+  ipAddress   String?
+  userAgent   String?
+  deviceLabel String?
+  loginType   String   @default("password")
+  createdAt   DateTime @default(now())
 }
 
 model Lead {

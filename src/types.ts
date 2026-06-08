@@ -624,6 +624,8 @@ export interface Outlet {
   subscriptionStatus?: 'active' | 'inactive' | 'trialing';
   registrationDate?: string;
   planExpiryDate?: string;
+  trialDays?: number;
+  trialEndsAt?: string;
 }
 
 export interface Role {
@@ -776,15 +778,50 @@ export interface SaasWebsiteContent {
     blogPosts: SaasPost[];
 }
 
+export type PlanFeatureKey =
+  | 'pos'
+  | 'kds'
+  | 'customerDisplay'
+  | 'menu'
+  | 'tables'
+  | 'reservations'
+  | 'whatsapp'
+  | 'inventory'
+  | 'customers'
+  | 'purchase'
+  | 'reports'
+  | 'website'
+  | 'selfOrder'
+  | 'subscription';
+
 export interface Plan {
   id: string;
   name: string;
   price: number;
   period: 'monthly' | 'yearly';
   features: string[];
+  featureKeys: PlanFeatureKey[];
+  trialDays: number;
+  limits?: {
+    maxTables: number;
+  };
   isPublic: boolean; // Show on landing page
   isActive: boolean; // Can be assigned to new tenants
   isFeatured?: boolean;
+}
+
+export interface TenantEntitlements {
+  planName: string;
+  subscriptionStatus: 'active' | 'inactive' | 'trialing';
+  trialDays: number;
+  trialEndsAt?: string | null;
+  featureKeys: PlanFeatureKey[];
+  features: string[];
+  limits?: {
+    maxTables: number;
+  };
+  currencyCode?: string | null;
+  countryCode?: string | null;
 }
 
 export interface SaasSmsSettings {
@@ -1019,9 +1056,11 @@ export interface RestaurantDataContextType {
 
     // SaaS Plan Management
     plans: Plan[];
-    addPlan: (planData: Omit<Plan, 'id'>) => void;
-    updatePlan: (updatedPlan: Plan) => void;
-    deletePlan: (planId: string) => void;
+    addPlan: (planData: Omit<Plan, 'id'>) => Promise<void>;
+    updatePlan: (updatedPlan: Plan) => Promise<void>;
+    deletePlan: (planId: string) => Promise<void>;
+    tenantEntitlements?: TenantEntitlements | null;
+    hasPlanFeature: (featureKey: PlanFeatureKey) => boolean;
 
     // SaaS Settings
     saasSettings: SaaSSettings;

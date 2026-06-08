@@ -6,6 +6,54 @@ import type { AuthRequest } from '../middleware/authMiddleware.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your_super_secret_key';
 
+const getClientIp = (req: Request): string | null => {
+  const forwarded = req.headers['x-forwarded-for'];
+  if (Array.isArray(forwarded) && forwarded.length > 0) {
+    const firstIp = String(forwarded[0] ?? '').split(',')[0] ?? '';
+    return firstIp.trim() || null;
+  }
+  if (typeof forwarded === 'string' && forwarded.trim()) {
+    const firstIp = forwarded.split(',')[0] ?? '';
+    return firstIp.trim() || null;
+  }
+  return req.socket.remoteAddress || null;
+};
+
+const getDeviceLabel = (userAgent: string | null): string => {
+  if (!userAgent) return 'Unknown Device';
+  const ua = userAgent.toLowerCase();
+
+  if (ua.includes('iphone')) return 'iPhone';
+  if (ua.includes('ipad')) return 'iPad';
+  if (ua.includes('android')) return 'Android Device';
+  if (ua.includes('windows')) return 'Windows PC';
+  if (ua.includes('macintosh') || ua.includes('mac os')) return 'Mac';
+  if (ua.includes('linux')) return 'Linux Device';
+
+  return 'Web Browser';
+};
+
+const recordTenantLogin = async (req: Request, user: any, loginType = 'password'): Promise<void> => {
+  if (!user?.tenantId) return;
+
+  const userAgent = req.get('user-agent') || null;
+  try {
+    await (prisma as any).tenantLoginHistory.create({
+      data: {
+        tenantId: user.tenantId,
+        userId: user.id,
+        username: user.username,
+        ipAddress: getClientIp(req),
+        userAgent,
+        deviceLabel: getDeviceLabel(userAgent),
+        loginType,
+      },
+    });
+  } catch (error) {
+    console.error('Failed to record tenant login history', error);
+  }
+};
+
 export const register = async (req: Request, res: Response): Promise<void> => {
   const { username, password, roleId, outletId, outletIds, isSuperAdmin, name, mobile, address } = req.body;
 
@@ -99,6 +147,8 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       { expiresIn: '1h' }
     );
 
+    await recordTenantLogin(req, user, 'password');
+
     res.json({
       token,
       user: {
@@ -150,6 +200,8 @@ export const impersonate = async (req: Request, res: Response): Promise<void> =>
       JWT_SECRET,
       { expiresIn: '1h' }
     );
+
+    await recordTenantLogin(req, adminUser, 'impersonation');
 
     res.json({
       token,

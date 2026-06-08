@@ -7,7 +7,7 @@ import {
     Currency, Denomination, Purchase, PurchaseItem, ExpenseCategory, Expense, WasteRecord, Employee,
     AttendanceRecord, AttendanceStatus, ReservationSettings, ReservationAvailability, WebsiteSettings,
     PaymentMethod, Outlet, User, Role, ApplicationSettings, Tax, SaleTaxDetail, DeliveryPartner, Split, RestaurantDataContextType, SaasWebsiteContent, SaasPost,
-    Plan, AddonGroup, PayrollRecord, SaaSSettings, SoundSettings
+    Plan, AddonGroup, PayrollRecord, SaaSSettings, SoundSettings, TenantEntitlements, PlanFeatureKey
 } from '../types';
 import { INITIAL_TABLES_COUNT } from '../constants';
 import { API_BASE_URL } from '../config';
@@ -147,8 +147,8 @@ const initialSaasSettings: SaaSSettings = {
 };
 
 const initialPlans: Plan[] = [
-    { id: 'plan-1', name: 'Basic', price: 29, period: 'monthly', features: ['POS', 'Table Management'], isPublic: true, isActive: true },
-    { id: 'plan-2', name: 'Pro', price: 59, period: 'monthly', features: ['All Basic features', 'Inventory', 'Reports'], isPublic: true, isActive: true, isFeatured: true },
+    { id: 'plan-1', name: 'Basic', price: 2999, period: 'monthly', features: ['POS Billing', 'Food Menu', 'Customer Management', 'Basic Reports', 'Website Menu'], featureKeys: ['pos', 'menu', 'customers', 'reports', 'website', 'subscription'], trialDays: 14, limits: { maxTables: 25 }, isPublic: true, isActive: true },
+    { id: 'plan-2', name: 'Pro', price: 5999, period: 'monthly', features: ['Everything in Basic', 'Kitchen Display', 'Tables', 'Reservations', 'Inventory', 'WhatsApp', 'Self Order'], featureKeys: ['pos', 'kds', 'customerDisplay', 'menu', 'tables', 'reservations', 'inventory', 'customers', 'purchase', 'reports', 'website', 'whatsapp', 'selfOrder', 'subscription'], trialDays: 30, limits: { maxTables: 100 }, isPublic: true, isActive: true, isFeatured: true },
 ];
 
 const initialSaasWebsiteContent: SaasWebsiteContent = {
@@ -417,7 +417,8 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
     const [roles, setRoles] = useLocalStorage<Role[]>(getKey('roles'), initialRoles);
     const [users, setUsers] = useState<User[]>([]);
     const [saasWebsiteContent, setSaasWebsiteContent] = useLocalStorage<SaasWebsiteContent>('saasWebsiteContent', initialSaasWebsiteContent);
-    const [plans, setPlans] = useLocalStorage<Plan[]>(getKey('plans'), initialPlans);
+    const [plans, setPlans] = useState<Plan[]>(initialPlans);
+    const [tenantEntitlements, setTenantEntitlements] = useState<TenantEntitlements | null>(null);
     const [saasSettings, setSaaSSettings] = useLocalStorage<SaaSSettings>(getKey('saasSettings'), initialSaasSettings);
     const [addonGroups, setAddonGroups] = useLocalStorage<AddonGroup[]>(getKey('addonGroups'), initialAddonGroups);
 
@@ -564,6 +565,71 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         void run();
     }, [isAuthenticated, logout, setOutlets, setActiveOutletIds, user?.outletId, user?.tenantId]);
 
+    const fetchPlans = useCallback(async () => {
+        try {
+            const res = await fetch(`${API_BASE_URL}/plans`);
+            const data = res.ok ? await res.json().catch(() => null) : null;
+            const incoming = Array.isArray(data?.plans) ? data.plans : [];
+            if (incoming.length === 0) {
+                setPlans(initialPlans);
+                return;
+            }
+            const normalized: Plan[] = incoming.map((plan: any) => ({
+                id: String(plan.id),
+                name: String(plan.name),
+                price: Number(plan.price) || 0,
+                period: plan.period === 'yearly' ? 'yearly' : 'monthly',
+                features: Array.isArray(plan.features) ? plan.features.map((v: any) => String(v)).filter(Boolean) : [],
+                featureKeys: Array.isArray(plan.featureKeys) ? plan.featureKeys.map((v: any) => String(v) as PlanFeatureKey).filter(Boolean) : [],
+                trialDays: Number(plan.trialDays) || 0,
+                limits: typeof plan.limits === 'object' && plan.limits ? { maxTables: Number((plan.limits as any).maxTables) || 0 } : undefined,
+                isPublic: Boolean(plan.isPublic),
+                isActive: Boolean(plan.isActive),
+                isFeatured: Boolean(plan.isFeatured),
+            }));
+            setPlans(normalized);
+        } catch (error) {
+            console.error('Failed to fetch plans:', error);
+        }
+    }, []);
+
+    useEffect(() => {
+        void fetchPlans();
+    }, [fetchPlans]);
+
+    useEffect(() => {
+        const run = async () => {
+            if (!isAuthenticated || !user?.tenantId || user?.isSuperAdmin) {
+                setTenantEntitlements(null);
+                return;
+            }
+            try {
+                const res = await fetch(`${API_BASE_URL}/tenants/me-entitlements`, {
+                    headers: { Authorization: `Bearer ${localStorage.getItem('authToken') || ''}` }
+                });
+                const data = res.ok ? await res.json().catch(() => null) : null;
+                if (!data || !Array.isArray(data.featureKeys)) {
+                    setTenantEntitlements(null);
+                    return;
+                }
+                setTenantEntitlements({
+                    planName: String(data.planName || ''),
+                    subscriptionStatus: (data.subscriptionStatus === 'inactive' ? 'inactive' : data.subscriptionStatus === 'active' ? 'active' : 'trialing'),
+                    trialDays: Number(data.trialDays) || 0,
+                    trialEndsAt: typeof data.trialEndsAt === 'string' ? data.trialEndsAt : null,
+                    featureKeys: data.featureKeys.map((v: any) => String(v) as PlanFeatureKey),
+                    features: Array.isArray(data.features) ? data.features.map((v: any) => String(v)).filter(Boolean) : [],
+                    limits: typeof data.limits === 'object' && data.limits ? { maxTables: Number((data.limits as any).maxTables) || 0 } : undefined,
+                    currencyCode: typeof data.currencyCode === 'string' ? data.currencyCode : null,
+                    countryCode: typeof data.countryCode === 'string' ? data.countryCode : null,
+                });
+            } catch (error) {
+                console.error('Failed to fetch tenant entitlements:', error);
+            }
+        };
+        void run();
+    }, [isAuthenticated, user?.tenantId, user?.isSuperAdmin]);
+
     useEffect(() => {
         const run = async () => {
             if (!isAuthenticated) {
@@ -629,7 +695,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
 
                     const code = explicitCode
                         || (inferredCountry ? DEFAULT_CURRENCY_BY_COUNTRY[inferredCountry] : undefined)
-                        || 'USD';
+                        || 'NPR';
 
                     const exists = prev.find(c => c.code === code);
                     if (exists) {
@@ -640,7 +706,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                         id: `cur-${code}`,
                         name: meta?.name || code,
                         code,
-                        symbol: meta?.symbol || '$',
+                        symbol: meta?.symbol || 'Rs',
                         exchangeRate: 1,
                         isDefault: true
                     };
@@ -1908,9 +1974,37 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             return users.find(u => u.username === username) || null;
         },
         plans,
-        addPlan: (planData) => setPlans(prev => [...prev, { ...planData, id: `plan-${Date.now()}` }]),
-        updatePlan: (updatedPlan) => setPlans(prev => prev.map(p => p.id === updatedPlan.id ? updatedPlan : p)),
-        deletePlan: (planId) => setPlans(prev => prev.filter(p => p.id !== planId)),
+        addPlan: async (planData) => {
+            const res = await fetch(`${API_BASE_URL}/plans`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(planData),
+            });
+            if (!res.ok) throw new Error('Failed to create plan');
+            await fetchPlans();
+        },
+        updatePlan: async (updatedPlan) => {
+            const res = await fetch(`${API_BASE_URL}/plans/${updatedPlan.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updatedPlan),
+            });
+            if (!res.ok) throw new Error('Failed to update plan');
+            await fetchPlans();
+        },
+        deletePlan: async (planId) => {
+            const res = await fetch(`${API_BASE_URL}/plans/${planId}`, {
+                method: 'DELETE',
+            });
+            if (!res.ok && res.status !== 204) throw new Error('Failed to delete plan');
+            await fetchPlans();
+        },
+        tenantEntitlements,
+        hasPlanFeature: (featureKey) => {
+            if (user?.isSuperAdmin) return true;
+            if (!tenantEntitlements) return true;
+            return tenantEntitlements.featureKeys.includes(featureKey);
+        },
         saasSettings,
         updateSaaSSettings: (settings) => setSaaSSettings(prev => ({...prev, ...settings})),
         addonGroups,

@@ -46,6 +46,7 @@ const LandingPage = React.lazy(() => import('./pages/public/LandingPage'));
 // SaaS Pages
 const SaaSDashboardPage = React.lazy(() => import('./pages/saas/SaaSDashboardPage'));
 const ManageTenantsPage = React.lazy(() => import('./pages/saas/ManageTenantsPage'));
+const TenantDetailsPage = React.lazy(() => import('./pages/saas/TenantDetailsPage'));
 const ManagePlansPage = React.lazy(() => import('./pages/saas/ManagePlansPage'));
 const SaaSSettingsPage = React.lazy(() => import('./pages/saas/SaaSSettingsPage'));
 const SaaSLoginPage = React.lazy(() => import('./pages/saas/auth/SaaSLoginPage'));
@@ -177,7 +178,7 @@ const AuthAwareLanding: React.FC = () => {
 }
 
 const RestaurantPanelRoutes = () => {
-    const { getSingleActiveOutlet } = useRestaurantData();
+    const { getSingleActiveOutlet, hasPlanFeature } = useRestaurantData();
     const location = useLocation();
     const isFullScreenPage = location.pathname.startsWith('/app/panel/pos') || location.pathname.startsWith('/app/tables') || location.pathname.startsWith('/app/panel/kitchen-display') || location.pathname.startsWith('/app/panel/customer-display');
 
@@ -185,12 +186,15 @@ const RestaurantPanelRoutes = () => {
     const isAggregateView = !singleActiveOutlet;
     const isCloudKitchen = singleActiveOutlet?.outletType === 'CloudKitchen';
 
-    const OperationalPage: React.FC<{ page: React.ReactElement, featureName: string, cloudKitchenDisabled?: boolean }> = ({ page, featureName, cloudKitchenDisabled = false }) => {
+    const OperationalPage: React.FC<{ page: React.ReactElement, featureName: string, cloudKitchenDisabled?: boolean, requiredFeatureKey?: Parameters<typeof hasPlanFeature>[0] }> = ({ page, featureName, cloudKitchenDisabled = false, requiredFeatureKey }) => {
         if (isAggregateView) {
             return <FeatureDisabledPage type="selectOutlet" featureName={featureName} />;
         }
         if (cloudKitchenDisabled && isCloudKitchen) {
             return <FeatureDisabledPage type="feature" featureName={featureName} reason="This feature is not available for Cloud Kitchen outlets." />;
+        }
+        if (requiredFeatureKey && !hasPlanFeature(requiredFeatureKey)) {
+            return <FeatureDisabledPage type="feature" featureName={featureName} reason="This feature is not included in your current plan." />;
         }
         return page;
     };
@@ -201,10 +205,10 @@ const RestaurantPanelRoutes = () => {
             <Route path="home" element={<Navigate to="/app/dashboard" replace />} />
             <Route path="dashboard" element={<DashboardPage />} />
             <Route path="website-public" element={<LandingPage />} />
-            <Route path="menu" element={<MenuPage />} />
-            <Route path="item/list-food-menu-category" element={<ListFoodMenuCategoryActualPage />} />
-            <Route path="item/list-pre-made-food" element={<ListPreMadeFoodActualPage />} />
-            <Route path="item/manage-addons" element={<ManageAddonsPage />} />
+            <Route path="menu" element={<OperationalPage page={<MenuPage />} featureName="Food Menu" requiredFeatureKey="menu" />} />
+            <Route path="item/list-food-menu-category" element={<OperationalPage page={<ListFoodMenuCategoryActualPage />} featureName="Food Categories" requiredFeatureKey="menu" />} />
+            <Route path="item/list-pre-made-food" element={<OperationalPage page={<ListPreMadeFoodActualPage />} featureName="Pre-Made Food" requiredFeatureKey="menu" />} />
+            <Route path="item/manage-addons" element={<OperationalPage page={<ManageAddonsPage />} featureName="Manage Add-ons" requiredFeatureKey="menu" />} />
             <Route path="settings/sound-settings" element={<SoundSettingsPage />} />
             <Route path="settings/app-settings" element={<AppSettingsPage />} />
             <Route path="settings/white-label" element={<WhiteLabelPage />} />
@@ -216,57 +220,57 @@ const RestaurantPanelRoutes = () => {
             <Route path="settings/list-payment-method" element={<ListPaymentMethodPage />} />
             <Route path="settings/list-denomination" element={<ManageDenominationsPage />} />
             <Route path="settings/list-delivery-partner" element={<ListDeliveryPartnerPage />} />
-            <Route path="settings/list-area-floor" element={<OperationalPage page={<ManageAreasFloorsPage />} featureName="Areas/Floors" cloudKitchenDisabled />} />
-            <Route path="settings/list-table" element={<OperationalPage page={<ManageTablesSettingsPage />} featureName="Table Settings" cloudKitchenDisabled />} />
-            <Route path="settings/floor-area-plan-design" element={<OperationalPage page={<FloorAreaPlanDesignPage />} featureName="Floor Plan Design" cloudKitchenDisabled />} />
+            <Route path="settings/list-area-floor" element={<OperationalPage page={<ManageAreasFloorsPage />} featureName="Areas/Floors" cloudKitchenDisabled requiredFeatureKey="tables" />} />
+            <Route path="settings/list-table" element={<OperationalPage page={<ManageTablesSettingsPage />} featureName="Table Settings" cloudKitchenDisabled requiredFeatureKey="tables" />} />
+            <Route path="settings/floor-area-plan-design" element={<OperationalPage page={<FloorAreaPlanDesignPage />} featureName="Floor Plan Design" cloudKitchenDisabled requiredFeatureKey="tables" />} />
             <Route path="settings/kitchens" element={<ManageKitchensPage />} />
-            <Route path="settings/waiters" element={<OperationalPage page={<ManageWaitersPage />} featureName="Waiter Management" cloudKitchenDisabled />} />
-            <Route path="tables" element={<OperationalPage page={<TablesPage />} featureName="Table Management" cloudKitchenDisabled />} />
-            <Route path="reservations" element={<OperationalPage page={<ReservationsPage />} featureName="Reservations" cloudKitchenDisabled />} />
+            <Route path="settings/waiters" element={<OperationalPage page={<ManageWaitersPage />} featureName="Waiter Management" cloudKitchenDisabled requiredFeatureKey="tables" />} />
+            <Route path="tables" element={<OperationalPage page={<TablesPage />} featureName="Table Management" cloudKitchenDisabled requiredFeatureKey="tables" />} />
+            <Route path="reservations" element={<OperationalPage page={<ReservationsPage />} featureName="Reservations" cloudKitchenDisabled requiredFeatureKey="reservations" />} />
             <Route path="pricing" element={<PricingPage />} />
-            <Route path="panel/pos" element={<OperationalPage page={<PosPage />} featureName="Point of Sale" />} />
-            <Route path="panel/pos/:tableId" element={<OperationalPage page={<PosPage />} featureName="Point of Sale" />} />
-            <Route path="panel/kitchen-display" element={<OperationalPage page={<KitchenDisplayPage />} featureName="Kitchen Display" />} />
-            <Route path="panel/customer-display" element={<OperationalPage page={<CustomerDisplayPage />} featureName="Customer Display" />} />
-            <Route path="whatsapp/order-menu" element={<WhatsappOrderMenuPage />} />
-            <Route path="whatsapp/settings" element={<OperationalPage page={<WhatsappSettingsPage />} featureName="WhatsApp Settings" />} />
-            <Route path="self-order/enable-disable" element={<OperationalPage page={<EnableDisableSelfOrderPage />} featureName="Self-Order" />} />
-            <Route path="self-order/qr-generator" element={<OperationalPage page={<TableQrCodeGeneratorPage />} featureName="Table QR Generator" cloudKitchenDisabled />} />
-            <Route path="self-order/receiving-user" element={<OperationalPage page={<OrderReceivingUserPage />} featureName="Self-Order" />} />
-            <Route path="website-settings/order-enable-disable" element={<OrderEnableDisablePage />} />
-            <Route path="website-settings/order-receiving-user" element={<OrderReceivingUserPage />} />
-            <Route path="website-settings/website-white-label" element={<WebsiteWhiteLabelPage />} />
-            <Route path="website-settings/home/content" element={<HomepageContentPage />} />
-            <Route path="website-settings/home/add-photo" element={<AddPhotoPage />} />
-            <Route path="website-settings/ai-website-builder" element={<AiWebsiteBuilderPage />} />
-            <Route path="website-settings/home/list-photo" element={<ListPhotoPage />} />
-            <Route path="website-settings/home/social-media" element={<SocialMediaPage />} />
-            <Route path="website-settings/available-online-foods" element={<AvailableOnlineFoodsPage />} />
-            <Route path="website-settings/about-us-content" element={<AboutUsContentPage />} />
-            <Route path="website-settings/contact-us-content" element={<ContactUsContentPage />} />
-            <Route path="website-settings/contact-list" element={<ContactListPage />} />
-            <Route path="website-settings/common-menu-page" element={<CommonMenuPage />} />
-            <Route path="website-settings/social-login-setting" element={<SocialLoginSettingPage />} />
-            <Route path="website-settings/email-setting" element={<EmailSettingPage />} />
-            <Route path="website-settings/payment-setting" element={<PaymentSettingPage />} />
+            <Route path="panel/pos" element={<OperationalPage page={<PosPage />} featureName="Point of Sale" requiredFeatureKey="pos" />} />
+            <Route path="panel/pos/:tableId" element={<OperationalPage page={<PosPage />} featureName="Point of Sale" requiredFeatureKey="pos" />} />
+            <Route path="panel/kitchen-display" element={<OperationalPage page={<KitchenDisplayPage />} featureName="Kitchen Display" requiredFeatureKey="kds" />} />
+            <Route path="panel/customer-display" element={<OperationalPage page={<CustomerDisplayPage />} featureName="Customer Display" requiredFeatureKey="customerDisplay" />} />
+            <Route path="whatsapp/order-menu" element={<OperationalPage page={<WhatsappOrderMenuPage />} featureName="WhatsApp Order Menu" requiredFeatureKey="whatsapp" />} />
+            <Route path="whatsapp/settings" element={<OperationalPage page={<WhatsappSettingsPage />} featureName="WhatsApp Settings" requiredFeatureKey="whatsapp" />} />
+            <Route path="self-order/enable-disable" element={<OperationalPage page={<EnableDisableSelfOrderPage />} featureName="Self-Order" requiredFeatureKey="selfOrder" />} />
+            <Route path="self-order/qr-generator" element={<OperationalPage page={<TableQrCodeGeneratorPage />} featureName="Table QR Generator" cloudKitchenDisabled requiredFeatureKey="selfOrder" />} />
+            <Route path="self-order/receiving-user" element={<OperationalPage page={<OrderReceivingUserPage />} featureName="Self-Order" requiredFeatureKey="selfOrder" />} />
+            <Route path="website-settings/order-enable-disable" element={<OperationalPage page={<OrderEnableDisablePage />} featureName="Website Ordering" requiredFeatureKey="website" />} />
+            <Route path="website-settings/order-receiving-user" element={<OperationalPage page={<OrderReceivingUserPage />} featureName="Website Ordering" requiredFeatureKey="website" />} />
+            <Route path="website-settings/website-white-label" element={<OperationalPage page={<WebsiteWhiteLabelPage />} featureName="Website White Label" requiredFeatureKey="website" />} />
+            <Route path="website-settings/home/content" element={<OperationalPage page={<HomepageContentPage />} featureName="Homepage Content" requiredFeatureKey="website" />} />
+            <Route path="website-settings/home/add-photo" element={<OperationalPage page={<AddPhotoPage />} featureName="Website Photos" requiredFeatureKey="website" />} />
+            <Route path="website-settings/ai-website-builder" element={<OperationalPage page={<AiWebsiteBuilderPage />} featureName="AI Website Builder" requiredFeatureKey="website" />} />
+            <Route path="website-settings/home/list-photo" element={<OperationalPage page={<ListPhotoPage />} featureName="Website Photos" requiredFeatureKey="website" />} />
+            <Route path="website-settings/home/social-media" element={<OperationalPage page={<SocialMediaPage />} featureName="Social Media" requiredFeatureKey="website" />} />
+            <Route path="website-settings/available-online-foods" element={<OperationalPage page={<AvailableOnlineFoodsPage />} featureName="Available Online Foods" requiredFeatureKey="website" />} />
+            <Route path="website-settings/about-us-content" element={<OperationalPage page={<AboutUsContentPage />} featureName="About Us Content" requiredFeatureKey="website" />} />
+            <Route path="website-settings/contact-us-content" element={<OperationalPage page={<ContactUsContentPage />} featureName="Contact Us Content" requiredFeatureKey="website" />} />
+            <Route path="website-settings/contact-list" element={<OperationalPage page={<ContactListPage />} featureName="Contact List" requiredFeatureKey="website" />} />
+            <Route path="website-settings/common-menu-page" element={<OperationalPage page={<CommonMenuPage />} featureName="Common Menu Page" requiredFeatureKey="website" />} />
+            <Route path="website-settings/social-login-setting" element={<OperationalPage page={<SocialLoginSettingPage />} featureName="Social Login Setting" requiredFeatureKey="website" />} />
+            <Route path="website-settings/email-setting" element={<OperationalPage page={<EmailSettingPage />} featureName="Email Setting" requiredFeatureKey="website" />} />
+            <Route path="website-settings/payment-setting" element={<OperationalPage page={<PaymentSettingPage />} featureName="Payment Setting" requiredFeatureKey="website" />} />
             <Route path="website-settings/access-data" element={<AccessDataPage />} />
             <Route path="reservation-settings/enable-disable-reservation" element={<EnableDisableReservationPage />} />
             <Route path="reservation-settings/enable-disable" element={<EnableDisableReservationOrderPage />} />
             <Route path="reservation-settings/receiving-user" element={<ReservationOrderReceivingUserPage />} />
             <Route path="outlet-setting" element={<OutletSettingPage />} />
-            <Route path="subscription" element={<OperationalPage page={<SubscriptionPage />} featureName="Subscription" />} />
-            <Route path="stock/levels" element={<ViewStockLevelsActualPage />} />
-            <Route path="stock/add-entry" element={<AddStockEntryActualPage />} />
-            <Route path="stock/adjustments" element={<StockAdjustmentsActualPage />} />
-            <Route path="stock/suppliers" element={<ManageSuppliersActualPage />} />
-            <Route path="stock/low-stock-report" element={<LowStockReportActualPage />} />
-            <Route path="sale" element={<SalesHistoryPage />} />
-            <Route path="customer" element={<CustomerPage />} />
-            <Route path="customer-due-receive" element={<CustomerDueReceivePageActual />} />
-            <Route path="purchase" element={<ActualPurchasePage />} />
-            <Route path="purchase/add" element={<AddPurchaseActualPage />} />
-            <Route path="supplier-due-payment" element={<ActualSupplierDuePaymentPage />} />
-            <Route path="expense" element={<FunctionalExpensePage />} />
+            <Route path="subscription" element={<OperationalPage page={<SubscriptionPage />} featureName="Subscription" requiredFeatureKey="subscription" />} />
+            <Route path="stock/levels" element={<OperationalPage page={<ViewStockLevelsActualPage />} featureName="Stock Levels" requiredFeatureKey="inventory" />} />
+            <Route path="stock/add-entry" element={<OperationalPage page={<AddStockEntryActualPage />} featureName="Add Stock Entry" requiredFeatureKey="inventory" />} />
+            <Route path="stock/adjustments" element={<OperationalPage page={<StockAdjustmentsActualPage />} featureName="Stock Adjustments" requiredFeatureKey="inventory" />} />
+            <Route path="stock/suppliers" element={<OperationalPage page={<ManageSuppliersActualPage />} featureName="Manage Suppliers" requiredFeatureKey="inventory" />} />
+            <Route path="stock/low-stock-report" element={<OperationalPage page={<LowStockReportActualPage />} featureName="Low Stock Report" requiredFeatureKey="inventory" />} />
+            <Route path="sale" element={<OperationalPage page={<SalesHistoryPage />} featureName="Sale History" requiredFeatureKey="customers" />} />
+            <Route path="customer" element={<OperationalPage page={<CustomerPage />} featureName="Manage Customers" requiredFeatureKey="customers" />} />
+            <Route path="customer-due-receive" element={<OperationalPage page={<CustomerDueReceivePageActual />} featureName="Customer Due Receive" requiredFeatureKey="customers" />} />
+            <Route path="purchase" element={<OperationalPage page={<ActualPurchasePage />} featureName="Purchases" requiredFeatureKey="purchase" />} />
+            <Route path="purchase/add" element={<OperationalPage page={<AddPurchaseActualPage />} featureName="Add Purchase" requiredFeatureKey="purchase" />} />
+            <Route path="supplier-due-payment" element={<OperationalPage page={<ActualSupplierDuePaymentPage />} featureName="Supplier Due Payment" requiredFeatureKey="purchase" />} />
+            <Route path="expense" element={<OperationalPage page={<FunctionalExpensePage />} featureName="Expense Management" requiredFeatureKey="purchase" />} />
             <Route path="waste" element={<FunctionalWastePage />} />
             <Route path="account-user" element={<AccountAndUserPage />} />
             <Route path="employees" element={<FunctionalEmployeesPage />} />
@@ -327,6 +331,7 @@ const SaaSPanelRoutes = () => {
                 <Route path="dashboard" element={<SaaSDashboardPage />} />
                 <Route path="plans" element={<ManagePlansPage />} />
                 <Route path="tenants" element={<ManageTenantsPage />} />
+                <Route path="tenants/:tenantId" element={<TenantDetailsPage />} />
                 <Route path="crm/leads" element={<CRMLeadsPage />} />
                 
                 <Route path="cms/*" element={<WebsiteCMSPage />} />

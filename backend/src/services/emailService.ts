@@ -1,6 +1,6 @@
 import prisma from '../db/prisma.js';
 import nodemailer from 'nodemailer';
-import { welcomeTemplate, invoiceTemplate, resetPasswordTemplate } from './emailTemplates.js';
+import { welcomeTemplate, invoiceTemplate, invoiceReminderTemplate, resetPasswordTemplate } from './emailTemplates.js';
 
 const getEnv = () => process.env.APP_ENV || process.env.NODE_ENV || 'dev';
 
@@ -54,6 +54,10 @@ export const sendWelcomeEmail = async (to: string, name?: string) => {
 
 export const sendInvoiceEmail = async (to: string, params: { invoiceNumber: string; amount: string; currency: string }) => {
   await sendEmail(to, `Invoice ${params.invoiceNumber}`, invoiceTemplate(params));
+};
+
+export const sendInvoiceReminderEmail = async (to: string, params: { invoiceNumber: string; amount: string; currency: string; tenantName?: string }) => {
+  await sendEmail(to, `Reminder: Invoice ${params.invoiceNumber}`, invoiceReminderTemplate(params));
 };
 
 export const sendResetPasswordEmail = async (to: string, link: string) => {

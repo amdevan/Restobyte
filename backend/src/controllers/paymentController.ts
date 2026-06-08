@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import prisma from '../db/prisma.js';
 import type { AuthRequest } from '../middleware/authMiddleware.js';
 import { sendInvoiceEmail } from '../services/emailService.js';
+import { createInvoiceForPayment } from '../services/invoiceService.js';
 
 export const createPayment = async (req: Request, res: Response) => {
   const auth = req as AuthRequest;
@@ -20,24 +21,38 @@ export const createPayment = async (req: Request, res: Response) => {
       res.status(404).json({ message: 'Tenant not found' });
       return;
     }
-    const payment = await (prisma as any).payment.create({
-      data: {
+    const result = await prisma.$transaction(async (tx: any) => {
+      const payment = await tx.payment.create({
+        data: {
+          tenantId: tenant.id,
+          amount: Number(amount),
+          method: method || 'manual',
+          notes: notes || null,
+          status: 'paid'
+        }
+      });
+      const invoice = await createInvoiceForPayment(tx, {
         tenantId: tenant.id,
+        paymentId: payment.id,
         amount: Number(amount),
+        currencyCode: (tenant as any).currencyCode || 'NPR',
+        status: 'paid',
         method: method || 'manual',
         notes: notes || null,
-        status: 'paid'
-      }
+        issuedAt: payment.createdAt,
+        paidAt: payment.createdAt,
+      });
+      return { payment, invoice };
     });
     if (emailTo) {
-      const invoiceNumber = `PMT-${payment.id.slice(0, 8).toUpperCase()}`;
-      const currency = (tenant as any).currencyCode || 'USD';
+      const invoiceNumber = result.invoice.invoiceNumber;
+      const currency = (tenant as any).currencyCode || 'NPR';
       const amountStr = Number(amount).toFixed(2);
       try {
         await sendInvoiceEmail(String(emailTo), { invoiceNumber, amount: amountStr, currency });
       } catch {}
     }
-    res.status(201).json({ payment });
+    res.status(201).json(result);
   } catch (e) {
     console.error('createPayment error:', e);
     res.status(500).json({ message: 'Server error' });

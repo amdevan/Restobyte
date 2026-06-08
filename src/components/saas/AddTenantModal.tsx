@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import Input from '@/components/common/Input';
 import Button from '@/components/common/Button';
-import { FiSave, FiX } from 'react-icons/fi';
+import { FiSave } from 'react-icons/fi';
 import { COUNTRIES, CURRENCIES, DEFAULT_CURRENCY_BY_COUNTRY } from '@/constants/geo';
 import { API_BASE_URL } from '@/config';
 
@@ -15,6 +15,7 @@ const AddTenantModal: React.FC<AddTenantModalProps> = ({ onClose }) => {
         username: '',
         password: '',
         fullName: '',
+        adminEmail: '',
         mobile: '',
         address: '',
         countryCode: '',
@@ -42,6 +43,7 @@ const AddTenantModal: React.FC<AddTenantModalProps> = ({ onClose }) => {
                     username: formData.username,
                     password: formData.password,
                     fullName: formData.fullName,
+                    adminEmail: formData.adminEmail,
                     mobile: formData.mobile,
                     address: formData.address,
                     countryCode: formData.countryCode,
@@ -88,6 +90,16 @@ const AddTenantModal: React.FC<AddTenantModalProps> = ({ onClose }) => {
                         required
                         placeholder="John Doe"
                     />
+                    <Input
+                        label="Billing Email"
+                        name="adminEmail"
+                        type="email"
+                        value={formData.adminEmail}
+                        onChange={handleChange}
+                        placeholder="billing@example.com"
+                    />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
                     <Input
                         label="Mobile Number"
                         name="mobile"

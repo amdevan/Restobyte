@@ -1,11 +1,12 @@
 import type { Request, Response } from 'express';
 import prisma from '../db/prisma.js';
 import bcrypt from 'bcryptjs';
-import { sendWelcomeEmail } from '../services/emailService.js';
+import { sendInvoiceReminderEmail, sendWelcomeEmail } from '../services/emailService.js';
 import type { AuthRequest } from '../middleware/authMiddleware.js';
+import { resolvePlanConfig } from '../utils/planConfig.js';
 
 export const createTenant = async (req: Request, res: Response): Promise<void> => {
-  const { restaurantName, fullName, mobile, address, username, password, countryCode, currencyCode, adminEmail } = req.body;
+  const { restaurantName, fullName, mobile, address, username, password, countryCode, currencyCode, adminEmail, plan: requestedPlan } = req.body;
 
   try {
     const existingUser = await prisma.user.findUnique({
@@ -19,19 +20,26 @@ export const createTenant = async (req: Request, res: Response): Promise<void> =
 
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
+    const selectedPlan = typeof requestedPlan === 'string' && requestedPlan.trim()
+      ? await prisma.planDefinition.findUnique({ where: { name: requestedPlan.trim() } })
+      : await prisma.planDefinition.findFirst({ where: { isActive: true }, orderBy: [{ price: 'asc' }, { createdAt: 'asc' }] });
+    const normalizedPlan = resolvePlanConfig(selectedPlan || { name: requestedPlan || 'Basic' });
+    const now = new Date();
+    const trialEndsAt = normalizedPlan.trialDays > 0
+      ? new Date(now.getTime() + normalizedPlan.trialDays * 24 * 60 * 60 * 1000)
+      : now;
 
     // Perform all operations in a transaction to ensure data integrity
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: any) => {
       // 1. Create Tenant
       const tenant = await tx.tenant.create({
         data: {
           name: restaurantName,
           address,
           phone: mobile,
-          // Cast to any to avoid transient client type mismatches during codegen
-          ...( { countryCode: countryCode || null, currencyCode: currencyCode || null } as any ),
+          ...( { adminEmail: adminEmail || null, countryCode: countryCode || null, currencyCode: currencyCode || 'NPR', trialDays: normalizedPlan.trialDays, trialEndsAt } as any ),
           subscriptionStatus: 'trialing',
-          plan: 'Basic',
+          plan: normalizedPlan.name,
         },
       });
 
@@ -160,15 +168,18 @@ export const listTenants = async (req: Request, res: Response): Promise<void> =>
     });
 
     // Transform to match expected frontend format
-    const formattedTenants = tenants.map(t => ({
+    const formattedTenants = tenants.map((t: any) => ({
       id: t.id,
       name: t.name,
       phone: t.phone,
       plan: t.plan,
       address: t.address,
+      adminEmail: (t as any).adminEmail ?? null,
       countryCode: (t as any).countryCode ?? null,
       currencyCode: (t as any).currencyCode ?? null,
       subscriptionStatus: t.subscriptionStatus,
+      trialDays: (t as any).trialDays ?? null,
+      trialEndsAt: (t as any).trialEndsAt ?? null,
       createdAt: t.createdAt,
       updatedAt: t.updatedAt,
       adminUsername: t.users[0]?.username || 'N/A'
@@ -204,15 +215,37 @@ export const deleteTenant = async (req: Request, res: Response): Promise<void> =
 
 export const updateTenant = async (req: Request, res: Response): Promise<void> => {
   const id = req.params.id as string;
-  const { name, plan, subscriptionStatus, username, password, countryCode, currencyCode } = req.body;
+  const { name, plan, subscriptionStatus, username, password, adminEmail, countryCode, currencyCode, trialDays, trialEndsAt } = req.body;
   
   try {
+    const existingTenant = await prisma.tenant.findUnique({ where: { id } });
+    if (!existingTenant) {
+      res.status(404).json({ message: 'Tenant not found' });
+      return;
+    }
+
+    const selectedPlan = typeof plan === 'string' && plan.trim()
+      ? await prisma.planDefinition.findUnique({ where: { name: plan.trim() } })
+      : null;
+    const normalizedPlan = selectedPlan ? resolvePlanConfig(selectedPlan) : null;
+    const normalizedTrialDays = Number.isFinite(Number(trialDays)) && Number(trialDays) >= 0
+      ? Math.floor(Number(trialDays))
+      : (normalizedPlan?.trialDays ?? (existingTenant as any).trialDays ?? null);
+    const normalizedTrialEndsAt = trialEndsAt !== undefined
+      ? (trialEndsAt ? new Date(trialEndsAt) : null)
+      : (subscriptionStatus === 'trialing' && normalizedTrialDays !== null
+          ? new Date(Date.now() + normalizedTrialDays * 24 * 60 * 60 * 1000)
+          : (existingTenant as any).trialEndsAt);
+
     const updateData: any = {
         name,
-        plan,
+        plan: typeof plan === 'string' && plan.trim() ? plan.trim() : existingTenant.plan,
         subscriptionStatus,
+        adminEmail,
         countryCode,
         currencyCode,
+        trialDays: normalizedTrialDays,
+        trialEndsAt: normalizedTrialEndsAt,
     };
 
     // Update Tenant
@@ -279,21 +312,146 @@ export const getTenantDetails = async (req: Request, res: Response): Promise<voi
       orderBy: { createdAt: 'desc' },
       take: 20
     });
+    const loginHistory = await (prisma as any).tenantLoginHistory.findMany({
+      where: { tenantId: id },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+      select: {
+        id: true,
+        username: true,
+        ipAddress: true,
+        userAgent: true,
+        deviceLabel: true,
+        loginType: true,
+        createdAt: true,
+      },
+    });
+    const invoiceHistory = await (prisma as any).subscriptionInvoice.findMany({
+      where: { tenantId: id },
+      orderBy: { issuedAt: 'desc' },
+      take: 50,
+      select: {
+        id: true,
+        invoiceNumber: true,
+        amount: true,
+        currencyCode: true,
+        status: true,
+        method: true,
+        notes: true,
+        issuedAt: true,
+        paidAt: true,
+        paymentId: true,
+      },
+    });
+    const deviceMap = new Map<string, any>();
+    for (const entry of loginHistory) {
+      const key = `${entry.deviceLabel || 'Unknown Device'}|${entry.ipAddress || 'unknown-ip'}`;
+      if (!deviceMap.has(key)) {
+        deviceMap.set(key, {
+          id: key,
+          deviceLabel: entry.deviceLabel || 'Unknown Device',
+          ipAddress: entry.ipAddress || null,
+          userAgent: entry.userAgent || null,
+          lastLoginAt: entry.createdAt,
+          totalLogins: 1,
+          usernames: [entry.username],
+        });
+        continue;
+      }
+
+      const existing = deviceMap.get(key);
+      existing.totalLogins += 1;
+      if (new Date(entry.createdAt).getTime() > new Date(existing.lastLoginAt).getTime()) {
+        existing.lastLoginAt = entry.createdAt;
+        existing.userAgent = entry.userAgent || existing.userAgent;
+      }
+      if (!existing.usernames.includes(entry.username)) {
+        existing.usernames.push(entry.username);
+      }
+    }
 
     res.json({
       id: tenant.id,
       name: tenant.name,
       phone: tenant.phone,
       address: tenant.address,
+      adminEmail: (tenant as any).adminEmail ?? null,
       plan: tenant.plan,
       subscriptionStatus: tenant.subscriptionStatus,
+      countryCode: (tenant as any).countryCode ?? null,
+      currencyCode: (tenant as any).currencyCode ?? 'NPR',
+      trialDays: (tenant as any).trialDays ?? null,
+      trialEndsAt: (tenant as any).trialEndsAt ?? null,
       createdAt: tenant.createdAt,
       outlets: (tenant as any).outlets || [],
       users: (tenant as any).users || [],
-      payments,
+      payments: payments.map((payment: any) => ({
+        ...payment,
+        invoiceNumber: invoiceHistory.find((invoice: any) => invoice.paymentId === payment.id)?.invoiceNumber || null,
+        currencyCode: (tenant as any).currencyCode || 'NPR',
+      })),
+      invoiceHistory,
+      loginHistory,
+      devices: Array.from(deviceMap.values()).sort((a, b) => new Date(b.lastLoginAt).getTime() - new Date(a.lastLoginAt).getTime()),
     });
   } catch (error) {
     console.error('getTenantDetails error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+export const sendInvoiceReminder = async (req: Request, res: Response): Promise<void> => {
+  const auth = req as AuthRequest;
+  if (!auth.user?.isSuperAdmin) {
+    res.status(403).json({ message: 'Forbidden' });
+    return;
+  }
+
+  const tenantId = req.params.id as string;
+  const invoiceId = req.params.invoiceId as string;
+  const requestedEmail = typeof req.body?.email === 'string' ? req.body.email.trim() : '';
+
+  try {
+    const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
+    if (!tenant) {
+      res.status(404).json({ message: 'Tenant not found' });
+      return;
+    }
+
+    const invoice = await (prisma as any).subscriptionInvoice.findFirst({
+      where: {
+        id: invoiceId,
+        tenantId,
+      },
+    });
+    if (!invoice) {
+      res.status(404).json({ message: 'Invoice not found' });
+      return;
+    }
+
+    const email = requestedEmail || (tenant as any).adminEmail || '';
+    if (!email) {
+      res.status(400).json({ message: 'Tenant billing email is missing' });
+      return;
+    }
+
+    await sendInvoiceReminderEmail(email, {
+      invoiceNumber: invoice.invoiceNumber,
+      amount: Number(invoice.amount).toFixed(2),
+      currency: invoice.currencyCode || 'NPR',
+      tenantName: tenant.name,
+    });
+
+    if (!(tenant as any).adminEmail && requestedEmail) {
+      await prisma.tenant.update({
+        where: { id: tenantId },
+        data: { adminEmail: requestedEmail },
+      } as any);
+    }
+
+    res.json({ ok: true, email });
+  } catch (error) {
+    console.error('sendInvoiceReminder error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -309,6 +467,40 @@ export const getMyTenantCurrency = async (req: Request, res: Response): Promise<
     const tenant = await prisma.tenant.findUnique({ where: { id: tenantId }, select: { countryCode: true, currencyCode: true } });
     res.json(tenant ?? { countryCode: null, currencyCode: null });
   } catch (e) {
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+export const getMyTenantEntitlements = async (req: Request, res: Response): Promise<void> => {
+  const auth = req as AuthRequest;
+  const tenantId = auth.user?.tenantId;
+  if (!tenantId) {
+    res.status(403).json({ message: 'Unauthorized' });
+    return;
+  }
+
+  try {
+    const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
+    if (!tenant) {
+      res.status(404).json({ message: 'Tenant not found' });
+      return;
+    }
+
+    const plan = await prisma.planDefinition.findUnique({ where: { name: tenant.plan } });
+    const normalized = resolvePlanConfig(plan || { name: tenant.plan });
+    res.json({
+      planName: tenant.plan,
+      subscriptionStatus: tenant.subscriptionStatus,
+      trialDays: (tenant as any).trialDays ?? normalized.trialDays,
+      trialEndsAt: (tenant as any).trialEndsAt ?? null,
+      featureKeys: normalized.featureKeys,
+      features: normalized.features,
+      limits: normalized.limits,
+      currencyCode: (tenant as any).currencyCode ?? 'NPR',
+      countryCode: (tenant as any).countryCode ?? null,
+    });
+  } catch (error) {
+    console.error('getMyTenantEntitlements error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };

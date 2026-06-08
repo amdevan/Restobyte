@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 import prisma from '../db/prisma.js';
 import { sendInvoiceEmail } from '../services/emailService.js';
+import { createInvoiceForPayment } from '../services/invoiceService.js';
 
 // Simple in-memory store for QR sessions (prototype only)
 type SessionStatus = 'pending' | 'paid' | 'failed' | 'expired';
@@ -92,18 +93,32 @@ export const markPaid = async (req: Request, res: Response) => {
     if (tenantId) {
       const tenant = await prisma.tenant.findUnique({ where: { id: String(tenantId) } });
       if (tenant) {
-        const payment = await (prisma as any).payment.create({
-          data: {
+        const result = await prisma.$transaction(async (tx: any) => {
+          const payment = await tx.payment.create({
+            data: {
+              tenantId: tenant.id,
+              amount: Number(session.amount),
+              method: method || 'fonepay',
+              notes: `Fonepay ${qrSessionId}`,
+              status: 'paid'
+            }
+          });
+          const invoice = await createInvoiceForPayment(tx, {
             tenantId: tenant.id,
+            paymentId: payment.id,
             amount: Number(session.amount),
+            currencyCode: (tenant as any).currencyCode || session.currency || 'NPR',
+            status: 'paid',
             method: method || 'fonepay',
             notes: `Fonepay ${qrSessionId}`,
-            status: 'paid'
-          }
+            issuedAt: payment.createdAt,
+            paidAt: payment.createdAt,
+          });
+          return { payment, invoice };
         });
         if (emailTo) {
-          const invoiceNumber = `PMT-${payment.id.slice(0, 8).toUpperCase()}`;
-          const currency = (tenant as any).currencyCode || session.currency || 'USD';
+          const invoiceNumber = result.invoice.invoiceNumber;
+          const currency = (tenant as any).currencyCode || session.currency || 'NPR';
           const amountStr = Number(session.amount).toFixed(2);
           try {
             await sendInvoiceEmail(String(emailTo), { invoiceNumber, amount: amountStr, currency });

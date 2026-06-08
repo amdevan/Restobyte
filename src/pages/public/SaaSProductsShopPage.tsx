@@ -31,7 +31,7 @@ const SaaSProductsShopPage: React.FC = () => {
 
     const handleWhatsAppOrder = (productName: string, price: number) => {
         const phoneNumber = "+9779843927360"; // Updated business number
-        const message = encodeURIComponent(`Hello RestoByte! I would like to order the ${productName} (Price: $${price}). Please provide more details.`);
+        const message = encodeURIComponent(`Hello RestoByte! I would like to order the ${productName} (Price: Rs ${price}). Please provide more details.`);
         window.open(`https://wa.me/${phoneNumber}?text=${message}`, '_blank');
     };
 
@@ -151,8 +151,8 @@ const SaaSProductsShopPage: React.FC = () => {
                                         <p className="text-sm font-bold text-[#5a4039] uppercase tracking-wider mb-4">Price Range</p>
                                         <input type="range" className="w-full accent-[#8b2d1d]" min="0" max="1000" />
                                         <div className="flex justify-between mt-2 text-xs text-[#5a4039] font-medium">
-                                            <span>$0</span>
-                                            <span>$1000+</span>
+                                            <span>Rs 0</span>
+                                            <span>Rs 1000+</span>
                                         </div>
                                     </div>
                                 </div>
@@ -175,7 +175,7 @@ const SaaSProductsShopPage: React.FC = () => {
                                             <div className="mb-4">
                                                 <span className="text-[8px] font-black text-[#8b2d1d] uppercase tracking-[0.15em]">{p.category}</span>
                                                 <h4 className="text-base font-black text-[#2d1510] mt-1 line-clamp-1">{p.name}</h4>
-                                                <div className="text-lg font-black text-[#8b2d1d] mt-1">${p.price}</div>
+                                                <div className="text-lg font-black text-[#8b2d1d] mt-1">Rs {p.price}</div>
                                             </div>
                                             
                                             <div className="flex items-center justify-between pt-4 border-t border-[#f3e9e5]">

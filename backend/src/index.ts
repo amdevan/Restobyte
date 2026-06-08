@@ -23,6 +23,9 @@ import userRoutes from './routes/userRoutes.js';
 import outletRoutes from './routes/outletRoutes.js';
 import saasWebsiteContentRoutes from './routes/saasWebsiteContentRoutes.js';
 import saasWebsiteContentAdminRoutes from './routes/saasWebsiteContentAdminRoutes.js';
+import planRoutes from './routes/planRoutes.js';
+import { DEFAULT_PLAN_DEFINITIONS } from './utils/planConfig.js';
+import { backfillMissingInvoices } from './services/invoiceService.js';
 
 dotenv.config();
 
@@ -60,6 +63,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/outlets', outletRoutes);
 app.use('/api/public', saasWebsiteContentRoutes);
 app.use('/api/saas', saasWebsiteContentAdminRoutes);
+app.use('/api/plans', planRoutes);
 
 async function start() {
   try {
@@ -170,21 +174,53 @@ async function start() {
   }
 
   try {
+    const planCount = await prisma.planDefinition.count();
+    if (planCount === 0) {
+      await prisma.planDefinition.createMany({
+        data: DEFAULT_PLAN_DEFINITIONS.map((plan) => ({
+          name: plan.name,
+          price: plan.price,
+          period: plan.period,
+          features: plan.features,
+          featureKeys: plan.featureKeys,
+          limits: plan.limits,
+          trialDays: plan.trialDays,
+          isPublic: plan.isPublic,
+          isActive: plan.isActive,
+          isFeatured: plan.isFeatured,
+        })),
+      } as any);
+      console.log('[database]: Seeded default plan definitions');
+    }
+  } catch (error) {
+    console.error('[database]: Failed to ensure default plans', error);
+  }
+
+  try {
     const existingCount = await prisma.currency.count();
     if (existingCount === 0) {
       await prisma.currency.create({
         data: {
-          name: 'US Dollar',
-          code: 'USD',
-          symbol: '$',
+          name: 'Nepalese Rupee',
+          code: 'NPR',
+          symbol: 'Rs',
           exchangeRate: 1,
           isDefault: true,
         },
       });
-      console.log('[database]: Seeded default currency (USD)');
+      console.log('[database]: Seeded default currency (NPR)');
     }
   } catch (error) {
     console.error('[database]: Failed to ensure default currency', error);
+  }
+
+  try {
+    const createdInvoices = await backfillMissingInvoices();
+    if (createdInvoices > 0) {
+      console.log(`[database]: Backfilled ${createdInvoices} subscription invoices`);
+    }
+  } catch (error) {
+    console.error('[database]: Failed to backfill subscription invoices', error);
   }
 
   app.listen(port, host, () => {

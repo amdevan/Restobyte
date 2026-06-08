@@ -53,7 +53,7 @@ const CMSPricingForm: React.FC<CMSPricingFormProps> = ({ pricingPlans, onUpdate 
         const newPlan: SaasPricingPlan = {
             id: `new-${Date.now()}`,
             name: 'New Plan',
-            price: '$0',
+            price: 'Rs 0',
             period: '/ month',
             features: ['New Feature'],
             isFeatured: false

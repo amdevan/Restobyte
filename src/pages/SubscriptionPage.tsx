@@ -1,13 +1,14 @@
-
-
-import React from 'react';
+import React, { useState } from 'react';
 import { useRestaurantData } from '@/hooks/useRestaurantData';
+import { useAuth } from '@/hooks/useAuth';
 import FeatureDisabledPage from '@/components/common/FeatureDisabledPage';
-import { FiArrowDownRight, FiArrowUpRight, FiCheckCircle, FiClock, FiCreditCard } from 'react-icons/fi';
+import { FiArrowDownRight, FiArrowUpRight, FiCheckCircle, FiClock, FiCreditCard, FiEdit, FiPlus, FiTrash2 } from 'react-icons/fi';
 import Button from '@/components/common/Button';
 import { Plan } from '@/types';
+import Modal from '@/components/common/Modal';
+import PlanForm from '@/components/saas/PlanForm';
 
-const PlanCard: React.FC<{ plan: Plan; isCurrent: boolean; currentPrice: number; }> = ({ plan, isCurrent, currentPrice }) => {
+const PlanCard: React.FC<{ plan: Plan; isCurrent: boolean; currentPrice: number; onEdit?: (plan: Plan) => void; onDelete?: (plan: Plan) => void; canManage?: boolean; }> = ({ plan, isCurrent, currentPrice, onEdit, onDelete, canManage = false }) => {
     const isUpgrade = plan.price > currentPrice;
     const isDowngrade = plan.price < currentPrice;
     const maxFeaturesToShow = 4;
@@ -63,7 +64,7 @@ const PlanCard: React.FC<{ plan: Plan; isCurrent: boolean; currentPrice: number;
                             )}
                         </div>
                         <div className="mt-3 flex items-end gap-2">
-                            <div className="text-3xl font-extrabold text-gray-900 tabular-nums">${plan.price.toFixed(2)}</div>
+                            <div className="text-3xl font-extrabold text-gray-900 tabular-nums">Rs {plan.price.toFixed(2)}</div>
                             <div className="pb-1 text-xs font-semibold text-gray-500">/{plan.period}</div>
                         </div>
                         <div className="mt-2 text-xs text-gray-500">Upgrade or downgrade anytime.</div>
@@ -101,6 +102,16 @@ const PlanCard: React.FC<{ plan: Plan; isCurrent: boolean; currentPrice: number;
                 <div className="mt-5">
                     {getButton()}
                 </div>
+                {canManage && (
+                    <div className="mt-3 flex gap-2">
+                        <Button type="button" variant="secondary" size="sm" className="w-full" leftIcon={<FiEdit />} onClick={() => onEdit?.(plan)}>
+                            Edit
+                        </Button>
+                        <Button type="button" variant="danger" size="sm" className="w-full" leftIcon={<FiTrash2 />} onClick={() => onDelete?.(plan)}>
+                            Delete
+                        </Button>
+                    </div>
+                )}
             </div>
         </div>
     );
@@ -108,16 +119,38 @@ const PlanCard: React.FC<{ plan: Plan; isCurrent: boolean; currentPrice: number;
 
 
 const SubscriptionPage: React.FC = () => {
-    const { getSingleActiveOutlet, plans } = useRestaurantData();
+    const { getSingleActiveOutlet, plans, addPlan, updatePlan, deletePlan } = useRestaurantData();
+    const { user } = useAuth();
     const outlet = getSingleActiveOutlet();
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
 
     if (!outlet) {
         return <FeatureDisabledPage type="selectOutlet" featureName="Subscription Details" />;
     }
 
     const currentPlanDetails = plans.find(p => p.name === outlet.plan);
-
     const publicPlans = plans.filter(p => p.isPublic).sort((a,b) => a.price - b.price);
+    const canManagePlans = Boolean(user?.isSuperAdmin);
+
+    const handleOpenModal = (plan?: Plan) => {
+        setEditingPlan(plan || null);
+        setIsModalOpen(true);
+    };
+
+    const handleCloseModal = () => {
+        setEditingPlan(null);
+        setIsModalOpen(false);
+    };
+
+    const handleDeletePlan = async (plan: Plan) => {
+        if (!window.confirm(`Delete "${plan.name}" plan?`)) return;
+        try {
+            await deletePlan(plan.id);
+        } catch {
+            alert('Failed to delete plan');
+        }
+    };
 
     return (
         <div className="p-4 md:p-6 space-y-6 bg-gradient-to-b from-gray-50 via-gray-50 to-white min-h-full">
@@ -165,6 +198,11 @@ const SubscriptionPage: React.FC = () => {
                     <div className="text-lg font-extrabold text-gray-900 tracking-tight">Plans</div>
                     <div className="mt-1 text-sm text-gray-600">Compare features and select the best option.</div>
                 </div>
+                {canManagePlans && (
+                    <Button onClick={() => handleOpenModal()} leftIcon={<FiPlus />}>
+                        Add Plan
+                    </Button>
+                )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 items-stretch justify-items-center">
@@ -174,9 +212,25 @@ const SubscriptionPage: React.FC = () => {
                         plan={plan}
                         isCurrent={plan.name === outlet.plan}
                         currentPrice={currentPlanDetails?.price || 0}
+                        canManage={canManagePlans}
+                        onEdit={handleOpenModal}
+                        onDelete={handleDeletePlan}
                     />
                 ))}
             </div>
+            <Modal
+                isOpen={isModalOpen}
+                onClose={handleCloseModal}
+                title={editingPlan ? `Edit Plan: ${editingPlan.name}` : 'Create New Plan'}
+                size="xl"
+            >
+                <PlanForm
+                    initialData={editingPlan}
+                    onSubmit={addPlan}
+                    onUpdate={updatePlan}
+                    onClose={handleCloseModal}
+                />
+            </Modal>
             </div>
         </div>
     );

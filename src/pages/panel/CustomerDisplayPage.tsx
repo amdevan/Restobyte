@@ -54,7 +54,7 @@ const CustomerDisplayPage: React.FC = () => {
                                  <span className="font-semibold text-gray-800">{item.quantity} x {item.name}</span>
                                  {item.notes && <p className="text-lg text-amber-600 pl-4">&hookrightarrow; {item.notes}</p>}
                              </div>
-                             <span className="font-mono font-semibold text-gray-900 w-40 text-right">${(item.price * item.quantity).toFixed(2)}</span>
+                            <span className="font-mono font-semibold text-gray-900 w-40 text-right">Rs {(item.price * item.quantity).toFixed(2)}</span>
                          </li>
                      ))}
                  </ul>
@@ -65,25 +65,25 @@ const CustomerDisplayPage: React.FC = () => {
                 <div className="flex-grow space-y-4 text-xl">
                     <div className="flex justify-between">
                         <span className="text-gray-600">Subtotal</span>
-                        <span className="font-mono font-medium text-gray-800">${order.subTotal?.toFixed(2) || '0.00'}</span>
+                        <span className="font-mono font-medium text-gray-800">Rs {order.subTotal?.toFixed(2) || '0.00'}</span>
                     </div>
                      {order.discountAmount && order.discountAmount > 0 ? (
                         <div className="flex justify-between text-green-600">
                             <span>Discount</span>
-                            <span className="font-mono font-medium">-${(order.discountType === 'fixed' ? order.discountAmount : (order.subTotal || 0) * (order.discountAmount / 100)).toFixed(2)}</span>
+                            <span className="font-mono font-medium">-Rs {(order.discountType === 'fixed' ? order.discountAmount : (order.subTotal || 0) * (order.discountAmount / 100)).toFixed(2)}</span>
                         </div>
                     ) : null}
                      {order.taxDetails?.map(tax => (
                          <div key={tax.id} className="flex justify-between">
                             <span className="text-gray-600">{tax.name} ({tax.rate}%)</span>
-                            <span className="font-mono font-medium text-gray-800">${tax.amount.toFixed(2)}</span>
+                            <span className="font-mono font-medium text-gray-800">Rs {tax.amount.toFixed(2)}</span>
                         </div>
                      ))}
                 </div>
                 <div className="mt-auto pt-6 border-t-4 border-dashed">
                     <div className="flex justify-between items-baseline text-gray-800">
                         <span className="text-4xl font-bold">TOTAL</span>
-                        <span className="text-5xl font-bold font-mono">${order.totalAmount?.toFixed(2) || '0.00'}</span>
+                        <span className="text-5xl font-bold font-mono">Rs {order.totalAmount?.toFixed(2) || '0.00'}</span>
                     </div>
                 </div>
             </div>

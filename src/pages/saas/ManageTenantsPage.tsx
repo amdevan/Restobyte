@@ -5,10 +5,10 @@ import Input from '@/components/common/Input';
 import Modal from '@/components/common/Modal';
 import ServerTenantEditModal from '@/components/saas/ServerTenantEditModal';
 import { API_BASE_URL } from '@/config';
-import { FiUsers, FiSearch, FiRefreshCw, FiEdit, FiTrash2, FiLogIn, FiPlus, FiCheckCircle, FiPauseCircle, FiDownload, FiCalendar } from 'react-icons/fi';
-import { useAuth } from '@/hooks/useAuth';
+import { FiUsers, FiSearch, FiRefreshCw, FiEdit, FiTrash2, FiLogIn, FiPlus, FiCheckCircle, FiPauseCircle, FiDownload, FiCalendar, FiEye } from 'react-icons/fi';
 import AddTenantModal from '@/components/saas/AddTenantModal';
-import TenantDetailsDrawer from '@/components/saas/TenantDetailsDrawer';
+import { useNavigate } from 'react-router-dom';
+import { getSaaSBasePath } from '@/utils/domain';
 
 const ManageTenantsPage: React.FC = () => {
   const [tenants, setTenants] = useState<any[]>([]);
@@ -19,9 +19,9 @@ const ManageTenantsPage: React.FC = () => {
   const [selectedTenant, setSelectedTenant] = useState<any>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [detailsTenantId, setDetailsTenantId] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
-  const { user } = useAuth();
+  const navigate = useNavigate();
+  const basePath = getSaaSBasePath();
   const [planFilter, setPlanFilter] = useState<string>('all');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [selectAll, setSelectAll] = useState<boolean>(false);
@@ -143,6 +143,10 @@ const ManageTenantsPage: React.FC = () => {
     setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
   };
 
+  const goToTenantDetails = (tenantId: string) => {
+    navigate(`${basePath}/tenants/${tenantId}`);
+  };
+
   return (
     <div className="space-y-6">
       <div className="space-y-3">
@@ -254,9 +258,9 @@ const ManageTenantsPage: React.FC = () => {
             </thead>
             <tbody>
               {filtered.map((t) => (
-                <tr key={t.id} className="border-b hover:bg-gray-50 cursor-pointer" onClick={() => setDetailsTenantId(t.id)}>
+                <tr key={t.id} className="border-b hover:bg-gray-50 cursor-pointer" onClick={() => goToTenantDetails(t.id)}>
                   <td className="py-3 px-4">
-                    <input type="checkbox" checked={selectedIds.includes(t.id)} onChange={() => toggleSelect(t.id)} />
+                    <input type="checkbox" checked={selectedIds.includes(t.id)} onChange={() => toggleSelect(t.id)} onClick={(e) => e.stopPropagation()} />
                   </td>
                   <td className="py-3 px-4 font-medium">{t.name}</td>
                   <td className="py-3 px-4">{t.phone || '-'}</td>
@@ -278,21 +282,28 @@ const ManageTenantsPage: React.FC = () => {
                   <td className="py-3 px-4 text-right">
                       <div className="flex justify-end space-x-2">
                           <button 
-                            onClick={() => handleEditClick(t)}
+                            onClick={(e) => { e.stopPropagation(); handleEditClick(t); }}
                             className="text-blue-600 hover:text-blue-800 p-1 rounded hover:bg-blue-50"
                             title="Edit"
                           >
                               <FiEdit size={18} />
                           </button>
                           <button 
-                            onClick={() => handleImpersonate(t)}
+                            onClick={(e) => { e.stopPropagation(); goToTenantDetails(t.id); }}
+                            className="text-emerald-600 hover:text-emerald-800 p-1 rounded hover:bg-emerald-50"
+                            title="View Details"
+                          >
+                              <FiEye size={18} />
+                          </button>
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); handleImpersonate(t); }}
                             className="text-sky-600 hover:text-sky-800 p-1 rounded hover:bg-sky-50"
                             title="Impersonate"
                           >
                               <FiLogIn size={18} />
                           </button>
                           <button 
-                            onClick={() => handleDelete(t.id)}
+                            onClick={(e) => { e.stopPropagation(); handleDelete(t.id); }}
                             className="text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-50"
                             title="Delete"
                           >
@@ -320,7 +331,6 @@ const ManageTenantsPage: React.FC = () => {
       <Modal isOpen={isAddModalOpen} onClose={() => { setIsAddModalOpen(false); fetchTenants(); }} title="Create Tenant">
         <AddTenantModal onClose={() => { setIsAddModalOpen(false); fetchTenants(); }} />
       </Modal>
-      <TenantDetailsDrawer tenantId={detailsTenantId} onClose={() => setDetailsTenantId(null)} />
     </div>
   );
 };

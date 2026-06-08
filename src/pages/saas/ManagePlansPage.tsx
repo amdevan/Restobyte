@@ -34,7 +34,7 @@ const ManagePlansPage: React.FC = () => {
         }
 
         if (window.confirm(`Are you sure you want to delete the "${planToDelete.name}" plan? This action cannot be undone.`)) {
-            deletePlan(planId);
+            void deletePlan(planId).catch(() => alert('Failed to delete plan'));
         }
     };
 
@@ -58,6 +58,8 @@ const ManagePlansPage: React.FC = () => {
                             <tr>
                                 <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase">Plan Name</th>
                                 <th className="py-3 px-4 text-right text-xs font-medium text-gray-500 uppercase">Price</th>
+                                <th className="py-3 px-4 text-center text-xs font-medium text-gray-500 uppercase">Trial</th>
+                                <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase">Modules</th>
                                 <th className="py-3 px-4 text-center text-xs font-medium text-gray-500 uppercase">Active</th>
                                 <th className="py-3 px-4 text-center text-xs font-medium text-gray-500 uppercase">Public</th>
                                 <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
@@ -67,7 +69,9 @@ const ManagePlansPage: React.FC = () => {
                             {plans.map(plan => (
                                 <tr key={plan.id}>
                                     <td className="py-3 px-4 font-medium">{plan.name}</td>
-                                    <td className="py-3 px-4 text-right">${plan.price.toFixed(2)} / {plan.period}</td>
+                                    <td className="py-3 px-4 text-right">Rs {plan.price.toFixed(2)} / {plan.period}</td>
+                                    <td className="py-3 px-4 text-center">{plan.trialDays} days</td>
+                                    <td className="py-3 px-4 text-sm text-gray-600">{plan.featureKeys.join(', ') || '-'}</td>
                                     <td className="py-3 px-4 text-center">{plan.isActive ? <FiCheckCircle className="text-green-500 mx-auto"/> : <FiXCircle className="text-red-500 mx-auto"/>}</td>
                                     <td className="py-3 px-4 text-center">{plan.isPublic ? <FiCheckCircle className="text-green-500 mx-auto"/> : <FiXCircle className="text-red-500 mx-auto"/>}</td>
                                     <td className="py-3 px-4">

@@ -19,8 +19,11 @@ const ServerTenantEditModal: React.FC<ServerTenantEditModalProps> = ({ initialDa
     const [name, setName] = useState('');
     const [plan, setPlan] = useState<string>('');
     const [status, setStatus] = useState<string>('inactive');
+    const [adminEmail, setAdminEmail] = useState('');
     const [countryCode, setCountryCode] = useState<string>('');
     const [currencyCode, setCurrencyCode] = useState<string>('');
+    const [trialDays, setTrialDays] = useState<number>(14);
+    const [trialEndsAt, setTrialEndsAt] = useState<string>('');
     
     // User credentials
     const [username, setUsername] = useState('');
@@ -34,8 +37,11 @@ const ServerTenantEditModal: React.FC<ServerTenantEditModalProps> = ({ initialDa
             setPlan(initialData.plan || (PLAN_OPTIONS.length > 0 ? PLAN_OPTIONS[0] : 'Basic'));
             setStatus(initialData.subscriptionStatus || 'inactive');
             setUsername(initialData.adminUsername || '');
+            setAdminEmail(initialData.adminEmail || '');
             setCountryCode(initialData.countryCode || '');
-            setCurrencyCode(initialData.currencyCode || '');
+            setCurrencyCode(initialData.currencyCode || 'NPR');
+            setTrialDays(Number(initialData.trialDays) || 14);
+            setTrialEndsAt(initialData.trialEndsAt ? String(initialData.trialEndsAt).split('T')[0] : '');
         }
     }, [initialData, plans]);
 
@@ -45,8 +51,11 @@ const ServerTenantEditModal: React.FC<ServerTenantEditModalProps> = ({ initialDa
             name,
             plan,
             subscriptionStatus: status,
+            adminEmail,
             countryCode,
             currencyCode,
+            trialDays,
+            trialEndsAt: trialEndsAt || null,
             username,
             password
         });
@@ -74,6 +83,13 @@ const ServerTenantEditModal: React.FC<ServerTenantEditModalProps> = ({ initialDa
                     {PLAN_OPTIONS.map(pName => <option key={pName} value={pName}>{pName}</option>)}
                 </select>
             </div>
+            <Input
+                label="Billing Email"
+                type="email"
+                value={adminEmail}
+                onChange={e => setAdminEmail(e.target.value)}
+                placeholder="billing@example.com"
+            />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Country</label>
@@ -100,6 +116,20 @@ const ServerTenantEditModal: React.FC<ServerTenantEditModalProps> = ({ initialDa
                 >
                      {STATUS_OPTIONS.map(s => <option key={s} value={s} className="capitalize">{s}</option>)}
                 </select>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <Input
+                    label="Trial Days"
+                    type="number"
+                    value={trialDays}
+                    onChange={e => setTrialDays(parseInt(e.target.value || '0', 10) || 0)}
+                />
+                <Input
+                    label="Trial Ends At"
+                    type="date"
+                    value={trialEndsAt}
+                    onChange={e => setTrialEndsAt(e.target.value)}
+                />
             </div>
 
             <h3 className="font-semibold text-gray-700 border-b pb-2 pt-4">Admin Credentials</h3>

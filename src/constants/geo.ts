@@ -10,7 +10,7 @@ export const COUNTRIES: { code: string; name: string }[] = [
 export const CURRENCIES: { code: string; name: string; symbol: string }[] = [
   { code: 'USD', name: 'US Dollar', symbol: '$' },
   { code: 'INR', name: 'Indian Rupee', symbol: '₹' },
-  { code: 'NPR', name: 'Nepalese Rupee', symbol: '₨' },
+  { code: 'NPR', name: 'Nepalese Rupee', symbol: 'Rs' },
   { code: 'GBP', name: 'British Pound', symbol: '£' },
   { code: 'EUR', name: 'Euro', symbol: '€' },
   { code: 'CAD', name: 'Canadian Dollar', symbol: '$' },

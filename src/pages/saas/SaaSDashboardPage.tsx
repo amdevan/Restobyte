@@ -70,7 +70,7 @@ const SaaSDashboardPage: React.FC = () => {
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard title="Total Tenants" value={totalTenants.toString()} icon={<FiUsers size={24}/>} />
-        <StatCard title="Monthly Recurring Revenue" value={`$${mrr.toFixed(2)}`} icon={<FiDollarSign size={24}/>} />
+        <StatCard title="Monthly Recurring Revenue" value={`Rs ${mrr.toFixed(2)}`} icon={<FiDollarSign size={24}/>} />
         <StatCard title="Active Subscriptions" value={activeTenants.toString()} icon={<FiActivity size={24}/>} />
         <StatCard title="Churn Rate" value={churnRate} icon={<FiBarChart2 size={24}/>} />
       </div>

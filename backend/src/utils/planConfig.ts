@@ -39,7 +39,7 @@ export const DEFAULT_PLAN_DEFINITIONS: PlanConfigShape[] = [
   {
     name: 'Basic',
     price: 2999,
-    period: 'monthly',
+    period: 'yearly',
     features: ['POS Billing', 'Food Menu', 'Customer Management', 'Basic Reports', 'Website Menu'],
     featureKeys: ['pos', 'menu', 'customers', 'reports', 'website', 'subscription'],
     trialDays: 14,
@@ -51,7 +51,7 @@ export const DEFAULT_PLAN_DEFINITIONS: PlanConfigShape[] = [
   {
     name: 'Pro',
     price: 5999,
-    period: 'monthly',
+    period: 'yearly',
     features: ['Everything in Basic', 'Kitchen Display', 'Tables', 'Reservations', 'Inventory', 'WhatsApp', 'Self Order'],
     featureKeys: ['pos', 'kds', 'customerDisplay', 'menu', 'tables', 'reservations', 'inventory', 'customers', 'purchase', 'reports', 'website', 'whatsapp', 'selfOrder', 'subscription'],
     trialDays: 30,
@@ -93,7 +93,7 @@ export function resolvePlanConfig(rawPlan: any): PlanConfigShape {
     || DEFAULT_PLAN_DEFINITIONS.find((item) => item.name === 'Basic')
     || DEFAULT_PLAN_DEFINITIONS[0]) as PlanConfigShape;
 
-  const period = rawPlan?.period === 'yearly' ? 'yearly' : 'monthly';
+  const period = rawPlan?.period === 'monthly' ? 'monthly' : 'yearly';
   return {
     name: typeof rawPlan?.name === 'string' && rawPlan.name.trim() ? rawPlan.name.trim() : fallback.name,
     price: Number.isFinite(Number(rawPlan?.price)) ? Number(rawPlan.price) : fallback.price,

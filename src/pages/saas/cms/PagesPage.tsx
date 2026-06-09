@@ -12,10 +12,12 @@ import RichTextEditor from '@/components/common/RichTextEditor';
 
 const PageEditForm: React.FC<{
     page: SaasPage;
-    onSave: (updatedPage: SaasPage) => void;
+    onSave: (updatedPage: SaasPage) => Promise<void>;
     onClose: () => void;
 }> = ({ page, onSave, onClose }) => {
     const [localPage, setLocalPage] = useState(page);
+    const [saveError, setSaveError] = useState<string | null>(null);
+    const [isSaving, setIsSaving] = useState(false);
 
     const handleChange = (field: keyof SaasPage, value: string) => {
         setLocalPage(prev => ({...prev, [field]: value}));
@@ -34,14 +36,26 @@ const PageEditForm: React.FC<{
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        onSave(localPage);
-        onClose();
+        void (async () => {
+            setIsSaving(true);
+            setSaveError(null);
+            try {
+                await onSave(localPage);
+                onClose();
+            } catch (err) {
+                const message = err instanceof Error ? err.message : 'Failed to save.';
+                setSaveError(message);
+            } finally {
+                setIsSaving(false);
+            }
+        })();
     }
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4 max-h-[75vh] overflow-y-auto custom-scrollbar p-1">
             <Input label="Page Title" value={localPage.title} onChange={e => handleChange('title', e.target.value)} />
             <Input label="URL Slug" value={localPage.slug} disabled readOnly />
+            {saveError && <div className="text-sm font-medium text-red-600">{saveError}</div>}
             <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Content</label>
                 <RichTextEditor
@@ -62,7 +76,7 @@ const PageEditForm: React.FC<{
                 {localPage.imageUrl && <img src={localPage.imageUrl} alt="Preview" className="mt-2 h-32 w-auto rounded border" />}
             </div>
             <div className="flex justify-end pt-4 border-t">
-                <Button type="submit">Save Changes</Button>
+                <Button type="submit" disabled={isSaving}>{isSaving ? 'Saving...' : 'Save Changes'}</Button>
             </div>
         </form>
     )
@@ -73,6 +87,7 @@ const PagesPage: React.FC = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingPage, setEditingPage] = useState<SaasPage | null>(null);
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const [saveError, setSaveError] = useState<string | null>(null);
 
     const handleRefresh = async () => {
         setIsRefreshing(true);
@@ -105,8 +120,9 @@ const PagesPage: React.FC = () => {
         setIsModalOpen(true);
     };
 
-    const handleSave = (updatedPage: SaasPage) => {
-        updateSaasWebsiteContent(prev => {
+    const handleSave = async (updatedPage: SaasPage) => {
+        setSaveError(null);
+        await updateSaasWebsiteContent(prev => {
             const exists = prev.pages.some(p => p.id === updatedPage.id);
             const safeSlug = updatedPage.slug || slugify(updatedPage.title || 'page');
             const pageWithSlug = { ...updatedPage, slug: safeSlug };
@@ -119,16 +135,22 @@ const PagesPage: React.FC = () => {
         });
     };
 
-    const handleDelete = (pageId: string) => {
+    const handleDelete = async (pageId: string) => {
         if (window.confirm('Delete this page? This cannot be undone.')) {
-            updateSaasWebsiteContent(prev => ({
-                ...prev,
-                pages: prev.pages.filter(p => p.id !== pageId)
-            }));
+            setSaveError(null);
+            try {
+                await updateSaasWebsiteContent(prev => ({
+                    ...prev,
+                    pages: prev.pages.filter(p => p.id !== pageId)
+                }));
+            } catch (err) {
+                const message = err instanceof Error ? err.message : 'Failed to delete.';
+                setSaveError(message);
+            }
         }
     };
 
-    const handleAddToMenu = (page: SaasPage) => {
+    const handleAddToMenu = async (page: SaasPage) => {
         const url = `/${page.slug}`;
         const alreadyInMenu = saasWebsiteContent.header.navLinks.some(link => link.url === url);
         
@@ -143,14 +165,20 @@ const PagesPage: React.FC = () => {
             url: url
         };
 
-        updateSaasWebsiteContent(prev => ({
-            ...prev,
-            header: {
-                ...prev.header,
-                navLinks: [...prev.header.navLinks, newLink]
-            }
-        }));
-        alert('Page added to navigation menu successfully!');
+        setSaveError(null);
+        try {
+            await updateSaasWebsiteContent(prev => ({
+                ...prev,
+                header: {
+                    ...prev.header,
+                    navLinks: [...prev.header.navLinks, newLink]
+                }
+            }));
+            alert('Page added to navigation menu successfully!');
+        } catch (err) {
+            const message = err instanceof Error ? err.message : 'Failed to update navigation.';
+            setSaveError(message);
+        }
     };
 
     return (
@@ -160,6 +188,7 @@ const PagesPage: React.FC = () => {
                     <FiFileText className="mr-3" /> Content Page Management
                 </h1>
                 <div className="flex items-center gap-3">
+                    {saveError && <span className="text-red-600 text-sm font-medium">{saveError}</span>}
                     <Button 
                         variant="secondary" 
                         onClick={handleRefresh} 

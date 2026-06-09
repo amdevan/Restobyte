@@ -195,7 +195,7 @@ model PlanDefinition {
   id          String   @id @default(uuid())
   name        String   @unique
   price       Float
-  period      String   @default("monthly")
+  period      String   @default("yearly")
   features    Json?
   featureKeys Json?
   limits      Json?

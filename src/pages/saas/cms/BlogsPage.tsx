@@ -16,6 +16,7 @@ const BlogsPage: React.FC = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingPost, setEditingPost] = useState<SaasPost | null>(null);
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const [saveError, setSaveError] = useState<string | null>(null);
 
     const handleRefresh = async () => {
         setIsRefreshing(true);
@@ -33,21 +34,33 @@ const BlogsPage: React.FC = () => {
         setIsModalOpen(false);
     };
 
-    const handleSave = (postToSave: SaasPost) => {
-        let updatedPosts;
-        if (editingPost) { // Update existing
-            updatedPosts = blogPosts.map(p => p.id === postToSave.id ? postToSave : p);
-        } else { // Add new
-            updatedPosts = [...blogPosts, { ...postToSave, id: `blog-${Date.now()}` }];
+    const handleSave = async (postToSave: SaasPost) => {
+        setSaveError(null);
+        try {
+            let updatedPosts;
+            if (editingPost) {
+                updatedPosts = blogPosts.map(p => p.id === postToSave.id ? postToSave : p);
+            } else {
+                updatedPosts = [...blogPosts, { ...postToSave, id: `blog-${Date.now()}` }];
+            }
+            await updateSaasWebsiteContent(prev => ({ ...prev, blogPosts: updatedPosts }));
+            handleCloseModal();
+        } catch (err) {
+            const message = err instanceof Error ? err.message : 'Failed to save.';
+            setSaveError(message);
         }
-        updateSaasWebsiteContent(prev => ({ ...prev, blogPosts: updatedPosts }));
-        handleCloseModal();
     };
 
-    const handleDelete = (postId: string) => {
+    const handleDelete = async (postId: string) => {
         if (window.confirm("Are you sure you want to delete this blog post?")) {
-            const updatedPosts = blogPosts.filter(p => p.id !== postId);
-            updateSaasWebsiteContent(prev => ({ ...prev, blogPosts: updatedPosts }));
+            setSaveError(null);
+            try {
+                const updatedPosts = blogPosts.filter(p => p.id !== postId);
+                await updateSaasWebsiteContent(prev => ({ ...prev, blogPosts: updatedPosts }));
+            } catch (err) {
+                const message = err instanceof Error ? err.message : 'Failed to delete.';
+                setSaveError(message);
+            }
         }
     };
     
@@ -58,6 +71,7 @@ const BlogsPage: React.FC = () => {
                     <FiMessageSquare className="mr-3" /> Blog Post Management
                 </h1>
                 <div className="flex items-center gap-3">
+                    {saveError && <span className="text-red-600 text-sm font-medium">{saveError}</span>}
                     <Button 
                         variant="secondary" 
                         onClick={handleRefresh} 

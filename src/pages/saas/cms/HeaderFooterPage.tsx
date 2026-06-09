@@ -14,6 +14,8 @@ const HeaderFooterPage: React.FC = () => {
     const [localHeader, setLocalHeader] = useState(saasWebsiteContent.header);
     const [localFooter, setLocalFooter] = useState(saasWebsiteContent.footer);
     const [showSavedMessage, setShowSavedMessage] = useState(false);
+    const [saveError, setSaveError] = useState<string | null>(null);
+    const [isSaving, setIsSaving] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);
 
     useEffect(() => {
@@ -27,14 +29,23 @@ const HeaderFooterPage: React.FC = () => {
         setIsRefreshing(false);
     };
 
-    const handleSave = () => {
-        updateSaasWebsiteContent(prev => ({
-            ...prev,
-            header: localHeader,
-            footer: localFooter,
-        }));
-        setShowSavedMessage(true);
-        setTimeout(() => setShowSavedMessage(false), 2500);
+    const handleSave = async () => {
+        setIsSaving(true);
+        setSaveError(null);
+        try {
+            await updateSaasWebsiteContent(prev => ({
+                ...prev,
+                header: localHeader,
+                footer: localFooter,
+            }));
+            setShowSavedMessage(true);
+            setTimeout(() => setShowSavedMessage(false), 2500);
+        } catch (err) {
+            const message = err instanceof Error ? err.message : 'Failed to save.';
+            setSaveError(message);
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const isDirty = JSON.stringify(localHeader) !== JSON.stringify(saasWebsiteContent.header) || 
@@ -53,9 +64,10 @@ const HeaderFooterPage: React.FC = () => {
                     >
                         {isRefreshing ? 'Refreshing...' : 'Refresh from Server'}
                     </Button>
+                    {saveError && <span className="text-red-600 text-sm font-medium">{saveError}</span>}
                     {showSavedMessage && <span className="text-green-600 flex items-center text-sm"><FiCheckCircle className="mr-1.5"/>Saved!</span>}
-                    <Button onClick={handleSave} disabled={!isDirty} leftIcon={<FiSave/>}>
-                        Save All Changes
+                    <Button onClick={handleSave} disabled={!isDirty || isSaving} leftIcon={<FiSave/>}>
+                        {isSaving ? 'Saving...' : 'Save All Changes'}
                     </Button>
                 </div>
             </div>

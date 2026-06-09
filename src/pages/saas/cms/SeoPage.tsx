@@ -12,6 +12,8 @@ const SeoPage: React.FC = () => {
     const { saasWebsiteContent, updateSaasWebsiteContent, fetchSaasWebsiteContent } = useRestaurantData();
     const [localSeo, setLocalSeo] = useState<SaasSeo>(saasWebsiteContent.seo);
     const [showSavedMessage, setShowSavedMessage] = useState(false);
+    const [saveError, setSaveError] = useState<string | null>(null);
+    const [isSaving, setIsSaving] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);
 
     useEffect(() => {
@@ -39,10 +41,19 @@ const SeoPage: React.FC = () => {
         }
     };
 
-    const handleSave = () => {
-        updateSaasWebsiteContent(prev => ({ ...prev, seo: localSeo }));
-        setShowSavedMessage(true);
-        setTimeout(() => setShowSavedMessage(false), 2500);
+    const handleSave = async () => {
+        setIsSaving(true);
+        setSaveError(null);
+        try {
+            await updateSaasWebsiteContent(prev => ({ ...prev, seo: localSeo }));
+            setShowSavedMessage(true);
+            setTimeout(() => setShowSavedMessage(false), 2500);
+        } catch (err) {
+            const message = err instanceof Error ? err.message : 'Failed to save.';
+            setSaveError(message);
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const isDirty = JSON.stringify(localSeo) !== JSON.stringify(saasWebsiteContent.seo);
@@ -62,9 +73,10 @@ const SeoPage: React.FC = () => {
                     >
                         {isRefreshing ? 'Refreshing...' : 'Refresh'}
                     </Button>
+                    {saveError && <span className="text-red-600 text-sm font-medium">{saveError}</span>}
                     {showSavedMessage && <span className="text-green-600 flex items-center text-sm"><FiCheckCircle className="mr-1.5"/>Saved!</span>}
-                    <Button onClick={handleSave} disabled={!isDirty} leftIcon={<FiSave/>}>
-                        Save SEO Settings
+                    <Button onClick={handleSave} disabled={!isDirty || isSaving} leftIcon={<FiSave/>}>
+                        {isSaving ? 'Saving...' : 'Save SEO Settings'}
                     </Button>
                 </div>
             </div>

@@ -98,6 +98,7 @@ const SaaSLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                     <NavLink to={`${basePath}/plans`} icon={<FiCreditCard size={20} />} label="Plans" isCollapsed={isSidebarCollapsed} />
                     <NavLink to={`${basePath}/tenants`} icon={<FiUsers size={20} />} label="Tenants" isCollapsed={isSidebarCollapsed} />
                     <NavLink to={`${basePath}/crm/leads`} icon={<FiDollarSign size={20} />} label="CRM" isCollapsed={isSidebarCollapsed} />
+                    <NavLink to={`${basePath}/cms/products`} icon={<FiGrid size={20} />} label="Products (Shop)" isCollapsed={isSidebarCollapsed} />
                     
                     <CollapsibleNavLink basePath={`${basePath}/cms`} icon={<FiGlobe size={20} />} label="Website & CMS" isCollapsed={isSidebarCollapsed}>
                          <NavLink to={`${basePath}/cms/home`} icon={<></>} label="Homepage Sections" isSubItem />

@@ -88,21 +88,3 @@ export async function getCustomers(): Promise<BackendCustomer[]> {
 export async function getOrders(): Promise<BackendOrder[]> {
   return fetchJson<BackendOrder[]>('/orders');
 }
-
-export type SaasWebsiteContent = {
-  header: { logoUrl: string; navLinks: Array<{ label: string; href: string }> };
-  footer: { copyright: string; columns: Array<{ title: string; links: Array<{ label: string; href: string }> }>; socialLinks: Array<{ platform: string; url: string }> };
-  seo: { title: string; description: string; faviconUrl: string };
-  hero: { title: string; subtitle: string; imageUrl: string };
-  trustedByLogos: string[];
-  statistics: Array<{ label: string; value: string }>;
-  features: Array<{ id: string; title: string; description: string; icon: string }>;
-  cta: { title: string; subtitle: string; buttonText: string };
-  pricing: Array<{ id: string; name: string; price: string; features: string[]; isPopular?: boolean }>;
-  testimonials: Array<{ id: string; name: string; role: string; content: string; avatarUrl: string; rating: number }>;
-  blogPosts: Array<{ id: string; title: string; excerpt: string; date: string; imageUrl: string; author: string }>;
-};
-
-export async function getSaasWebsiteContent(): Promise<{ content: SaasWebsiteContent }> {
-  return fetchJson<{ content: SaasWebsiteContent }>('/public/saas-website-content?env=default');
-}

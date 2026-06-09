@@ -4,11 +4,16 @@ import { SaaSFooter } from '@/components/public/SaaSFooter';
 import Modal from '@/components/common/Modal';
 import Button from '@/components/common/Button';
 import { FiCheck, FiChevronDown, FiSearch, FiSliders, FiGlobe } from 'react-icons/fi';
+import { useRestaurantData } from '@/hooks/useRestaurantData';
 
 const LoginPage = React.lazy(() => import('../auth/LoginPage'));
 const RegisterPage = React.lazy(() => import('../auth/RegisterPage'));
 
 const SaaSPricingPage: React.FC = () => {
+    const { saasWebsiteContent, plans } = useRestaurantData();
+    const content = saasWebsiteContent;
+    const hasCmsPricing = (content.pricing || []).length > 0;
+
     useEffect(() => {
         const observerOptions = {
             threshold: 0.1,
@@ -31,7 +36,7 @@ const SaaSPricingPage: React.FC = () => {
     }, []);
 
     const [authModal, setAuthModal] = useState<'login' | 'register' | 'demo' | null>(null);
-    const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
+    const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('yearly');
     const [comparisonQuery, setComparisonQuery] = useState('');
     const [showOnlyDifferences, setShowOnlyDifferences] = useState(true);
 
@@ -147,6 +152,20 @@ const SaaSPricingPage: React.FC = () => {
         return new Intl.NumberFormat(currency.locale, { style: 'currency', currency: currency.code, maximumFractionDigits: 0 }).format(amount);
     };
 
+    const formatLocalCurrency = (amount: number) =>
+        new Intl.NumberFormat(currency.locale, { style: 'currency', currency: currency.code, maximumFractionDigits: 0 }).format(amount);
+
+    const normalizePlanUsd = (value: number) => (value > 1000 ? value / 100 : value);
+    const formatPlanPrice = (value: number) => formatPrice(normalizePlanUsd(value));
+
+    const isNumericString = (value: string) => /^\s*\d+(\.\d+)?\s*$/.test(value);
+    const formatCmsPriceLabel = (raw: string) => {
+        const value = (raw || '').trim();
+        if (!value) return '';
+        if (!isNumericString(value)) return value;
+        return formatLocalCurrency(Number(value));
+    };
+
     const openLoginModal = () => setAuthModal('login');
     const openRegisterModal = () => setAuthModal('register');
     const openDemoModal = () => setAuthModal('demo');
@@ -260,6 +279,8 @@ const SaaSPricingPage: React.FC = () => {
             <SaaSHeader 
                 openDemoModal={openDemoModal} 
                 openLoginModal={openLoginModal} 
+                openRegisterModal={openRegisterModal}
+                content={content.header}
             />
 
             <main className="pt-32 pb-24 bg-mesh relative overflow-hidden">
@@ -311,160 +332,126 @@ const SaaSPricingPage: React.FC = () => {
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 text-left animate-fade-in-up [animation-delay:450ms]">
-                        {/* Essential Plan */}
-                        <div className="group relative overflow-hidden bg-white p-8 rounded-[32px] border border-[#f3e9e5] flex flex-col h-full hover:border-[#8b2d1d] transition-all duration-500 hover:shadow-2xl hover:-translate-y-2">
-                            <div className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-60 transition-opacity duration-700">
-                                <div className="absolute inset-0 animate-shimmer opacity-40"></div>
-                            </div>
-                            <h3 className="text-xl font-bold mb-2">Essential</h3>
-                            <p className="text-[#5a4039]/60 mb-6 text-xs">Perfect for single location cafes and food trucks.</p>
-                            <div className="mb-8">
-                                <span className="text-4xl font-bold inline-block text-[#2d1510]">{formatPrice(billingCycle === 'monthly' ? 49 : 39)}</span>
-                                <span className="text-[#5a4039]/60 text-sm">/mo</span>
-                            </div>
-                            <ul className="space-y-3 mb-10 flex-grow text-sm">
-                                {[
-                                    "Track live POS System",
-                                    "Up to 15 Tables",
-                                    "Basic Menu Customization",
-                                    "Daily Sales Reports",
-                                    "Standard Email Support"
-                                ].map((f, i) => (
-                                    <li key={i} className="flex items-center gap-2 text-[#5a4039]">
-                                        <FiCheck className="text-[#8b2d1d] flex-shrink-0" /> {f}
-                                    </li>
-                                ))}
-                            </ul>
-                            <div className="flex flex-col gap-3">
-                                <Button onClick={openRegisterModal} className="w-full !bg-[#2d1510] hover:!bg-black text-white rounded-full py-3 text-sm font-bold transition-all border-none">
-                                    Get Started
-                                </Button>
-                                <a 
-                                    href="#comparison" 
-                                    onClick={(e) => handleNavClick(e, 'comparison')}
-                                    className="w-full text-xs font-bold text-[#5a4039]/40 hover:text-[#8b2d1d] transition-colors flex items-center justify-center gap-1"
-                                >
-                                    View Full Features <FiChevronDown size={12} />
-                                </a>
-                            </div>
-                        </div>
+                    {(() => {
+                        const cmsPlans = (content.pricing || []).map((plan) => ({
+                            id: plan.id,
+                            name: plan.name,
+                            subtitle: 'Simple, transparent pricing.',
+                            priceLabel: formatCmsPriceLabel(plan.price),
+                            periodLabel: plan.period || '',
+                            features: plan.features || [],
+                            isFeatured: Boolean(plan.isFeatured),
+                            source: 'cms' as const,
+                        }));
 
-                        {/* Growth Plan */}
-                        <div className="group relative overflow-hidden bg-[#8b2d1d] p-8 rounded-[32px] border border-[#a63928] flex flex-col h-full transform scale-[1.05] shadow-2xl z-10 text-white transition-transform duration-500 hover:-translate-y-2">
-                            <div className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-40 transition-opacity duration-700 mix-blend-soft-light">
-                                <div className="absolute inset-0 animate-shimmer opacity-40"></div>
-                            </div>
-                            <div className="absolute top-0 right-8 -translate-y-1/2 bg-[#ff7b5f] text-white text-[8px] font-bold px-3 py-1 rounded-full uppercase tracking-widest shadow-lg">RECOMMENDED</div>
-                            <h3 className="text-xl font-bold mb-2">Growth</h3>
-                            <p className="text-white/60 mb-6 text-xs">Advanced reporting for growing brands.</p>
-                            <div className="mb-8">
-                                <span className="text-4xl font-bold inline-block">{formatPrice(billingCycle === 'monthly' ? 99 : 79)}</span>
-                                <span className="text-white/60 text-sm">/mo</span>
-                            </div>
-                            <ul className="space-y-3 mb-10 flex-grow text-sm">
-                                {[
-                                    "Unlimited Table Management",
-                                    "Advanced Inventory Tracking",
-                                    "Staff Scheduling & Payroll",
-                                    "Loyalty & Gift Cards",
-                                    "Customer CRM Insights"
-                                ].map((f, i) => (
-                                    <li key={i} className="flex items-center gap-2">
-                                        <FiCheck className="text-[#ff7b5f] flex-shrink-0" /> {f}
-                                    </li>
-                                ))}
-                            </ul>
-                            <div className="flex flex-col gap-3">
-                                <Button onClick={openRegisterModal} className="w-full !bg-white !text-[#8b2d1d] hover:bg-[#f3e9e5] rounded-full py-3 text-sm font-bold transition-all border-none">
-                                    Get Started
-                                </Button>
-                                <a 
-                                    href="#comparison" 
-                                    onClick={(e) => handleNavClick(e, 'comparison')}
-                                    className="w-full text-xs font-bold text-white/60 hover:text-white transition-colors flex items-center justify-center gap-1"
-                                >
-                                    View Full Features <FiChevronDown size={12} />
-                                </a>
-                            </div>
-                        </div>
+                        const publicPlans = plans.filter(p => p.isPublic && p.isActive);
+                        const cyclePlans = publicPlans.filter(p => p.period === billingCycle);
+                        const fallbackPlans = (cyclePlans.length > 0 ? cyclePlans : publicPlans)
+                            .slice()
+                            .sort((a, b) => Number(Boolean(b.isFeatured)) - Number(Boolean(a.isFeatured)))
+                            .map((plan) => ({
+                                id: plan.id,
+                                name: plan.name,
+                                subtitle: plan.trialDays ? `${plan.trialDays}-day free trial` : 'Simple, transparent pricing.',
+                                priceLabel: formatPlanPrice(plan.price),
+                                periodLabel: plan.period === 'yearly' ? '/yr' : '/mo',
+                                features: plan.features || [],
+                                isFeatured: Boolean(plan.isFeatured),
+                                source: 'plan' as const,
+                            }));
 
-                        {/* Enterprise Plan */}
-                        <div className="group relative overflow-hidden bg-white p-8 rounded-[32px] border border-[#f3e9e5] flex flex-col h-full hover:border-[#8b2d1d] transition-all duration-500 hover:shadow-2xl hover:-translate-y-2">
-                            <div className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-60 transition-opacity duration-700">
-                                <div className="absolute inset-0 animate-shimmer opacity-40"></div>
-                            </div>
-                            <h3 className="text-xl font-bold mb-2">Enterprise</h3>
-                            <p className="text-[#5a4039]/60 mb-6 text-xs">Multi-location management and white-glove support.</p>
-                            <div className="mb-8">
-                                <span className="text-4xl font-bold inline-block text-[#2d1510]">{formatPrice(billingCycle === 'monthly' ? 199 : 159)}</span>
-                                <span className="text-[#5a4039]/60 text-sm">/mo</span>
-                            </div>
-                            <ul className="space-y-3 mb-10 flex-grow text-sm">
-                                {[
-                                    "Multi-location Central Control",
-                                    "Advanced Analytics & Forecasting",
-                                    "API Access & Integrations",
-                                    "Dedicated Account Manager",
-                                    "24/7 Priority Support"
-                                ].map((f, i) => (
-                                    <li key={i} className="flex items-center gap-2 text-[#5a4039]">
-                                        <FiCheck className="text-[#8b2d1d] flex-shrink-0" /> {f}
-                                    </li>
-                                ))}
-                            </ul>
-                            <div className="flex flex-col gap-3">
-                                <Button onClick={openRegisterModal} className="w-full !bg-[#2d1510] hover:!bg-black text-white rounded-full py-3 text-sm font-bold transition-all border-none">
-                                    Get Started
-                                </Button>
-                                <a 
-                                    href="#comparison" 
-                                    onClick={(e) => handleNavClick(e, 'comparison')}
-                                    className="w-full text-xs font-bold text-[#5a4039]/40 hover:text-[#8b2d1d] transition-colors flex items-center justify-center gap-1"
-                                >
-                                    View Full Features <FiChevronDown size={12} />
-                                </a>
-                            </div>
-                        </div>
+                        const primaryPlans = (cmsPlans.length > 0 ? cmsPlans : fallbackPlans).slice(0, 3);
 
-                        {/* Custom Plan */}
-                        <div className="group relative overflow-hidden bg-gradient-to-br from-[#2d1510] to-[#3d1f1a] p-8 rounded-[32px] border-2 border-dashed border-[#8b2d1d]/30 flex flex-col h-full hover:border-[#8b2d1d] transition-all duration-500 hover:shadow-2xl text-white hover:-translate-y-2">
-                            <div className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-40 transition-opacity duration-700 mix-blend-soft-light">
-                                <div className="absolute inset-0 animate-shimmer opacity-40"></div>
+                        return (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 text-left animate-fade-in-up [animation-delay:450ms]">
+                                {primaryPlans.map((plan) => {
+                                    const isFeatured = Boolean(plan.isFeatured);
+
+                                    return (
+                                        <div
+                                            key={plan.id}
+                                            className={`bg-white rounded-[28px] border p-8 flex flex-col h-full transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${
+                                                isFeatured ? 'border-[#8b2d1d] shadow-lg' : 'border-[#f3e9e5]'
+                                            }`}
+                                        >
+                                            <div className="flex items-center justify-between gap-3">
+                                                <h3 className="text-xl font-black text-[#2d1510]">{plan.name}</h3>
+                                                {isFeatured && (
+                                                    <span className="text-[10px] font-black tracking-widest uppercase text-[#8b2d1d]">Recommended</span>
+                                                )}
+                                            </div>
+                                            <p className="text-xs text-[#5a4039]/70 mt-2">{plan.subtitle}</p>
+
+                                            <div className="mt-6">
+                                                <span className="text-4xl font-black text-[#2d1510]">{plan.priceLabel}</span>
+                                                <span className="text-sm text-[#5a4039]/60">{plan.periodLabel}</span>
+                                            </div>
+
+                                            <ul className="mt-8 space-y-3 mb-10 flex-grow text-sm text-[#5a4039]">
+                                                {(plan.features || []).slice(0, 7).map((f, i) => (
+                                                    <li key={i} className="flex items-start gap-2">
+                                                        <FiCheck className="text-[#8b2d1d] flex-shrink-0 mt-0.5" />
+                                                        <span className="leading-relaxed">{f}</span>
+                                                    </li>
+                                                ))}
+                                            </ul>
+
+                                            <Button
+                                                onClick={openRegisterModal}
+                                                className={`w-full rounded-2xl py-3 text-sm font-bold border-none ${
+                                                    isFeatured
+                                                        ? '!bg-[#8b2d1d] hover:!bg-[#7a2719] text-white'
+                                                        : '!bg-[#2d1510] hover:!bg-black text-white'
+                                                }`}
+                                            >
+                                                Get Started
+                                            </Button>
+                                            <button
+                                                type="button"
+                                                onClick={(e) => handleNavClick(e as unknown as React.MouseEvent<HTMLAnchorElement>, 'comparison')}
+                                                className="mt-3 w-full text-xs font-bold text-[#5a4039]/60 hover:text-[#8b2d1d] transition-colors inline-flex items-center justify-center gap-1"
+                                            >
+                                                View Full Features <FiChevronDown size={12} />
+                                            </button>
+                                        </div>
+                                    );
+                                })}
+
+                                <div className="bg-[#2d1510] text-white rounded-[28px] border border-[#2d1510] p-8 flex flex-col h-full transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
+                                    <h3 className="text-xl font-black text-[#ff7b5f]">Custom Plan</h3>
+                                    <p className="text-xs text-white/70 mt-2">Bespoke solutions for high-volume franchises.</p>
+                                    <div className="mt-6">
+                                        <div className="text-4xl font-black">Custom</div>
+                                        <div className="text-sm text-white/60 mt-1">Tailored to your needs</div>
+                                    </div>
+                                    <ul className="mt-8 space-y-3 mb-10 flex-grow text-sm text-white/85">
+                                        {[
+                                            'Unlimited Everything',
+                                            'Custom Feature Development',
+                                            'On-site Implementation',
+                                            'White-label Solution',
+                                            'SLA Guarantee Support',
+                                        ].map((f, i) => (
+                                            <li key={i} className="flex items-start gap-2">
+                                                <FiCheck className="text-[#ff7b5f] flex-shrink-0 mt-0.5" />
+                                                <span className="leading-relaxed">{f}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                    <Button onClick={openDemoModal} className="w-full bg-white/10 hover:bg-white/15 text-white rounded-2xl py-3 text-sm font-bold border border-white/15 transition-all">
+                                        Talk to Sales
+                                    </Button>
+                                    <button
+                                        type="button"
+                                        onClick={(e) => handleNavClick(e as unknown as React.MouseEvent<HTMLAnchorElement>, 'comparison')}
+                                        className="mt-3 w-full text-xs font-bold text-white/60 hover:text-white transition-colors inline-flex items-center justify-center gap-1"
+                                    >
+                                        View Full Features <FiChevronDown size={12} />
+                                    </button>
+                                </div>
                             </div>
-                            <h3 className="text-xl font-bold mb-2 text-[#ff7b5f]">Custom Plan</h3>
-                            <p className="text-white/60 mb-6 text-xs">Bespoke solutions for high-volume franchises.</p>
-                            <div className="mb-8">
-                                <span className="text-4xl font-bold inline-block">Custom</span>
-                                <p className="text-white/40 text-xs mt-1">Tailored to your needs</p>
-                            </div>
-                            <ul className="space-y-3 mb-10 flex-grow text-sm">
-                                {[
-                                    "Unlimited Everything",
-                                    "Custom Feature Development",
-                                    "On-site Implementation",
-                                    "White-label Solution",
-                                    "SLA Guarantee Support"
-                                ].map((f, i) => (
-                                    <li key={i} className="flex items-center gap-2 text-white/80">
-                                        <FiCheck className="text-[#ff7b5f] flex-shrink-0" /> {f}
-                                    </li>
-                                ))}
-                            </ul>
-                            <div className="flex flex-col gap-3">
-                                <Button onClick={openDemoModal} className="w-full bg-white/5 hover:bg-white/10 text-white rounded-full py-3 text-sm font-bold border border-white/20 transition-all">
-                                    Talk to Sales
-                                </Button>
-                                <a 
-                                    href="#comparison" 
-                                    onClick={(e) => handleNavClick(e, 'comparison')}
-                                    className="w-full text-xs font-bold text-white/40 hover:text-[#ff7b5f] transition-colors flex items-center justify-center gap-1"
-                                >
-                                    View Full Features <FiChevronDown size={12} />
-                                </a>
-                            </div>
-                        </div>
-                    </div>
+                        );
+                    })()}
 
                     <div id="comparison" className="mt-32 reveal-scale">
                         <div className="mx-auto max-w-6xl">
@@ -654,13 +641,21 @@ const SaaSPricingPage: React.FC = () => {
                 </div>
             </main>
 
-            <SaaSFooter handleNavClick={handleNavClick} />
+            <SaaSFooter handleNavClick={handleNavClick} content={content.footer} />
 
             {/* Auth Modals */}
-            <Modal isOpen={authModal !== null} onClose={closeModal} title={authModal === 'login' ? 'Sign In' : authModal === 'register' ? 'Create Account' : 'Request a Free Demo'}>
+            <Modal isOpen={authModal !== null} onClose={closeModal} title={authModal === 'login' ? 'Sign In' : authModal === 'register' ? 'Start Free Trial' : 'Request a Free Demo'} size={authModal === 'register' ? 'lg' : 'md'}>
                 <React.Suspense fallback={<div className="p-6 flex justify-center">Loading...</div>}>
                     {authModal === 'login' && <LoginPage onSwitchToRegister={() => setAuthModal('register')} />}
-                    {authModal === 'register' && <RegisterPage onSwitchToLogin={() => setAuthModal('login')} />}
+                    {authModal === 'register' && (
+                        <RegisterPage
+                            onSwitchToLogin={() => setAuthModal('login')}
+                            embedded
+                            heading="Start Free Trial"
+                            subtitle="Create your restaurant account and start your trial now."
+                            submitLabel="Start Free Trial"
+                        />
+                    )}
                     {authModal === 'demo' && <DemoForm />}
                 </React.Suspense>
             </Modal>

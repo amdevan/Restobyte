@@ -32,7 +32,7 @@ const PlanForm: React.FC<PlanFormProps> = ({ initialData, onSubmit, onUpdate, on
   const [formData, setFormData] = useState<Omit<Plan, 'id'>>({
     name: '',
     price: 0,
-    period: 'monthly',
+    period: 'yearly',
     features: [''],
     featureKeys: ['subscription'],
     trialDays: 14,
@@ -47,7 +47,7 @@ const PlanForm: React.FC<PlanFormProps> = ({ initialData, onSubmit, onUpdate, on
     if (initialData) {
       setFormData(initialData);
     } else {
-      setFormData({ name: '', price: 0, period: 'monthly', features: [''], featureKeys: ['subscription'], trialDays: 14, limits: { maxTables: 25 }, isActive: true, isPublic: true, isFeatured: false });
+      setFormData({ name: '', price: 0, period: 'yearly', features: [''], featureKeys: ['subscription'], trialDays: 14, limits: { maxTables: 25 }, isActive: true, isPublic: true, isFeatured: false });
     }
   }, [initialData]);
 

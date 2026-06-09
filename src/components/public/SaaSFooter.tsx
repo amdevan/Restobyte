@@ -5,7 +5,14 @@ import { FiDatabase, FiGrid, FiMonitor, FiSettings } from 'react-icons/fi';
 interface SaaSFooterProps {
     scrollToTop?: () => void;
     handleNavClick: (e: React.MouseEvent<HTMLAnchorElement>, id: string) => void;
-    content?: { copyright: string; columns: Array<{ id: string; title: string; links: Array<{ id: string; text: string; url: string }> }>; socialLinks: Array<{ platform: string; url: string }> };
+    content?: {
+        brandTitle?: string;
+        brandDescription?: string;
+        poweredByText?: string;
+        copyright: string;
+        columns: Array<{ id: string; title: string; links: Array<{ id: string; text: string; url: string }> }>;
+        socialLinks: Array<{ id?: string; platform: string; url: string }>;
+    };
 }
 
 export const SaaSFooter: React.FC<SaaSFooterProps> = ({ scrollToTop, handleNavClick, content }) => {
@@ -19,13 +26,13 @@ export const SaaSFooter: React.FC<SaaSFooterProps> = ({ scrollToTop, handleNavCl
                             <div className="w-8 h-8 bg-[#8b2d1d] rounded-lg flex items-center justify-center">
                                 <FiDatabase className="text-white" />
                             </div>
-                            <span className="text-xl font-bold tracking-tight text-[#8b2d1d]">RestoByte</span>
+                            <span className="text-xl font-bold tracking-tight text-[#8b2d1d]">{content?.brandTitle || 'RestoByte'}</span>
                         </Link>
-                        <p className="text-[#5a4039] leading-relaxed mb-8">Empower your restaurant with the modern tools it deserves. Join the community of successful restaurateurs today.</p>
+                        <p className="text-[#5a4039] leading-relaxed mb-8">{content?.brandDescription || 'Empower your restaurant with the modern tools it deserves. Join the community of successful restaurateurs today.'}</p>
                         <div className="flex gap-4">
                             {content?.socialLinks && content.socialLinks.length > 0 ? (
                                 content.socialLinks.map((link, i) => (
-                                    <a key={i} href={link.url} target="_blank" rel="noopener noreferrer" className="w-10 h-10 bg-[#8b2d1d]/5 rounded-full flex items-center justify-center text-[#8b2d1d] hover:bg-[#8b2d1d] hover:text-white cursor-pointer transition-colors">
+                                    <a key={link.id || i} href={link.url} target="_blank" rel="noopener noreferrer" className="w-10 h-10 bg-[#8b2d1d]/5 rounded-full flex items-center justify-center text-[#8b2d1d] hover:bg-[#8b2d1d] hover:text-white cursor-pointer transition-colors">
                                         <FiGrid />
                                     </a>
                                 ))
@@ -99,7 +106,7 @@ export const SaaSFooter: React.FC<SaaSFooterProps> = ({ scrollToTop, handleNavCl
                 
                 <div className="border-t border-[#f3e9e5] pt-12 flex flex-col md:flex-row items-center justify-between gap-6 text-[#5a4039] text-sm font-medium">
                     <p>{content?.copyright || "©2026 Restobyte. All Rights Reserved."}</p>
-                    <p className="text-[#8b2d1d] font-bold">Powered by IT Relevant Pvt. Ltd</p>
+                    <p className="text-[#8b2d1d] font-bold">{content?.poweredByText || 'Powered by IT Relevant Pvt. Ltd'}</p>
                     <div className="flex gap-8">
                         <Link to="/privacy-policy" className="hover:text-[#8b2d1d]">Privacy Policy</Link>
                         <Link to="/terms-of-service" className="hover:text-[#8b2d1d]">Terms of Service</Link>

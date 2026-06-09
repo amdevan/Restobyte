@@ -89,6 +89,17 @@ const CMSFooterForm: React.FC<CMSFooterFormProps> = ({ footer, onUpdate }) => {
 
     return (
         <div className="p-4 space-y-6">
+            <Input label="Brand Title" value={localFooter.brandTitle || ''} onChange={e => updateFooter({ ...localFooter, brandTitle: e.target.value })} />
+            <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Brand Description</label>
+                <textarea
+                    value={localFooter.brandDescription || ''}
+                    onChange={e => updateFooter({ ...localFooter, brandDescription: e.target.value })}
+                    rows={3}
+                    className="w-full p-2 border border-gray-300 rounded-md"
+                />
+            </div>
+            <Input label="Powered By Text" value={localFooter.poweredByText || ''} onChange={e => updateFooter({ ...localFooter, poweredByText: e.target.value })} />
             <Input label="Copyright Text" value={localFooter.copyright} onChange={e => handleCopyrightChange(e.target.value)} />
             
             {/* Social Links */}

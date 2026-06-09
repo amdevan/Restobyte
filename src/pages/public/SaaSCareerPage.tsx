@@ -6,11 +6,14 @@ import Button from '@/components/common/Button';
 import { SaaSHeader } from '@/components/public/SaaSHeader';
 import { SaaSFooter } from '@/components/public/SaaSFooter';
 import Modal from '@/components/common/Modal';
+import { useRestaurantData } from '@/hooks/useRestaurantData';
 
 const LoginPage = React.lazy(() => import('../auth/LoginPage'));
 const RegisterPage = React.lazy(() => import('../auth/RegisterPage'));
 
 const SaaSCareerPage: React.FC = () => {
+    const { saasWebsiteContent } = useRestaurantData();
+    const content = saasWebsiteContent;
     const [authModal, setAuthModal] = React.useState<'login' | 'register' | 'demo' | null>(null);
     const openLoginModal = () => setAuthModal('login');
     const openRegisterModal = () => setAuthModal('register');
@@ -55,6 +58,8 @@ const SaaSCareerPage: React.FC = () => {
             <SaaSHeader 
                 openDemoModal={openDemoModal} 
                 openLoginModal={openLoginModal} 
+                openRegisterModal={openRegisterModal}
+                content={content.header}
             />
 
             {/* Hero Section */}
@@ -141,6 +146,7 @@ const SaaSCareerPage: React.FC = () => {
 
             <SaaSFooter 
                 handleNavClick={handleNavClick} 
+                content={content.footer}
             />
 
             {/* Auth Modals */}
@@ -149,13 +155,22 @@ const SaaSCareerPage: React.FC = () => {
                 onClose={closeModal} 
                 title={
                     authModal === 'login' ? 'Sign In' : 
-                    authModal === 'register' ? 'Create Account' : 
+                    authModal === 'register' ? 'Start Free Trial' : 
                     'Request a Free Demo'
                 }
+                size={authModal === 'register' ? 'lg' : 'md'}
             >
                 <React.Suspense fallback={<div className="p-6 flex justify-center">Loading...</div>}>
                     {authModal === 'login' && <LoginPage onSwitchToRegister={() => setAuthModal('register')} />}
-                    {authModal === 'register' && <RegisterPage onSwitchToLogin={() => setAuthModal('login')} />}
+                    {authModal === 'register' && (
+                        <RegisterPage
+                            onSwitchToLogin={() => setAuthModal('login')}
+                            embedded
+                            heading="Start Free Trial"
+                            subtitle="Create your restaurant account and start your trial now."
+                            submitLabel="Start Free Trial"
+                        />
+                    )}
                     {authModal === 'demo' && <DemoForm />}
                 </React.Suspense>
             </Modal>

@@ -83,6 +83,11 @@ const CMSHeaderForm: React.FC<CMSHeaderFormProps> = ({ header, onUpdate }) => {
 
     return (
         <div className="p-4 space-y-4">
+            <Input
+                label="Brand Name"
+                value={localHeader.brandName || ''}
+                onChange={e => updateHeader({ ...localHeader, brandName: e.target.value })}
+            />
             <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Logo</label>
                 <input 

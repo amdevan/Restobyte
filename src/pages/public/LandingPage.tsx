@@ -11,7 +11,7 @@ import {
 
 import { SaaSHeader } from '@/components/public/SaaSHeader';
 import { SaaSFooter } from '@/components/public/SaaSFooter';
-import { getSaasWebsiteContent, SaasWebsiteContent } from '@/services/api';
+import { useRestaurantData } from '@/hooks/useRestaurantData';
 
 const LoginPage = React.lazy(() => import('../auth/LoginPage'));
 const RegisterPage = React.lazy(() => import('../auth/RegisterPage'));
@@ -71,29 +71,13 @@ const useParallax = () => {
 const LandingPage: React.FC = () => {
     useScrollReveal();
     useParallax();
+    const { saasWebsiteContent } = useRestaurantData();
     const [authModal, setAuthModal] = useState<'login' | 'register' | 'demo' | null>(null);
     const [searchParams, setSearchParams] = useSearchParams();
     const [openFaq, setOpenFaq] = useState<number | null>(0);
     const [currentSlide, setCurrentSlide] = useState(0);
     const [showBackToTop, setShowBackToTop] = useState(false);
-    const [content, setContent] = useState<SaasWebsiteContent | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
-
-    useEffect(() => {
-        const fetchContent = async () => {
-            try {
-                const data = await getSaasWebsiteContent();
-                if (data && data.content) {
-                    setContent(data.content);
-                }
-            } catch (error) {
-                console.error('Failed to fetch SaaS content:', error);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-        fetchContent();
-    }, []);
+    const content = saasWebsiteContent;
 
     useEffect(() => {
         const handleScroll = () => {
@@ -106,6 +90,27 @@ const LandingPage: React.FC = () => {
         window.addEventListener('scroll', handleScroll);
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
+
+    useEffect(() => {
+        const section = searchParams.get('section') || '';
+        if (!section) return;
+
+        const scroll = () => {
+            const el = document.getElementById(section);
+            if (!el) return;
+            const headerOffset = 90;
+            const elementPosition = el.getBoundingClientRect().top;
+            const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+            window.scrollTo({ top: offsetPosition, behavior: 'smooth' });
+        };
+
+        const raf = window.requestAnimationFrame(scroll);
+        const t = window.setTimeout(scroll, 120);
+        return () => {
+            window.cancelAnimationFrame(raf);
+            window.clearTimeout(t);
+        };
+    }, [searchParams]);
 
     const scrollToTop = () => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -320,24 +325,14 @@ const LandingPage: React.FC = () => {
 
     const features = getFeatures();
 
-    if (isLoading) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-[#fffcfb]">
-                <div className="flex flex-col items-center gap-4">
-                    <div className="w-16 h-16 border-4 border-[#8b2d1d]/20 border-t-[#8b2d1d] rounded-full animate-spin"></div>
-                    <p className="text-[#8b2d1d] font-bold animate-pulse">Loading RestoByte...</p>
-                </div>
-            </div>
-        );
-    }
-
     return (
         <div className="bg-[#fffcfb] font-sans text-[#2d1510] selection:bg-[#8b2d1d] selection:text-white relative">
             <SaaSHeader 
                 openDemoModal={openDemoModal} 
                 openLoginModal={openLoginModal} 
+                openRegisterModal={openRegisterModal}
                 scrollToTop={scrollToTop} 
-                content={content?.header}
+                content={content.header}
             />
 
             <main className="pt-20">
@@ -487,9 +482,9 @@ const LandingPage: React.FC = () => {
                     <div className="container mx-auto px-6">
                         <p className="text-center text-sm font-bold text-[#5a4039]/60 uppercase tracking-[0.2em] mb-12">Powering the world's most innovative kitchens</p>
                         <div className="flex flex-wrap justify-center items-center gap-x-16 gap-y-10 opacity-30 grayscale contrast-125">
-                            {content?.trustedByLogos && content.trustedByLogos.length > 0 ? (
+                            {content.trustedByLogos && content.trustedByLogos.length > 0 ? (
                                 content.trustedByLogos.map((logo, i) => (
-                                    <img key={i} src={logo} alt="Partner Logo" className="h-12 w-auto object-contain" crossOrigin="anonymous" />
+                                    <img key={logo.id || i} src={logo.logoUrl} alt={logo.name || 'Partner Logo'} className="h-12 w-auto object-contain" crossOrigin="anonymous" />
                                 ))
                             ) : (
                                 <>
@@ -712,6 +707,115 @@ const LandingPage: React.FC = () => {
                     </div>
                 </section>
 
+                <section id="pricing" className="py-24 bg-white overflow-hidden">
+                    <div className="container mx-auto px-6">
+                        <div className="text-center max-w-3xl mx-auto mb-16 reveal-scale">
+                            <span className="text-[#8b2d1d] font-bold tracking-widest uppercase text-sm mb-4 block">PRICING</span>
+                            <h2 className="text-4xl md:text-5xl font-bold leading-tight">
+                                Simple, transparent pricing
+                            </h2>
+                            <p className="text-[#5a4039] mt-6 text-lg">
+                                Choose a plan that fits your restaurant. Upgrade anytime as you grow.
+                            </p>
+                        </div>
+
+                        {(() => {
+                            const formatCmsPrice = (raw: string) => {
+                                const s = String(raw || '').trim();
+                                if (!s) return '';
+                                const numeric = Number(s.replace(/,/g, ''));
+                                if (Number.isFinite(numeric)) return `Rs ${numeric.toLocaleString()}`;
+                                return s;
+                            };
+
+                            const plans = (content?.pricing || []).slice(0, 3);
+                            if (plans.length === 0) {
+                                return (
+                                    <div className="text-center">
+                                        <div className="text-[#5a4039]">Pricing is not configured yet.</div>
+                                        <div className="mt-6">
+                                            <a href="#/pricing">
+                                                <Button className="!bg-[#8b2d1d] hover:!bg-[#7a2719] text-white rounded-xl px-8 py-4 font-bold border-none">
+                                                    View Pricing
+                                                </Button>
+                                            </a>
+                                        </div>
+                                    </div>
+                                );
+                            }
+
+                            return (
+                                <>
+                                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                                        {plans.map((plan, i) => (
+                                            <div
+                                                key={plan.id || i}
+                                                className={`rounded-[40px] border transition-all duration-500 overflow-hidden reveal ${
+                                                    plan.isFeatured
+                                                        ? 'bg-[#2d1510] text-white border-[#2d1510] shadow-2xl shadow-[#2d1510]/20'
+                                                        : 'bg-white text-[#2d1510] border-[#f3e9e5] hover:shadow-xl hover:-translate-y-1'
+                                                }`}
+                                            >
+                                                <div className="p-10">
+                                                    <div className="flex items-start justify-between gap-4">
+                                                        <div>
+                                                            <div className={`text-xs font-black tracking-widest uppercase ${plan.isFeatured ? 'text-white/60' : 'text-[#8b2d1d]'}`}>
+                                                                {plan.name}
+                                                            </div>
+                                                            <div className="mt-3 flex items-end gap-2">
+                                                                <div className="text-4xl font-black">
+                                                                    {formatCmsPrice(plan.price)}
+                                                                </div>
+                                                                <div className={`${plan.isFeatured ? 'text-white/70' : 'text-[#5a4039]'}`}>
+                                                                    {plan.period || ''}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        {plan.isFeatured && (
+                                                            <div className="px-3 py-1 rounded-full bg-white/10 border border-white/20 text-[10px] font-black tracking-widest uppercase">
+                                                                Popular
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    <ul className={`mt-8 space-y-3 text-sm ${plan.isFeatured ? 'text-white/80' : 'text-[#5a4039]'}`}>
+                                                        {(plan.features || []).slice(0, 7).map((f, idx) => (
+                                                            <li key={idx} className="flex gap-3">
+                                                                <FiCheckCircle className={`${plan.isFeatured ? 'text-[#ff7b5f]' : 'text-[#8b2d1d]'} mt-0.5`} />
+                                                                <span className="leading-relaxed">{f}</span>
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+
+                                                    <div className="mt-10">
+                                                        <a href="#/pricing">
+                                                            <Button
+                                                                className={`w-full rounded-xl px-8 py-4 font-bold border-none ${
+                                                                    plan.isFeatured
+                                                                        ? '!bg-white !text-[#2d1510] hover:!bg-[#f3e9e5]'
+                                                                        : '!bg-[#8b2d1d] hover:!bg-[#7a2719] text-white'
+                                                                }`}
+                                                            >
+                                                                View details
+                                                            </Button>
+                                                        </a>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    <div className="mt-12 text-center">
+                                        <a href="#/pricing" className="inline-flex items-center gap-2 text-[#8b2d1d] font-bold hover:text-[#7a2719]">
+                                            Compare all features <FiArrowRight />
+                                        </a>
+                                    </div>
+                                </>
+                            );
+                        })()}
+                    </div>
+                </section>
+
                 {/* Testimonials Section */}
                 <section className="py-24 bg-white overflow-hidden">
                     <div className="container mx-auto px-6">
@@ -722,61 +826,54 @@ const LandingPage: React.FC = () => {
                             </h2>
                         </div>
 
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-                            {/* Testimonial 1 */}
-                            <div className="bg-white p-12 rounded-[40px] border border-[#f3e9e5] shadow-sm reveal-left hover:shadow-xl transition-all duration-500 hover:-translate-y-2">
-                                <div className="flex text-orange-400 mb-8 gap-1">
-                                    {[1, 2, 3, 4, 5].map(s => <FiStar key={s} fill="currentColor" />)}
-                                </div>
-                                <p className="text-2xl font-medium mb-12 leading-relaxed text-[#2d1510]">
-                                    "This system completely changed our Friday nights. The kitchen is quieter, orders are accurate, and we're turning tables 15% faster."
-                                </p>
-                                <div className="flex items-center gap-4 mb-12 border-b border-[#f3e9e5] pb-12">
-                                    <img src="https://i.pravatar.cc/150?u=sarah" alt="Sarah" className="w-16 h-16 rounded-full ring-4 ring-[#8b2d1d]/10 transition-transform hover:scale-110 duration-300" />
-                                    <div>
-                                        <p className="font-bold text-lg text-[#2d1510]">Sarah Jenkins</p>
-                                        <p className="text-[#5a4039]">Owner of Bistro 101</p>
-                                    </div>
-                                </div>
-                                <div className="grid grid-cols-2 gap-8">
-                                    <div>
-                                        <p className="text-3xl font-bold text-[#8b2d1d]">Increased 84%</p>
-                                        <p className="text-sm text-[#5a4039] font-medium">Operations Efficiency</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-3xl font-bold text-[#8b2d1d]">Reduced 21%</p>
-                                        <p className="text-sm text-[#5a4039] font-medium">Faster Turnover Time</p>
-                                    </div>
-                                </div>
-                            </div>
+                        {(() => {
+                            const fallback = [
+                                {
+                                    id: 't1',
+                                    storeName: 'Bistro 101',
+                                    result: 'Sarah Jenkins, Owner',
+                                    description: "This system completely changed our Friday nights. The kitchen is quieter, orders are accurate, and we're turning tables faster.",
+                                    imageUrl: 'https://i.pravatar.cc/150?u=sarah',
+                                },
+                                {
+                                    id: 't2',
+                                    storeName: 'Urban Eats',
+                                    result: 'Mike Ross, GM',
+                                    description: "Finally, software that doesn't feel like it was built in the 90s. The inventory tracking alone saved us money in our first month.",
+                                    imageUrl: 'https://i.pravatar.cc/150?u=mike',
+                                },
+                            ];
 
-                            {/* Testimonial 2 */}
-                            <div className="bg-white p-12 rounded-[40px] border border-[#f3e9e5] shadow-sm reveal-right hover:shadow-xl transition-all duration-500 hover:-translate-y-2">
-                                <div className="flex text-orange-400 mb-8 gap-1">
-                                    {[1, 2, 3, 4, 5].map(s => <FiStar key={s} fill="currentColor" />)}
+                            const testimonials = content?.testimonials && content.testimonials.length > 0 ? content.testimonials : fallback;
+                            return (
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                                    {testimonials.slice(0, 4).map((t, index) => (
+                                        <div
+                                            key={t.id}
+                                            className={`bg-white p-12 rounded-[40px] border border-[#f3e9e5] shadow-sm hover:shadow-xl transition-all duration-500 hover:-translate-y-2 ${index % 2 === 0 ? 'reveal-left' : 'reveal-right'}`}
+                                        >
+                                            <div className="flex text-orange-400 mb-8 gap-1">
+                                                {[1, 2, 3, 4, 5].map(s => <FiStar key={s} fill="currentColor" />)}
+                                            </div>
+                                            <p className="text-2xl font-medium mb-12 leading-relaxed text-[#2d1510]">
+                                                "{t.description}"
+                                            </p>
+                                            <div className="flex items-center gap-4">
+                                                <img
+                                                    src={t.imageUrl || 'https://i.pravatar.cc/150?u=restobyte'}
+                                                    alt={t.storeName || 'Testimonial'}
+                                                    className="w-16 h-16 rounded-full ring-4 ring-[#8b2d1d]/10"
+                                                />
+                                                <div>
+                                                    <p className="font-bold text-lg text-[#2d1510]">{t.result || 'Customer'}</p>
+                                                    <p className="text-[#5a4039]">{t.storeName}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
-                                <p className="text-2xl font-medium mb-12 leading-relaxed text-[#2d1510]">
-                                    "Finally, software that doesn't feel like it was built in the 90s. The inventory tracking alone saved us $2k in our first month."
-                                </p>
-                                <div className="flex items-center gap-4 mb-12 border-b border-[#f3e9e5] pb-12">
-                                    <img src="https://i.pravatar.cc/150?u=mike" alt="Mike" className="w-16 h-16 rounded-full ring-4 ring-[#8b2d1d]/10 transition-transform hover:scale-110 duration-300" />
-                                    <div>
-                                        <p className="font-bold text-lg text-[#2d1510]">Mike Ross</p>
-                                        <p className="text-[#5a4039]">GM at Urban Eats</p>
-                                    </div>
-                                </div>
-                                <div className="grid grid-cols-2 gap-8">
-                                    <div>
-                                        <p className="text-3xl font-bold text-[#8b2d1d]">Increased 55%</p>
-                                        <p className="text-sm text-[#5a4039] font-medium">Operating Efficiency</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-3xl font-bold text-[#8b2d1d]">Reduced 15%</p>
-                                        <p className="text-sm text-[#5a4039] font-medium">Faster Turnover Time</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                            );
+                        })()}
                     </div>
                 </section>
 
@@ -866,7 +963,7 @@ const LandingPage: React.FC = () => {
             <SaaSFooter 
                 scrollToTop={scrollToTop} 
                 handleNavClick={handleNavClick} 
-                content={content?.footer}
+                content={content.footer}
             />
 
             {/* Auth Modals */}
@@ -875,13 +972,22 @@ const LandingPage: React.FC = () => {
                 onClose={closeModal} 
                 title={
                     authModal === 'login' ? 'Sign In' : 
-                    authModal === 'register' ? 'Create Account' : 
+                    authModal === 'register' ? 'Start Free Trial' : 
                     'Request a Free Demo'
                 }
+                size={authModal === 'register' ? 'lg' : 'md'}
             >
                 <React.Suspense fallback={<div className="p-6 flex justify-center"><FiClock className="animate-spin text-[#8b2d1d]" size={32} /></div>}>
                     {authModal === 'login' && <LoginPage onSwitchToRegister={() => setAuthModal('register')} />}
-                    {authModal === 'register' && <RegisterPage onSwitchToLogin={() => setAuthModal('login')} />}
+                    {authModal === 'register' && (
+                        <RegisterPage
+                            onSwitchToLogin={() => setAuthModal('login')}
+                            embedded
+                            heading="Start Free Trial"
+                            subtitle="Create your restaurant account and start your trial now."
+                            submitLabel="Start Free Trial"
+                        />
+                    )}
                     {authModal === 'demo' && <DemoForm />}
                 </React.Suspense>
             </Modal>

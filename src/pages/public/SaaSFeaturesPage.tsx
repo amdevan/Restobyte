@@ -1,16 +1,20 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { FiArrowRight, FiCheckCircle, FiDatabase, FiGrid, FiBarChart2, FiSmartphone, FiPieChart, FiLayers, FiShield, FiZap, FiCpu, FiMonitor, FiChevronDown, FiCheck } from 'react-icons/fi';
 import Button from '@/components/common/Button';
 
 import { SaaSHeader } from '@/components/public/SaaSHeader';
 import { SaaSFooter } from '@/components/public/SaaSFooter';
 import Modal from '@/components/common/Modal';
+import { useRestaurantData } from '@/hooks/useRestaurantData';
 
 const LoginPage = React.lazy(() => import('../auth/LoginPage'));
 const RegisterPage = React.lazy(() => import('../auth/RegisterPage'));
 
 const SaaSFeaturesPage: React.FC = () => {
+    const { saasWebsiteContent } = useRestaurantData();
+    const content = saasWebsiteContent;
+    const location = useLocation();
     const [authModal, setAuthModal] = React.useState<'login' | 'register' | 'demo' | null>(null);
     const openLoginModal = () => setAuthModal('login');
     const openRegisterModal = () => setAuthModal('register');
@@ -31,76 +35,81 @@ const SaaSFeaturesPage: React.FC = () => {
         </form>
     );
 
-    const features = [
-        {
-            title: "Order & KOT Management",
-            desc: "The fastest cloud-based point of sale system designed for rush hours. Take orders, print KOTs, and process payments in seconds.",
-            icon: <FiZap />,
-            points: ["Offline mode support", "One-tap billing", "Split bills & merges", "Customizable floor plans"],
-            image: "https://images.unsplash.com/photo-1556740749-887f6717d7e4?auto=format&fit=crop&q=80&w=1000"
-        },
-        {
-            title: "Inventory & Waste Control",
-            desc: "Track ingredients to the gram. Automated stock alerts and recipe-based deductions ensure you never run out of essentials.",
-            icon: <FiDatabase />,
-            points: ["Waste tracking", "Supplier management", "Stock-in/Stock-out history", "Cost analysis"],
-            image: "https://images.unsplash.com/photo-1586769852836-bc069f19e1b6?auto=format&fit=crop&q=80&w=1000"
-        },
-        {
-            title: "Accounting & Expense Manager",
-            desc: "Maintain your financial health with ease. Track every expense, manage bills, and monitor your restaurant's cash flow in real-time.",
-            icon: <FiPieChart />,
-            points: ["Expense tracking", "Tax reports", "Profit/Loss statements", "Vendor payments"],
-            image: "https://images.unsplash.com/photo-1554224155-6726b3ff858f?auto=format&fit=crop&q=80&w=1000"
-        },
-        {
-            title: "Digital QR Menu",
-            desc: "Empower your guests to scan, browse, and order directly from their smartphones. Reduce wait times and staff workload.",
-            icon: <FiGrid />,
-            points: ["Digital contactless menus", "Instant table sync", "Photo-rich descriptions", "Multiple language support"],
-            image: "https://images.unsplash.com/photo-1595113316349-9fa4eb24f884?auto=format&fit=crop&q=80&w=1000"
-        },
-        {
-            title: "Table & Space Management",
-            desc: "Optimize your floor plan for maximum efficiency. Track live table status and manage reservations seamlessly.",
-            icon: <FiLayers />,
-            points: ["Drag-and-drop floor plan", "Reservation management", "Waitlist tracking", "Table turnaround analytics"],
-            image: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&q=80&w=1000"
-        },
-        {
-            title: "Real-Time Sales Report",
-            desc: "Gain deep insights into your restaurant's performance. Monitor sales, analyze trends, and make data-driven decisions.",
-            icon: <FiBarChart2 />,
-            points: ["Live sales tracking", "Best-selling items", "Staff performance", "Custom date ranges"],
-            image: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80&w=1000"
-        },
-        {
-            title: "Mobile & Web App",
-            desc: "Manage your restaurant from anywhere. Our platform works seamlessly on iOS, Android, and all modern web browsers.",
-            icon: <FiSmartphone />,
-            points: ["Real-time notifications", "Remote dashboard", "Staff app", "Cross-platform sync"],
-            image: "https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?auto=format&fit=crop&q=80&w=1000"
-        },
-        {
-            title: "Kitchen Display System (KDS)",
-            desc: "Go paperless and eliminate errors. Sync front-of-house with back-of-house in real-time for maximum efficiency.",
-            icon: <FiMonitor />,
-            points: ["Order status tracking", "Preparation time alerts", "Bump bar support", "Color-coded priority"],
-            image: "https://images.unsplash.com/photo-1556740758-90de374c12ad?auto=format&fit=crop&q=80&w=1000"
-        }
+    const iconMap: Record<string, React.ReactNode> = {
+        FiZap: <FiZap />,
+        FiDatabase: <FiDatabase />,
+        FiPieChart: <FiPieChart />,
+        FiGrid: <FiGrid />,
+        FiLayers: <FiLayers />,
+        FiBarChart2: <FiBarChart2 />,
+        FiSmartphone: <FiSmartphone />,
+        FiMonitor: <FiMonitor />,
+        FiShield: <FiShield />,
+    };
+
+    const fallbackFeatures = [
+        { id: 'f1', title: 'Order & KOT Management', description: 'The fastest point of sale workflow designed for rush hours.', icon: 'FiZap' },
+        { id: 'f2', title: 'Inventory & Waste Control', description: 'Track ingredients in real-time and get low-stock alerts.', icon: 'FiDatabase' },
+        { id: 'f3', title: 'Accounting & Expense Manager', description: 'Track expenses, bills, and cash flow with clarity.', icon: 'FiPieChart' },
+        { id: 'f4', title: 'Digital QR Menu', description: 'Guests scan, browse, and order from their phones.', icon: 'FiGrid' },
+        { id: 'f5', title: 'Table & Space Management', description: 'Manage tables, reservations, and waitlists smoothly.', icon: 'FiLayers' },
+        { id: 'f6', title: 'Real-Time Sales Report', description: 'Monitor sales and trends and act faster.', icon: 'FiBarChart2' },
+        { id: 'f7', title: 'Mobile & Web App', description: 'Access the dashboard from anywhere.', icon: 'FiSmartphone' },
+        { id: 'f8', title: 'Kitchen Display System (KDS)', description: 'Sync FOH and BOH in real time and reduce errors.', icon: 'FiMonitor' },
     ];
+
+    const featuresSource = content.features && content.features.length > 0 ? content.features : fallbackFeatures;
+    const features = featuresSource.map((f, idx) => ({
+        id: f.id,
+        title: f.title,
+        desc: f.description,
+        icon: iconMap[f.icon] || <FiZap />,
+        points: [f.description].filter(Boolean),
+        image: [
+            'https://images.unsplash.com/photo-1556740749-887f6717d7e4?auto=format&fit=crop&q=80&w=1000',
+            'https://images.unsplash.com/photo-1586769852836-bc069f19e1b6?auto=format&fit=crop&q=80&w=1000',
+            'https://images.unsplash.com/photo-1554224155-6726b3ff858f?auto=format&fit=crop&q=80&w=1000',
+            'https://images.unsplash.com/photo-1595113316349-9fa4eb24f884?auto=format&fit=crop&q=80&w=1000',
+        ][idx % 4],
+    }));
+
+    const anchors = ['feature-orders','feature-inventory','feature-accounting','feature-qr','feature-tables','feature-sales','feature-mobile','feature-kds'];
+
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        const section = params.get('section') || '';
+        if (!section) return;
+
+        const scroll = () => {
+            const el = document.getElementById(section);
+            if (!el) return;
+            const headerOffset = 90;
+            const elementPosition = el.getBoundingClientRect().top;
+            const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+            window.scrollTo({ top: offsetPosition, behavior: 'smooth' });
+        };
+
+        const raf = window.requestAnimationFrame(scroll);
+        const t = window.setTimeout(scroll, 120);
+        return () => {
+            window.cancelAnimationFrame(raf);
+            window.clearTimeout(t);
+        };
+    }, [location.search]);
 
     return (
         <div className="bg-[#fffcfb] min-h-screen">
             <SaaSHeader 
                 openDemoModal={openDemoModal} 
                 openLoginModal={openLoginModal} 
+                openRegisterModal={openRegisterModal}
+                content={content.header}
             />
 
             {/* Hero Section */}
             <header className="bg-mesh py-32 relative overflow-hidden mt-20">
                 <div className="container mx-auto px-6 text-center relative z-10">
-                    <Link to="/" className="text-[#8b2d1d] font-black text-2xl mb-12 inline-block">RestoByte</Link>
+                    <Link to="/" className="text-[#8b2d1d] font-black text-2xl mb-12 inline-block">{content.seo?.title || 'RestoByte'}</Link>
                     <h1 className="text-5xl md:text-7xl font-black text-[#2d1510] mb-8 leading-tight">Modern <span className="text-[#8b2d1d]">Features</span> for modern dining.</h1>
                     <p className="text-xl text-[#5a4039] max-w-2xl mx-auto">
                         Explore our comprehensive suite of features designed to streamline every aspect of your restaurant operations.
@@ -113,7 +122,7 @@ const SaaSFeaturesPage: React.FC = () => {
                 <div className="container mx-auto px-6">
                     <div className="space-y-32">
                         {features.slice(0, 4).map((f, i) => (
-                            <div key={i} className={`flex flex-col lg:flex-row items-center gap-20 ${i % 2 === 1 ? 'lg:flex-row-reverse' : ''}`}>
+                            <div id={anchors[i] || `feature-${i}`} key={i} className={`scroll-mt-28 flex flex-col lg:flex-row items-center gap-20 ${i % 2 === 1 ? 'lg:flex-row-reverse' : ''}`}>
                                 <div className="lg:w-1/2">
                                     <div className="w-16 h-16 bg-[#8b2d1d]/10 rounded-2xl flex items-center justify-center text-[#8b2d1d] text-2xl mb-8">
                                         {f.icon}
@@ -130,7 +139,7 @@ const SaaSFeaturesPage: React.FC = () => {
                                             </div>
                                         ))}
                                     </div>
-                                    <Button onClick={() => { window.location.hash = '/register'; }} className="mt-12 !bg-[#2d1510] text-white rounded-xl px-8 py-4 font-bold border-none">
+                                    <Button onClick={openRegisterModal} className="mt-12 !bg-[#2d1510] text-white rounded-xl px-8 py-4 font-bold border-none">
                                         Get Started with {f.title.split(' ')[0]}
                                     </Button>
                                 </div>
@@ -159,7 +168,7 @@ const SaaSFeaturesPage: React.FC = () => {
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
                         {features.slice(4).map((f, i) => (
-                            <div key={i} className="bg-[#fffcfb] p-10 rounded-[40px] border border-[#f3e9e5] hover:border-[#8b2d1d] hover:shadow-2xl transition-all duration-500 group">
+                            <div id={anchors[i + 4] || `feature-${i + 4}`} key={i} className="scroll-mt-28 bg-[#fffcfb] p-10 rounded-[40px] border border-[#f3e9e5] hover:border-[#8b2d1d] hover:shadow-2xl transition-all duration-500 group">
                                 <div className="w-14 h-14 bg-[#8b2d1d]/5 rounded-2xl flex items-center justify-center text-[#8b2d1d] text-2xl mb-8 group-hover:bg-[#8b2d1d] group-hover:text-white transition-all">
                                     {f.icon}
                                 </div>
@@ -211,6 +220,7 @@ const SaaSFeaturesPage: React.FC = () => {
 
             <SaaSFooter 
                 handleNavClick={handleNavClick} 
+                content={content.footer}
             />
 
             {/* Auth Modals */}
@@ -219,13 +229,22 @@ const SaaSFeaturesPage: React.FC = () => {
                 onClose={closeModal} 
                 title={
                     authModal === 'login' ? 'Sign In' : 
-                    authModal === 'register' ? 'Create Account' : 
+                    authModal === 'register' ? 'Start Free Trial' : 
                     'Request a Free Demo'
                 }
+                size={authModal === 'register' ? 'lg' : 'md'}
             >
                 <React.Suspense fallback={<div className="p-6 flex justify-center">Loading...</div>}>
                     {authModal === 'login' && <LoginPage onSwitchToRegister={() => setAuthModal('register')} />}
-                    {authModal === 'register' && <RegisterPage onSwitchToLogin={() => setAuthModal('login')} />}
+                    {authModal === 'register' && (
+                        <RegisterPage
+                            onSwitchToLogin={() => setAuthModal('login')}
+                            embedded
+                            heading="Start Free Trial"
+                            subtitle="Create your restaurant account and start your trial now."
+                            submitLabel="Start Free Trial"
+                        />
+                    )}
                     {authModal === 'demo' && <DemoForm />}
                 </React.Suspense>
             </Modal>

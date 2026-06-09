@@ -722,6 +722,7 @@ export interface SaasNavLink {
 }
 
 export interface SaasHeader {
+    brandName?: string;
     logoUrl: string;
     navLinks: SaasNavLink[];
 }
@@ -739,6 +740,9 @@ export interface SaasFooterColumn {
 }
 
 export interface SaasFooter {
+    brandTitle?: string;
+    brandDescription?: string;
+    poweredByText?: string;
     copyright: string;
     columns: SaasFooterColumn[];
     socialLinks: WebsiteSocialMediaLink[];
@@ -756,6 +760,31 @@ export interface SaasPage {
     title: string;
     content: string;
     imageUrl?: string;
+}
+
+export interface SaasShopProduct {
+    id: string;
+    name: string;
+    category: string;
+    price: number;
+    rating?: number;
+    imageUrl: string;
+    icon?: string;
+    isInStock?: boolean;
+    description?: string;
+    highlights?: string[];
+}
+
+export interface SaasProductsShopContent {
+    brandLabel?: string;
+    title: string;
+    subtitle: string;
+    whatsappNumber: string;
+    ctaTitle: string;
+    ctaSubtitle: string;
+    ctaButtonText: string;
+    products: SaasShopProduct[];
+    categories?: string[];
 }
 
 export interface SaasWebsiteContent {
@@ -776,6 +805,7 @@ export interface SaasWebsiteContent {
     pricing: SaasPricingPlan[];
     testimonials: SaasTestimonial[];
     blogPosts: SaasPost[];
+    productsShop: SaasProductsShopContent;
 }
 
 export type PlanFeatureKey =
@@ -1051,7 +1081,7 @@ export interface RestaurantDataContextType {
 
     // SaaS Content Management
     saasWebsiteContent: SaasWebsiteContent;
-    updateSaasWebsiteContent: (updater: (prev: SaasWebsiteContent) => SaasWebsiteContent) => void;
+    updateSaasWebsiteContent: (updater: (prev: SaasWebsiteContent) => SaasWebsiteContent) => Promise<void>;
     fetchSaasWebsiteContent: () => Promise<SaasWebsiteContent | null>;
 
     // SaaS Plan Management

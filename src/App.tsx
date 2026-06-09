@@ -19,13 +19,10 @@ import PublicMenuPage from '@/pages/public/PublicMenuPage';
 import PublicAboutPage from '@/pages/public/PublicAboutPage';
 const PublicContactPage = React.lazy(() => import('./pages/public/PublicContactPage'));
 const SaaSBlogsPage = React.lazy(() => import('./pages/public/SaaSBlogsPage'));
-const SaaSCareerPage = React.lazy(() => import('./pages/public/SaaSCareerPage'));
 const SaaSContactPage = React.lazy(() => import('./pages/public/SaaSContactPage'));
 const SaaSFeaturesPage = React.lazy(() => import('./pages/public/SaaSFeaturesPage'));
 const SaaSPricingPage = React.lazy(() => import('./pages/public/SaaSPricingPage'));
 const SaaSProductsShopPage = React.lazy(() => import('./pages/public/SaaSProductsShopPage'));
-const SaaSPrivacyPage = React.lazy(() => import('./pages/public/SaaSPrivacyPage'));
-const SaaSTermsPage = React.lazy(() => import('./pages/public/SaaSTermsPage'));
 const DynamicSaaSPage = React.lazy(() => import('./pages/public/DynamicSaaSPage'));
 const PublicLoginPage = React.lazy(() => import('./pages/public/PublicLoginPage'));
 import PublicRegisterPage from '@/pages/public/PublicRegisterPage';
@@ -383,13 +380,13 @@ const AppContent: React.FC = () => {
         <Routes>
             <Route path="/" element={<AuthAwareLanding />} />
             <Route path="/blogs" element={<SaaSBlogsPage />} />
-            <Route path="/career" element={<SaaSCareerPage />} />
+            <Route path="/career" element={<DynamicSaaSPage />} />
             <Route path="/contact" element={<SaaSContactPage />} />
             <Route path="/features" element={<SaaSFeaturesPage />} />
             <Route path="/pricing" element={<SaaSPricingPage />} />
             <Route path="/products" element={<SaaSProductsShopPage />} />
-            <Route path="/privacy-policy" element={<SaaSPrivacyPage />} />
-            <Route path="/terms-of-service" element={<SaaSTermsPage />} />
+            <Route path="/privacy-policy" element={<DynamicSaaSPage />} />
+            <Route path="/terms-of-service" element={<DynamicSaaSPage />} />
             <Route path="/:slug" element={<DynamicSaaSPage />} />
             
             {/* Public Restaurant Website Routes */}

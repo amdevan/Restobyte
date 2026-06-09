@@ -32,6 +32,7 @@ const SaaSTermsPage: React.FC = () => {
             <SaaSHeader 
                 openDemoModal={openDemoModal} 
                 openLoginModal={openLoginModal} 
+                openRegisterModal={openRegisterModal}
             />
 
             <main className="pt-32 pb-24">
@@ -85,13 +86,22 @@ const SaaSTermsPage: React.FC = () => {
                 onClose={closeModal} 
                 title={
                     authModal === 'login' ? 'Sign In' : 
-                    authModal === 'register' ? 'Create Account' : 
+                    authModal === 'register' ? 'Start Free Trial' : 
                     'Request a Free Demo'
                 }
+                size={authModal === 'register' ? 'lg' : 'md'}
             >
                 <React.Suspense fallback={<div className="p-6 flex justify-center">Loading...</div>}>
                     {authModal === 'login' && <LoginPage onSwitchToRegister={() => setAuthModal('register')} />}
-                    {authModal === 'register' && <RegisterPage onSwitchToLogin={() => setAuthModal('login')} />}
+                    {authModal === 'register' && (
+                        <RegisterPage
+                            onSwitchToLogin={() => setAuthModal('login')}
+                            embedded
+                            heading="Start Free Trial"
+                            subtitle="Create your restaurant account and start your trial now."
+                            submitLabel="Start Free Trial"
+                        />
+                    )}
                     {authModal === 'demo' && <DemoForm />}
                 </React.Suspense>
             </Modal>

@@ -62,6 +62,7 @@ const WebsiteCMSPage: React.FC = () => {
                      <Routes>
                         <Route path="/" element={<Navigate to="home" replace />} />
                         <Route path="home" element={<HomePageContentPage />} />
+                        <Route path="products" element={<HomePageContentPage productsOnly />} />
                         <Route path="header-footer" element={<HeaderFooterPage />} />
                         <Route path="pages" element={<PagesPage />} />
                         <Route path="blogs" element={<BlogsPage />} />

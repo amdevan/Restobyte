@@ -147,16 +147,66 @@ const initialSaasSettings: SaaSSettings = {
 };
 
 const initialPlans: Plan[] = [
-    { id: 'plan-1', name: 'Basic', price: 2999, period: 'monthly', features: ['POS Billing', 'Food Menu', 'Customer Management', 'Basic Reports', 'Website Menu'], featureKeys: ['pos', 'menu', 'customers', 'reports', 'website', 'subscription'], trialDays: 14, limits: { maxTables: 25 }, isPublic: true, isActive: true },
-    { id: 'plan-2', name: 'Pro', price: 5999, period: 'monthly', features: ['Everything in Basic', 'Kitchen Display', 'Tables', 'Reservations', 'Inventory', 'WhatsApp', 'Self Order'], featureKeys: ['pos', 'kds', 'customerDisplay', 'menu', 'tables', 'reservations', 'inventory', 'customers', 'purchase', 'reports', 'website', 'whatsapp', 'selfOrder', 'subscription'], trialDays: 30, limits: { maxTables: 100 }, isPublic: true, isActive: true, isFeatured: true },
+    { id: 'plan-1', name: 'Basic', price: 2999, period: 'yearly', features: ['POS Billing', 'Food Menu', 'Customer Management', 'Basic Reports', 'Website Menu'], featureKeys: ['pos', 'menu', 'customers', 'reports', 'website', 'subscription'], trialDays: 14, limits: { maxTables: 25 }, isPublic: true, isActive: true },
+    { id: 'plan-2', name: 'Pro', price: 5999, period: 'yearly', features: ['Everything in Basic', 'Kitchen Display', 'Tables', 'Reservations', 'Inventory', 'WhatsApp', 'Self Order'], featureKeys: ['pos', 'kds', 'customerDisplay', 'menu', 'tables', 'reservations', 'inventory', 'customers', 'purchase', 'reports', 'website', 'whatsapp', 'selfOrder', 'subscription'], trialDays: 30, limits: { maxTables: 100 }, isPublic: true, isActive: true, isFeatured: true },
 ];
 
 const initialSaasWebsiteContent: SaasWebsiteContent = {
     sectionOrder: [],
-    header: { logoUrl: '', navLinks: [{id: 'l1', text: 'Features', url: '#features'}, {id: 'l2', text: 'Pricing', url: '#pricing'}] },
-    footer: { copyright: '© 2024 RestoByte. All rights reserved.', columns: [], socialLinks: [] },
+    header: { brandName: 'RestoByte', logoUrl: '', navLinks: [{id: 'l1', text: 'Features', url: '#features'}, {id: 'l2', text: 'Pricing', url: '#pricing'}] },
+    footer: {
+        brandTitle: 'RestoByte',
+        brandDescription: 'Empower your restaurant with the modern tools it deserves.',
+        poweredByText: 'Powered by IT Relevant Pvt. Ltd',
+        copyright: '© 2024 RestoByte. All rights reserved.',
+        columns: [],
+        socialLinks: [],
+    },
     seo: { title: 'RestoByte', description: '', faviconUrl: '' },
-    pages: [],
+    pages: [
+        {
+            id: 'page-about-us',
+            title: 'About Us',
+            slug: 'about-us',
+            content: '<h2>Our Mission</h2><p>RestoByte helps modern restaurants run faster, smarter, and with more confidence through one unified operating platform.</p>',
+            imageUrl: '',
+        },
+        {
+            id: 'page-contact',
+            title: 'Contact',
+            slug: 'contact',
+            content: '<h2>Contact Our Team</h2><p>Need help with sales, onboarding, or support? Reach out to us and our team will get back to you quickly.</p><p>Email: support@restobyte.com</p><p>Phone: +977-0000000000</p>',
+            imageUrl: '',
+        },
+        {
+            id: 'page-career',
+            title: 'Career',
+            slug: 'career',
+            content: '<h2>Join Our Team</h2><p>We are building the future of restaurant operations. If you love products, hospitality, and solving real business problems, we would love to hear from you.</p>',
+            imageUrl: '',
+        },
+        {
+            id: 'page-products',
+            title: 'Products',
+            slug: 'products',
+            content: '<h2>Our Product Line</h2><p>Explore POS hardware, displays, printers, tablets, and software solutions built for restaurants of every size.</p>',
+            imageUrl: '',
+        },
+        {
+            id: 'page-privacy-policy',
+            title: 'Privacy Policy',
+            slug: 'privacy-policy',
+            content: '<h2>Privacy Policy</h2><p>Your privacy is important to us. This page explains how we collect, use, and protect your data.</p>',
+            imageUrl: '',
+        },
+        {
+            id: 'page-terms-of-service',
+            title: 'Terms of Service',
+            slug: 'terms-of-service',
+            content: '<h2>Terms of Service</h2><p>By using RestoByte, you agree to our service terms and acceptable-use policies.</p>',
+            imageUrl: '',
+        },
+    ],
     hero: { title: 'The Ultimate Restaurant Management Platform', subtitle: 'From point of sale to inventory management, streamline your operations and delight your customers.', imageUrl: 'https://placehold.co/1200x600' },
     trustedByLogos: [{id: 'tb1', name: 'Gourmet Grill', logoUrl: ''}, {id: 'tb2', name: 'The Cozy Cafe', logoUrl: ''}],
     statistics: [{id: 'st1', value: '1M+', label: 'Orders Processed'}],
@@ -164,7 +214,91 @@ const initialSaasWebsiteContent: SaasWebsiteContent = {
     cta: { title: 'Get Started with RestoByte', subtitle: 'Sign up today and see the difference.', buttonText: 'Start Free Trial'},
     pricing: [],
     testimonials: [],
-    blogPosts: []
+    blogPosts: [],
+    productsShop: {
+        brandLabel: 'RestoByte Shop',
+        title: 'Hardware & Accessories',
+        subtitle: 'High-performance hardware fully integrated with RestoByte software. Build your dream setup today.',
+        whatsappNumber: '+9779843927360',
+        ctaTitle: 'Need a full restaurant setup?',
+        ctaSubtitle: 'Our experts can help you choose the right hardware for your specific floor plan and kitchen volume.',
+        ctaButtonText: 'Request a Custom Quote',
+        categories: ['Hardware', 'Accessories', 'Infrastructure'],
+        products: [
+            {
+                id: 'shop-1',
+                name: 'Pro POS Terminal v4',
+                category: 'Hardware',
+                price: 599,
+                rating: 4.9,
+                imageUrl: 'https://images.unsplash.com/photo-1556740749-887f6717d7e4?auto=format&fit=crop&q=80&w=400',
+                icon: 'FiMonitor',
+                isInStock: true,
+                description: 'A durable, high-performance POS terminal built for fast billing and peak-hour reliability.',
+                highlights: ['Touch display', 'Fast boot', 'Built for long shifts']
+            },
+            {
+                id: 'shop-2',
+                name: 'Thermal Receipt Printer',
+                category: 'Accessories',
+                price: 129,
+                rating: 4.8,
+                imageUrl: 'https://images.unsplash.com/photo-1556740758-90de374c12ad?auto=format&fit=crop&q=80&w=400',
+                icon: 'FiPrinter',
+                isInStock: true,
+                description: 'High-speed thermal printer for crisp receipts with minimal maintenance.',
+                highlights: ['Fast print', 'Low noise', 'Easy roll change']
+            },
+            {
+                id: 'shop-3',
+                name: 'Waiter Tablet Pro',
+                category: 'Hardware',
+                price: 249,
+                rating: 4.7,
+                imageUrl: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&q=80&w=400',
+                icon: 'FiTablet',
+                isInStock: true,
+                description: 'Lightweight tablet designed for quick order-taking and table-side operations.',
+                highlights: ['Long battery', 'Rugged body', 'Fast Wi‑Fi']
+            },
+            {
+                id: 'shop-4',
+                name: 'Kitchen KDS Controller',
+                category: 'Infrastructure',
+                price: 189,
+                rating: 4.9,
+                imageUrl: 'https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&q=80&w=400',
+                icon: 'FiCpu',
+                isInStock: true,
+                description: 'KDS controller to keep kitchen displays synced with orders in real time.',
+                highlights: ['Realtime sync', 'Stable performance', 'Compact design']
+            },
+            {
+                id: 'shop-5',
+                name: 'Cash Drawer Pro',
+                category: 'Accessories',
+                price: 89,
+                rating: 4.6,
+                imageUrl: 'https://images.unsplash.com/photo-1556742044-3c52d6e88c02?auto=format&fit=crop&q=80&w=400',
+                icon: 'FiDatabase',
+                isInStock: true,
+                description: 'Smooth, secure cash drawer compatible with standard POS setups.',
+                highlights: ['Heavy duty', 'Secure lock', 'Easy integration']
+            },
+            {
+                id: 'shop-6',
+                name: 'Barcode Scanner v2',
+                category: 'Accessories',
+                price: 75,
+                rating: 4.8,
+                imageUrl: 'https://images.unsplash.com/photo-1556740749-887f6717d7e4?auto=format&fit=crop&q=80&w=400',
+                icon: 'FiGrid',
+                isInStock: true,
+                description: 'Reliable scanner for quick item lookup and faster checkout workflows.',
+                highlights: ['Quick scan', 'Comfort grip', 'Plug & play']
+            }
+        ]
+    }
 };
 
 const useLocalStorage = <T,>(key: string, initialValue: T): [T, React.Dispatch<React.SetStateAction<T>>] => {
@@ -453,28 +587,343 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         setActiveOutletIds(next);
     }, [isAuthenticated, user?.roleId, user?.outletId, user?.isSuperAdmin, (user as any)?.outletIds, activeOutletIds, setActiveOutletIds]);
 
+    const generateId = () => {
+        if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+            return crypto.randomUUID();
+        }
+        return `id-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    };
+
+    const normalizeSaasWebsiteContent = (raw: any): SaasWebsiteContent => {
+        const safeObj = raw && typeof raw === 'object' ? raw : {};
+
+        const headerRaw = safeObj.header && typeof safeObj.header === 'object' ? safeObj.header : {};
+        const navLinksRaw = Array.isArray(headerRaw.navLinks) ? headerRaw.navLinks : [];
+        const navLinks = navLinksRaw
+            .map((link: any) => {
+                const id = typeof link?.id === 'string' && link.id.trim() ? link.id : generateId();
+                const text = typeof link?.text === 'string' ? link.text : (typeof link?.label === 'string' ? link.label : '');
+                const url = typeof link?.url === 'string' ? link.url : (typeof link?.href === 'string' ? link.href : '');
+                const subLinksRaw = Array.isArray(link?.subLinks) ? link.subLinks : Array.isArray(link?.children) ? link.children : [];
+                const subLinks = subLinksRaw
+                    .map((sub: any) => ({
+                        id: typeof sub?.id === 'string' && sub.id.trim() ? sub.id : generateId(),
+                        text: typeof sub?.text === 'string' ? sub.text : (typeof sub?.label === 'string' ? sub.label : ''),
+                        url: typeof sub?.url === 'string' ? sub.url : (typeof sub?.href === 'string' ? sub.href : ''),
+                    }))
+                    .filter((sub: any) => sub.text.trim() && sub.url.trim());
+                return { id, text, url, ...(subLinks.length > 0 ? { subLinks } : {}) };
+            })
+            .filter((link: any) => link.text.trim() && link.url.trim());
+
+        const footerRaw = safeObj.footer && typeof safeObj.footer === 'object' ? safeObj.footer : {};
+        const columnsRaw = Array.isArray(footerRaw.columns) ? footerRaw.columns : [];
+        const columns = columnsRaw.map((col: any) => {
+            const id = typeof col?.id === 'string' && col.id.trim() ? col.id : generateId();
+            const title = typeof col?.title === 'string' ? col.title : '';
+            const linksRaw = Array.isArray(col?.links) ? col.links : [];
+            const links = linksRaw
+                .map((l: any) => ({
+                    id: typeof l?.id === 'string' && l.id.trim() ? l.id : generateId(),
+                    text: typeof l?.text === 'string' ? l.text : (typeof l?.label === 'string' ? l.label : ''),
+                    url: typeof l?.url === 'string' ? l.url : (typeof l?.href === 'string' ? l.href : ''),
+                }))
+                .filter((l: any) => l.text.trim() && l.url.trim());
+            return { id, title, links };
+        }).filter((c: any) => c.title.trim());
+
+        const socialLinksRaw = Array.isArray(footerRaw.socialLinks) ? footerRaw.socialLinks : [];
+        const socialLinks = socialLinksRaw
+            .map((s: any) => ({
+                id: typeof s?.id === 'string' && s.id.trim() ? s.id : generateId(),
+                platform: typeof s?.platform === 'string' ? s.platform : '',
+                url: typeof s?.url === 'string' ? s.url : '',
+            }))
+            .filter((s: any) => s.platform.trim());
+
+        const seoRaw = safeObj.seo && typeof safeObj.seo === 'object' ? safeObj.seo : {};
+        const seo = {
+            title: typeof seoRaw.title === 'string' ? seoRaw.title : 'RestoByte',
+            description: typeof seoRaw.description === 'string' ? seoRaw.description : '',
+            faviconUrl: typeof seoRaw.faviconUrl === 'string' ? seoRaw.faviconUrl : '',
+        };
+
+        const pagesRaw = Array.isArray(safeObj.pages) ? safeObj.pages : [];
+        const pages = pagesRaw.map((p: any) => ({
+            id: typeof p?.id === 'string' && p.id.trim() ? p.id : generateId(),
+            title: typeof p?.title === 'string' ? p.title : '',
+            slug: typeof p?.slug === 'string' ? p.slug : '',
+            content: typeof p?.content === 'string' ? p.content : '',
+            imageUrl: typeof p?.imageUrl === 'string' ? p.imageUrl : '',
+        })).filter((p: any) => p.title.trim() && p.slug.trim());
+        const mergedPages = [...pages];
+        initialSaasWebsiteContent.pages.forEach((defaultPage) => {
+            if (!mergedPages.some((page) => page.slug === defaultPage.slug)) {
+                mergedPages.push(defaultPage);
+            }
+        });
+
+        const heroRaw = safeObj.hero && typeof safeObj.hero === 'object' ? safeObj.hero : {};
+        const hero = {
+            title: typeof heroRaw.title === 'string' ? heroRaw.title : '',
+            subtitle: typeof heroRaw.subtitle === 'string' ? heroRaw.subtitle : '',
+            imageUrl: typeof heroRaw.imageUrl === 'string' ? heroRaw.imageUrl : '',
+        };
+
+        const trustedByRaw = Array.isArray(safeObj.trustedByLogos) ? safeObj.trustedByLogos : [];
+        const trustedByLogos = trustedByRaw.map((l: any) => {
+            if (typeof l === 'string') {
+                return { id: generateId(), name: '', logoUrl: l };
+            }
+            return {
+                id: typeof l?.id === 'string' && l.id.trim() ? l.id : generateId(),
+                name: typeof l?.name === 'string' ? l.name : '',
+                logoUrl: typeof l?.logoUrl === 'string' ? l.logoUrl : '',
+            };
+        }).filter((l: any) => l.name.trim() || l.logoUrl.trim());
+
+        const statisticsRaw = Array.isArray(safeObj.statistics) ? safeObj.statistics : [];
+        const statistics = statisticsRaw.map((s: any) => ({
+            id: typeof s?.id === 'string' && s.id.trim() ? s.id : generateId(),
+            value: typeof s?.value === 'string' ? s.value : (s?.value != null ? String(s.value) : ''),
+            label: typeof s?.label === 'string' ? s.label : '',
+        })).filter((s: any) => s.label.trim());
+
+        const featuresRaw = Array.isArray(safeObj.features) ? safeObj.features : [];
+        const features = featuresRaw.map((f: any) => ({
+            id: typeof f?.id === 'string' && f.id.trim() ? f.id : generateId(),
+            icon: typeof f?.icon === 'string' ? f.icon : 'FiGift',
+            title: typeof f?.title === 'string' ? f.title : '',
+            description: typeof f?.description === 'string' ? f.description : '',
+        })).filter((f: any) => f.title.trim());
+
+        const ctaRaw = safeObj.cta && typeof safeObj.cta === 'object' ? safeObj.cta : {};
+        const cta = {
+            title: typeof ctaRaw.title === 'string' ? ctaRaw.title : '',
+            subtitle: typeof ctaRaw.subtitle === 'string' ? ctaRaw.subtitle : '',
+            buttonText: typeof ctaRaw.buttonText === 'string' ? ctaRaw.buttonText : '',
+        };
+
+        const pricingRaw = Array.isArray(safeObj.pricing) ? safeObj.pricing : [];
+        const pricing = pricingRaw.map((p: any) => ({
+            id: typeof p?.id === 'string' && p.id.trim() ? p.id : generateId(),
+            name: typeof p?.name === 'string' ? p.name : '',
+            price: typeof p?.price === 'string' ? p.price : (p?.price != null ? String(p.price) : ''),
+            period: typeof p?.period === 'string' ? p.period : (typeof p?.interval === 'string' ? p.interval : ''),
+            features: Array.isArray(p?.features) ? p.features.filter((x: any) => typeof x === 'string') : [],
+            isFeatured: typeof p?.isFeatured === 'boolean'
+                ? p.isFeatured
+                : (typeof p?.isPopular === 'boolean' ? p.isPopular : Boolean(p?.isPopular)),
+        })).filter((p: any) => p.name.trim());
+
+        const testimonialsRaw = Array.isArray(safeObj.testimonials) ? safeObj.testimonials : [];
+        const testimonials = testimonialsRaw.map((t: any) => {
+            const personName = typeof t?.name === 'string' ? t.name : '';
+            const role = typeof t?.role === 'string' ? t.role : '';
+            const resultFromLegacy = [personName, role].filter(Boolean).join(', ');
+
+            return {
+                id: typeof t?.id === 'string' && t.id.trim() ? t.id : generateId(),
+                storeName: typeof t?.storeName === 'string' ? t.storeName : (typeof t?.company === 'string' ? t.company : ''),
+                result: typeof t?.result === 'string' ? t.result : resultFromLegacy,
+                description: typeof t?.description === 'string' ? t.description : (typeof t?.content === 'string' ? t.content : ''),
+                imageUrl: typeof t?.imageUrl === 'string' ? t.imageUrl : (typeof t?.avatarUrl === 'string' ? t.avatarUrl : ''),
+            };
+        }).filter((t: any) => t.storeName.trim() || t.result.trim() || t.description.trim());
+
+        const blogPostsRaw = Array.isArray(safeObj.blogPosts) ? safeObj.blogPosts : [];
+        const blogPosts = blogPostsRaw.map((b: any) => ({
+            id: typeof b?.id === 'string' && b.id.trim() ? b.id : generateId(),
+            title: typeof b?.title === 'string' ? b.title : '',
+            category: typeof b?.category === 'string' ? b.category : (typeof b?.tag === 'string' ? b.tag : ''),
+            date: typeof b?.date === 'string' ? b.date : '',
+            excerpt: typeof b?.excerpt === 'string' ? b.excerpt : '',
+            imageUrl: typeof b?.imageUrl === 'string' ? b.imageUrl : '',
+        })).filter((b: any) => b.title.trim());
+
+        const productsShopRaw = safeObj.productsShop && typeof safeObj.productsShop === 'object' ? safeObj.productsShop : {};
+        const productsRaw = Array.isArray((productsShopRaw as any).products) ? (productsShopRaw as any).products : [];
+        const products = productsRaw.map((p: any) => {
+            const priceRaw = p?.price;
+            const price =
+                typeof priceRaw === 'number'
+                    ? priceRaw
+                    : typeof priceRaw === 'string'
+                        ? Number(priceRaw)
+                        : 0;
+            const ratingRaw = p?.rating;
+            const rating =
+                typeof ratingRaw === 'number'
+                    ? ratingRaw
+                    : typeof ratingRaw === 'string'
+                        ? Number(ratingRaw)
+                        : undefined;
+            const isInStock = typeof p?.isInStock === 'boolean' ? p.isInStock : true;
+            const highlightsRaw = Array.isArray(p?.highlights) ? p.highlights : [];
+            const highlights = highlightsRaw.filter((x: any) => typeof x === 'string' && x.trim()).map((x: string) => x.trim());
+
+            return {
+                id: typeof p?.id === 'string' && p.id.trim() ? p.id : generateId(),
+                name: typeof p?.name === 'string' ? p.name : '',
+                category: typeof p?.category === 'string' ? p.category : '',
+                price: Number.isFinite(price) ? price : 0,
+                rating: rating != null && Number.isFinite(rating) ? rating : undefined,
+                imageUrl: typeof p?.imageUrl === 'string' ? p.imageUrl : (typeof p?.image === 'string' ? p.image : ''),
+                icon: typeof p?.icon === 'string' ? p.icon : undefined,
+                isInStock,
+                description: typeof p?.description === 'string' ? p.description : '',
+                highlights,
+            };
+        }).filter((p: any) => p.name.trim());
+
+        const categoriesRaw = Array.isArray((productsShopRaw as any).categories) ? (productsShopRaw as any).categories : [];
+        const categoriesFromRaw = categoriesRaw.filter((c: any) => typeof c === 'string' && c.trim()).map((c: string) => c.trim());
+        const categoriesFromProducts = Array.from(new Set(products.map((p: any) => p.category).filter((c: any) => typeof c === 'string' && c.trim())));
+        const categories = categoriesFromRaw.length > 0
+            ? categoriesFromRaw
+            : categoriesFromProducts.length > 0
+                ? categoriesFromProducts
+                : (initialSaasWebsiteContent.productsShop.categories || []);
+
+        const productsShop = {
+            brandLabel: typeof (productsShopRaw as any).brandLabel === 'string' ? (productsShopRaw as any).brandLabel : initialSaasWebsiteContent.productsShop.brandLabel,
+            title: typeof (productsShopRaw as any).title === 'string' ? (productsShopRaw as any).title : initialSaasWebsiteContent.productsShop.title,
+            subtitle: typeof (productsShopRaw as any).subtitle === 'string' ? (productsShopRaw as any).subtitle : initialSaasWebsiteContent.productsShop.subtitle,
+            whatsappNumber: typeof (productsShopRaw as any).whatsappNumber === 'string' ? (productsShopRaw as any).whatsappNumber : initialSaasWebsiteContent.productsShop.whatsappNumber,
+            ctaTitle: typeof (productsShopRaw as any).ctaTitle === 'string' ? (productsShopRaw as any).ctaTitle : initialSaasWebsiteContent.productsShop.ctaTitle,
+            ctaSubtitle: typeof (productsShopRaw as any).ctaSubtitle === 'string' ? (productsShopRaw as any).ctaSubtitle : initialSaasWebsiteContent.productsShop.ctaSubtitle,
+            ctaButtonText: typeof (productsShopRaw as any).ctaButtonText === 'string' ? (productsShopRaw as any).ctaButtonText : initialSaasWebsiteContent.productsShop.ctaButtonText,
+            categories,
+            products: products.length > 0 ? products : initialSaasWebsiteContent.productsShop.products,
+        };
+
+        const sectionOrderRaw = Array.isArray(safeObj.sectionOrder) ? safeObj.sectionOrder : [];
+        const sectionOrder = sectionOrderRaw.filter((k: any) => typeof k === 'string') as string[];
+
+        return {
+            sectionOrder: sectionOrder.length > 0 ? sectionOrder : initialSaasWebsiteContent.sectionOrder,
+            header: {
+                brandName: typeof headerRaw.brandName === 'string' ? headerRaw.brandName : initialSaasWebsiteContent.header.brandName,
+                logoUrl: typeof headerRaw.logoUrl === 'string' ? headerRaw.logoUrl : '',
+                navLinks,
+            },
+            footer: {
+                brandTitle: typeof footerRaw.brandTitle === 'string' ? footerRaw.brandTitle : initialSaasWebsiteContent.footer.brandTitle,
+                brandDescription: typeof footerRaw.brandDescription === 'string' ? footerRaw.brandDescription : initialSaasWebsiteContent.footer.brandDescription,
+                poweredByText: typeof footerRaw.poweredByText === 'string' ? footerRaw.poweredByText : initialSaasWebsiteContent.footer.poweredByText,
+                copyright: typeof footerRaw.copyright === 'string' ? footerRaw.copyright : '',
+                columns,
+                socialLinks,
+            },
+            seo,
+            pages: mergedPages,
+            hero,
+            trustedByLogos,
+            statistics,
+            features,
+            cta,
+            pricing,
+            testimonials,
+            blogPosts,
+            productsShop,
+        };
+    };
+
     const fetchSaasWebsiteContent = async () => {
         const env = 'default';
-        const url = isAuthenticated && user?.isSuperAdmin 
-            ? `${API_BASE_URL}/saas/website-content?env=${encodeURIComponent(env)}`
-            : `${API_BASE_URL}/public/saas-website-content?env=${encodeURIComponent(env)}`;
-        
+        const adminUrl = `${API_BASE_URL}/saas/website-content?env=${encodeURIComponent(env)}`;
+        const publicUrl = `${API_BASE_URL}/public/saas-website-content?env=${encodeURIComponent(env)}`;
+
         try {
-            const res = await fetch(url, {
-                headers: isAuthenticated && user?.isSuperAdmin ? {
-                    Authorization: `Bearer ${localStorage.getItem('authToken') || ''}`
-                } : {}
-            });
-            if (!res.ok) throw new Error('Failed to fetch SaaS website content');
-            const data = await res.json();
+            const tryFetch = async (url: string, headers: Record<string, string>) => {
+                const res = await fetch(url, { headers });
+                if (res.status === 401) {
+                    return { ok: false as const, status: 401 as const, data: null as any };
+                }
+                if (res.status === 403) {
+                    return { ok: false as const, status: 403 as const, data: null as any };
+                }
+                if (!res.ok) {
+                    return { ok: false as const, status: res.status, data: null as any };
+                }
+                const data = await res.json().catch(() => null);
+                return { ok: true as const, status: res.status, data };
+            };
+
+            let result:
+                | { ok: true; status: number; data: any }
+                | { ok: false; status: number; data: any };
+
+            if (isAuthenticated && user?.isSuperAdmin) {
+                const token = localStorage.getItem('authToken') || '';
+                result = await tryFetch(adminUrl, token ? { Authorization: `Bearer ${token}` } : {});
+                if (!result.ok && result.status === 401) {
+                    logout();
+                }
+                if (!result.ok && (result.status === 401 || result.status === 403)) {
+                    result = await tryFetch(publicUrl, {});
+                }
+            } else {
+                result = await tryFetch(publicUrl, {});
+            }
+
+            if (!result.ok) throw new Error('Failed to fetch SaaS website content');
+
+            const data = result.data;
             if (data?.content && typeof data.content === 'object') {
-                setSaasWebsiteContent(() => data.content as SaasWebsiteContent);
-                return data.content as SaasWebsiteContent;
+                const normalized = normalizeSaasWebsiteContent(data.content);
+                setSaasWebsiteContent(() => normalized);
+                return normalized;
             }
         } catch (err) {
             console.error('Failed to fetch SaaS website content:', err);
         }
         return null;
+    };
+
+    const updateSaasWebsiteContent = async (updater: (prev: SaasWebsiteContent) => SaasWebsiteContent) => {
+        const env = 'default';
+        const next = normalizeSaasWebsiteContent(updater(saasWebsiteContent));
+        setSaasWebsiteContent(() => next);
+
+        if (!isAuthenticated || !user?.isSuperAdmin) {
+            throw new Error('Forbidden: only Super Admin can save website content.');
+        }
+        const token = localStorage.getItem('authToken');
+        if (!token) {
+            throw new Error('Unauthorized. Please log in again.');
+        }
+
+        try {
+            const res = await fetch(`${API_BASE_URL}/saas/website-content?env=${encodeURIComponent(env)}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify(next),
+            });
+
+            if (res.status === 401) {
+                logout();
+                throw new Error('Unauthorized. Please log in again.');
+            }
+
+            if (!res.ok) {
+                const err = await res.json().catch(() => null);
+                throw new Error(err?.message || `Failed to save (${res.status})`);
+            }
+
+            const data = await res.json().catch(() => null);
+            if (data?.content && typeof data.content === 'object') {
+                const normalized = normalizeSaasWebsiteContent(data.content);
+                setSaasWebsiteContent(() => normalized);
+            }
+        } catch (err) {
+            console.error('Failed to update SaaS website content:', err);
+            await fetchSaasWebsiteContent();
+            throw err instanceof Error ? err : new Error('Failed to save website content.');
+        }
     };
 
     useEffect(() => {
@@ -567,9 +1016,32 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
 
     const fetchPlans = useCallback(async () => {
         try {
-            const res = await fetch(`${API_BASE_URL}/plans`);
-            const data = res.ok ? await res.json().catch(() => null) : null;
-            const incoming = Array.isArray(data?.plans) ? data.plans : [];
+            const primaryUrl = `${API_BASE_URL}/plans`;
+            const localFallbackUrl =
+                typeof window !== 'undefined' &&
+                (window.location.hostname === 'localhost' ||
+                    window.location.hostname.endsWith('.localhost') ||
+                    window.location.hostname === '127.0.0.1')
+                    ? 'http://localhost:3000/api/plans'
+                    : null;
+
+            const tryFetch = async (url: string) => {
+                const res = await fetch(url);
+                const data = res.ok ? await res.json().catch(() => null) : null;
+                return { ok: res.ok, status: res.status, data };
+            };
+
+            let result = await tryFetch(primaryUrl);
+            if (!result.ok && localFallbackUrl && primaryUrl !== localFallbackUrl) {
+                result = await tryFetch(localFallbackUrl);
+            }
+
+            const data = result.ok ? result.data : null;
+            const incoming = Array.isArray(data?.plans)
+                ? data.plans
+                : Array.isArray(data)
+                    ? data
+                    : [];
             if (incoming.length === 0) {
                 setPlans(initialPlans);
                 return;
@@ -1965,7 +2437,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         },
 
         saasWebsiteContent, fetchSaasWebsiteContent,
-        updateSaasWebsiteContent: (updater) => setSaasWebsiteContent(updater),
+        updateSaasWebsiteContent,
         registerUser: async (username, password, restaurantName, fullName, mobile, address) => {
             // Simplified registration mock or proxy to backend if it existed
             return { success: false, message: 'Registration not implemented in this provider yet.' };

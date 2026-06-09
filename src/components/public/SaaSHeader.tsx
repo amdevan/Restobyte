@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
     FiDatabase, FiChevronDown, FiGrid, FiSmartphone, FiX, FiMenu, FiZap, FiPieChart, FiLayers, FiBarChart2, FiMonitor 
 } from 'react-icons/fi';
@@ -8,30 +8,30 @@ import Button from '@/components/common/Button';
 interface SaaSHeaderProps {
     openDemoModal: () => void;
     openLoginModal: () => void;
+    openRegisterModal: () => void;
     scrollToTop?: () => void;
-    content?: { logoUrl: string; navLinks: Array<{ id: string; text: string; url: string; subLinks?: Array<{ id: string; text: string; url: string }> }> };
+    content?: { brandName?: string; logoUrl: string; navLinks: Array<{ id: string; text: string; url: string; subLinks?: Array<{ id: string; text: string; url: string }> }> };
 }
 
-export const SaaSHeader: React.FC<SaaSHeaderProps> = ({ openDemoModal, openLoginModal, scrollToTop, content }) => {
+export const SaaSHeader: React.FC<SaaSHeaderProps> = ({ openDemoModal, openLoginModal, openRegisterModal, scrollToTop, content }) => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isMegaMenuOpen, setIsMegaMenuOpen] = useState(false);
     const [activeSubMenu, setActiveSubMenu] = useState<string | null>(null);
-    const [, setSearchParams] = useSearchParams();
+    const location = useLocation();
+    const navigate = useNavigate();
 
     const featureItems = [
-        { title: "Order & KOT Management", desc: "Take orders perfectly and reduce errors.", icon: <FiZap />, color: "bg-blue-50 text-blue-600" },
-        { title: "Inventory & Waste Control", desc: "Track real-time stock to lower food costs.", icon: <FiDatabase />, color: "bg-orange-50 text-orange-600" },
-        { title: "Accounting & Expense Manager", desc: "Track every expense, bill, and payment.", icon: <FiPieChart />, color: "bg-green-50 text-green-600" },
-        { title: "Digital QR Menu", desc: "Let guests scan and order without waiting.", icon: <FiGrid />, color: "bg-purple-50 text-purple-600", badge: "Trending" },
-        { title: "Table & Space Management", desc: "Optimize seating and turn tables faster.", icon: <FiLayers />, color: "bg-red-50 text-red-600" },
-        { title: "Real-Time Sales Report", desc: "Monitor live sales and profit analytics.", icon: <FiBarChart2 />, color: "bg-indigo-50 text-indigo-600" },
-        { title: "Mobile & Web App", desc: "Works on iOS, Android, or Web.", icon: <FiSmartphone />, color: "bg-pink-50 text-pink-600" },
-        { title: "Kitchen Display System (KDS)", desc: "Sync front and back of house.", icon: <FiMonitor />, color: "bg-cyan-50 text-cyan-600" },
+        { id: 'feature-orders', title: "Order & KOT Management", desc: "Take orders perfectly and reduce errors.", icon: <FiZap />, color: "bg-blue-50 text-blue-600" },
+        { id: 'feature-inventory', title: "Inventory & Waste Control", desc: "Track real-time stock to lower food costs.", icon: <FiDatabase />, color: "bg-orange-50 text-orange-600" },
+        { id: 'feature-accounting', title: "Accounting & Expense Manager", desc: "Track every expense, bill, and payment.", icon: <FiPieChart />, color: "bg-green-50 text-green-600" },
+        { id: 'feature-qr', title: "Digital QR Menu", desc: "Let guests scan and order without waiting.", icon: <FiGrid />, color: "bg-purple-50 text-purple-600", badge: "Trending" },
+        { id: 'feature-tables', title: "Table & Space Management", desc: "Optimize seating and turn tables faster.", icon: <FiLayers />, color: "bg-red-50 text-red-600" },
+        { id: 'feature-sales', title: "Real-Time Sales Report", desc: "Monitor live sales and profit analytics.", icon: <FiBarChart2 />, color: "bg-indigo-50 text-indigo-600" },
+        { id: 'feature-mobile', title: "Mobile & Web App", desc: "Works on iOS, Android, or Web.", icon: <FiSmartphone />, color: "bg-pink-50 text-pink-600" },
+        { id: 'feature-kds', title: "Kitchen Display System (KDS)", desc: "Sync front and back of house.", icon: <FiMonitor />, color: "bg-cyan-50 text-cyan-600" },
     ];
 
-    const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, id: string) => {
-        if (window.location.pathname !== '/') return;
-        e.preventDefault();
+    const scrollToId = (id: string) => {
         const element = document.getElementById(id);
         if (element) {
             const headerOffset = 80;
@@ -39,6 +39,61 @@ export const SaaSHeader: React.FC<SaaSHeaderProps> = ({ openDemoModal, openLogin
             const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
             window.scrollTo({ top: offsetPosition, behavior: "smooth" });
         }
+    };
+
+    const buildUrlWithSection = (basePath: string, sectionId: string) => {
+        const [pathname, searchRaw] = basePath.split('?');
+        const params = new URLSearchParams(searchRaw || '');
+        params.set('section', sectionId);
+        const nextSearch = params.toString();
+        return nextSearch ? `${pathname}?${nextSearch}` : pathname;
+    };
+
+    const handleSmartNavigate = (e: React.MouseEvent<HTMLAnchorElement>, rawUrl: string) => {
+        const url = (rawUrl || '').trim();
+        if (!url) return;
+
+        const isHashOnly = url.startsWith('#');
+        const containsHash = url.includes('#');
+
+        if (!isHashOnly && !containsHash) return;
+
+        e.preventDefault();
+
+        if (isHashOnly) {
+            const sectionId = url.slice(1);
+            if (!sectionId) return;
+            if (location.pathname === '/' || location.pathname === '') {
+                scrollToId(sectionId);
+            } else {
+                navigate(buildUrlWithSection('/', sectionId));
+            }
+            setIsMegaMenuOpen(false);
+            setActiveSubMenu(null);
+            setIsMenuOpen(false);
+            return;
+        }
+
+        const [base, section] = url.split('#');
+        const sectionId = (section || '').trim();
+        const basePath = (base || '').trim() || '/';
+        if (!sectionId) {
+            navigate(basePath);
+            setIsMegaMenuOpen(false);
+            setActiveSubMenu(null);
+            setIsMenuOpen(false);
+            return;
+        }
+
+        const targetPath = basePath.startsWith('/') ? basePath : `/${basePath}`;
+        if (location.pathname === targetPath) {
+            scrollToId(sectionId);
+        } else {
+            navigate(buildUrlWithSection(targetPath, sectionId));
+        }
+        setIsMegaMenuOpen(false);
+        setActiveSubMenu(null);
+        setIsMenuOpen(false);
     };
 
     return (
@@ -52,7 +107,7 @@ export const SaaSHeader: React.FC<SaaSHeaderProps> = ({ openDemoModal, openLogin
                             <div className="w-10 h-10 bg-[#8b2d1d] rounded-xl flex items-center justify-center transition-transform group-hover:rotate-12">
                                 <FiDatabase className="text-white text-xl" />
                             </div>
-                            <span className="text-2xl font-black tracking-tight text-[#8b2d1d]">RestoByte</span>
+                            <span className="text-2xl font-black tracking-tight text-[#8b2d1d]">{content?.brandName || 'RestoByte'}</span>
                         </>
                     )}
                 </Link>
@@ -66,7 +121,7 @@ export const SaaSHeader: React.FC<SaaSHeaderProps> = ({ openDemoModal, openLogin
                             <div className="flex gap-8">
                                 <div className="w-3/4 grid grid-cols-2 gap-x-8 gap-y-6">
                                     {featureItems.map((item, i) => (
-                                        <Link key={i} to="/features" className="flex gap-4 group cursor-pointer hover:translate-x-1 transition-transform" onClick={() => setIsMegaMenuOpen(false)}>
+                                        <Link key={i} to={`/features?section=${encodeURIComponent(item.id)}`} className="flex gap-4 group cursor-pointer hover:translate-x-1 transition-transform" onClick={() => setIsMegaMenuOpen(false)}>
                                             <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-colors ${item.color} group-hover:shadow-md`}>{item.icon}</div>
                                             <div>
                                                 <div className="flex items-center gap-2 mb-1">
@@ -101,6 +156,7 @@ export const SaaSHeader: React.FC<SaaSHeaderProps> = ({ openDemoModal, openLogin
                                 <Link 
                                     to={link.url} 
                                     className="flex items-center gap-1 hover:text-[#8b2d1d] transition-all relative after:content-[''] after:absolute after:-bottom-1 after:left-0 after:w-0 after:h-0.5 after:bg-[#8b2d1d] hover:after:w-full after:transition-all"
+                                    onClick={(e) => handleSmartNavigate(e, link.url)}
                                 >
                                     {link.text}
                                     {link.subLinks && link.subLinks.length > 0 && <FiChevronDown className={`transition-transform duration-300 ${activeSubMenu === link.id ? 'rotate-180' : ''}`} />}
@@ -113,7 +169,10 @@ export const SaaSHeader: React.FC<SaaSHeaderProps> = ({ openDemoModal, openLogin
                                                 key={subLink.id} 
                                                 to={subLink.url} 
                                                 className="block px-4 py-2.5 text-xs font-bold text-[#5a4039] hover:text-[#8b2d1d] hover:bg-[#8b2d1d]/5 rounded-xl transition-all"
-                                                onClick={() => setActiveSubMenu(null)}
+                                                onClick={(e) => {
+                                                    handleSmartNavigate(e, subLink.url);
+                                                    setActiveSubMenu(null);
+                                                }}
                                             >
                                                 {subLink.text}
                                             </Link>
@@ -137,7 +196,7 @@ export const SaaSHeader: React.FC<SaaSHeaderProps> = ({ openDemoModal, openLogin
                 
                 <div className="hidden md:flex items-center gap-6">
                     <button onClick={openLoginModal} className="text-sm font-bold text-[#5a4039] hover:text-[#8b2d1d] transition-colors">Login</button>
-                    <Button size="sm" onClick={openDemoModal} className="!bg-[#8b2d1d] hover:!bg-[#7a2719] text-white rounded-xl px-6 py-3 shadow-lg shadow-[#8b2d1d]/20 border-none font-bold">Request a Demo</Button>
+                    <Button size="sm" onClick={openRegisterModal} className="!bg-[#8b2d1d] hover:!bg-[#7a2719] text-white rounded-xl px-6 py-3 shadow-lg shadow-[#8b2d1d]/20 border-none font-bold">Start Free Trial</Button>
                 </div>
                 <button className="md:hidden p-2 text-[#2d1510]" onClick={() => setIsMenuOpen(!isMenuOpen)}>{isMenuOpen ? <FiX size={28} /> : <FiMenu size={28} />}</button>
             </div>
@@ -149,7 +208,7 @@ export const SaaSHeader: React.FC<SaaSHeaderProps> = ({ openDemoModal, openLogin
                         <p className="text-[10px] font-black text-[#8b2d1d] uppercase tracking-[0.2em] mb-2">Features</p>
                         <div className="grid grid-cols-1 gap-4">
                             {featureItems.map((item, i) => (
-                                <Link key={i} to="/features" className="flex gap-4 items-center" onClick={() => setIsMenuOpen(false)}>
+                                <Link key={i} to={`/features?section=${encodeURIComponent(item.id)}`} className="flex gap-4 items-center" onClick={() => setIsMenuOpen(false)}>
                                     <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${item.color}`}>{item.icon}</div>
                                     <h4 className="text-sm font-bold text-[#2d1510]">{item.title}</h4>
                                 </Link>
@@ -162,7 +221,10 @@ export const SaaSHeader: React.FC<SaaSHeaderProps> = ({ openDemoModal, openLogin
                             <div key={link.id} className="flex flex-col gap-2">
                                 <Link 
                                     to={link.url} 
-                                    onClick={() => !link.subLinks?.length && setIsMenuOpen(false)} 
+                                    onClick={(e) => {
+                                        handleSmartNavigate(e, link.url);
+                                        if (!link.subLinks?.length) setIsMenuOpen(false);
+                                    }} 
                                     className="text-lg font-bold text-[#5a4039] hover:text-[#8b2d1d] flex items-center justify-between"
                                 >
                                     {link.text}
@@ -181,7 +243,10 @@ export const SaaSHeader: React.FC<SaaSHeaderProps> = ({ openDemoModal, openLogin
                                             <Link 
                                                 key={subLink.id} 
                                                 to={subLink.url} 
-                                                onClick={() => setIsMenuOpen(false)} 
+                                                onClick={(e) => {
+                                                    handleSmartNavigate(e, subLink.url);
+                                                    setIsMenuOpen(false);
+                                                }} 
                                                 className="text-sm font-bold text-[#5a4039]/70 hover:text-[#8b2d1d]"
                                             >
                                                 {subLink.text}
@@ -199,7 +264,7 @@ export const SaaSHeader: React.FC<SaaSHeaderProps> = ({ openDemoModal, openLogin
                     <div className="h-px bg-[#f3e9e5]"></div>
                     <div className="flex flex-col gap-4">
                         <button onClick={() => { setIsMenuOpen(false); openLoginModal(); }} className="text-left text-lg font-bold text-[#5a4039]">Login</button>
-                        <Button onClick={() => { setIsMenuOpen(false); openDemoModal(); }} className="!bg-[#8b2d1d] text-white rounded-xl py-4 font-bold">Request a Demo</Button>
+                        <Button onClick={() => { setIsMenuOpen(false); openRegisterModal(); }} className="!bg-[#8b2d1d] text-white rounded-xl py-4 font-bold">Start Free Trial</Button>
                     </div>
                 </div>
             </div>

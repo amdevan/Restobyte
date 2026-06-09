@@ -52,7 +52,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onSwitchToRegister }) => {
             required
             autoFocus
             leftIcon={<FiUser />}
-            placeholder="e.g., admin"
+            placeholder="Enter your username"
             />
             <Input
             label="Password"
@@ -63,7 +63,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onSwitchToRegister }) => {
             onChange={(e) => setPassword(e.target.value)}
             required
             leftIcon={<FiLock />}
-            placeholder="e.g., admin123"
+            placeholder="Enter your password"
             />
             {error && <p className="text-red-500 text-sm text-center">{error}</p>}
             <Button
@@ -77,8 +77,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onSwitchToRegister }) => {
             </Button>
         </form>
         <div className="text-center text-xs text-gray-400 pt-4 border-t">
-            <p>Don't have an account? <button type="button" onClick={onSwitchToRegister} className="font-semibold text-sky-600 hover:underline">Register here</button></p>
-            <p className="mt-2">Demo credentials: `admin`/`admin123` or `superadmin`/`superadmin123`</p>
+            <p>Don't have an account? <button type="button" onClick={onSwitchToRegister} className="font-semibold text-sky-600 hover:underline">Start Free Trial</button></p>
         </div>
     </div>
   );

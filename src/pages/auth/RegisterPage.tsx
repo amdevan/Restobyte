@@ -7,9 +7,21 @@ import { FiUserPlus, FiUser, FiLock, FiHome, FiPhone, FiMapPin } from 'react-ico
 
 interface RegisterPageProps {
     onSwitchToLogin: () => void;
+    embedded?: boolean;
+    heading?: string;
+    subtitle?: string;
+    submitLabel?: string;
+    successMessage?: string;
 }
 
-const RegisterPage: React.FC<RegisterPageProps> = ({ onSwitchToLogin }) => {
+const RegisterPage: React.FC<RegisterPageProps> = ({
+  onSwitchToLogin,
+  embedded = false,
+  heading = 'RestoByte',
+  subtitle = 'Create your restaurant account',
+  submitLabel = 'Register',
+  successMessage = 'Registration successful! You can now log in.',
+}) => {
   const [restaurantName, setRestaurantName] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -45,7 +57,7 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onSwitchToLogin }) => {
     try {
       const result = await register(username, password, restaurantName, fullName, mobile, address);
       if (result.success) {
-        setSuccess('Registration successful! You can now log in.');
+        setSuccess(successMessage);
       } else {
         setError(result.message);
       }
@@ -57,12 +69,16 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onSwitchToLogin }) => {
   };
 
   return (
-    <div className="w-full max-w-md p-4 bg-white rounded-2xl space-y-6">
+    <div className={embedded ? 'w-full space-y-6' : 'w-full max-w-md p-4 bg-white rounded-2xl space-y-6'}>
         <div className="text-center">
-            <h1 className="text-3xl font-bold text-sky-700">
-                Resto<span className="text-amber-500">Byte</span>
-            </h1>
-            <p className="text-gray-500 mt-2">Create your restaurant account</p>
+            {heading === 'RestoByte' ? (
+              <h1 className="text-3xl font-bold text-sky-700">
+                  Resto<span className="text-amber-500">Byte</span>
+              </h1>
+            ) : (
+              <h1 className="text-3xl font-bold text-[#8b2d1d]">{heading}</h1>
+            )}
+            <p className="text-gray-500 mt-2">{subtitle}</p>
         </div>
         
         {success ? (
@@ -136,7 +152,7 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onSwitchToLogin }) => {
             isLoading={isLoading}
             disabled={isLoading}
             >
-            {isLoading ? 'Registering...' : 'Register'}
+            {isLoading ? 'Registering...' : submitLabel}
             </Button>
         </form>
         )}

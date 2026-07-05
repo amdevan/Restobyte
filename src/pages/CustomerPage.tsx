@@ -1,6 +1,7 @@
 
 
 import React, { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useRestaurantData } from '@/hooks/useRestaurantData';
 import { Customer } from '@/types';
 import Button from '@/components/common/Button';
@@ -8,9 +9,10 @@ import Card from '@/components/common/Card';
 import Modal from '@/components/common/Modal';
 import Input from '@/components/common/Input';
 import CustomerForm from '@/components/customer/CustomerForm';
-import { FiPlusCircle, FiEdit, FiTrash2, FiUsers, FiSearch, FiPhone, FiMail, FiMapPin, FiCalendar, FiBriefcase, FiHash } from 'react-icons/fi';
+import { FiPlusCircle, FiEdit, FiTrash2, FiUsers, FiSearch, FiPhone, FiMail, FiMapPin, FiCalendar, FiBriefcase, FiHash, FiEye } from 'react-icons/fi';
 
 const CustomerPage: React.FC = () => {
+  const navigate = useNavigate();
   const { customers, addCustomer, updateCustomer, deleteCustomer } = useRestaurantData();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
@@ -133,6 +135,9 @@ const CustomerPage: React.FC = () => {
                   <td className="py-3 px-4 text-sm text-gray-600 max-w-xs truncate">{customer.address || '-'}</td>
                   <td className="py-3 px-4 text-sm">
                     <div className="flex space-x-2">
+                      <Button onClick={() => navigate(`/app/customer/${customer.id}`)} variant="secondary" size="sm" aria-label="View Customer" leftIcon={<FiEye />}>
+                        View
+                      </Button>
                       <Button onClick={() => handleOpenModalForEdit(customer)} variant="secondary" size="sm" aria-label="Edit Customer">
                         <FiEdit />
                       </Button>

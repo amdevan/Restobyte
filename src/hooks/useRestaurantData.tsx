@@ -381,19 +381,18 @@ const useLocalStorage = <T,>(key: string, initialValue: T): [T, React.Dispatch<R
                         try {
                             setStoredValue(JSON.parse(backupItem));
                         } catch (backupParseError) {
-                            console.error(`Error parsing backup for ${key}, using initial value`, backupParseError);
-                            setStoredValue(initialValue);
+                            console.error(`Error parsing backup for ${key}, keeping current value`, backupParseError);
+                            // Don't reset to initial value, keep current
                         }
                     } else {
-                        setStoredValue(initialValue);
+                        // Don't reset to initial value, keep current
                     }
                 }
-            } else {
-                setStoredValue(initialValue);
             }
+            // If no item at new key, don't reset to initial value, keep current value
         } catch (error) {
             console.error(`Error loading ${key} on key change`, error);
-            setStoredValue(initialValue);
+            // Don't reset to initial value, keep current
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [key]);
@@ -419,12 +418,80 @@ const useLocalStorage = <T,>(key: string, initialValue: T): [T, React.Dispatch<R
 };
 
 export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-    const { user, isAuthenticated, logout } = useAuth();
+    const { user, isAuthenticated, logout, isLoading } = useAuth();
+    const [isReady, setIsReady] = useState(false);
 
     // Helper to generate outlet-specific keys
-    const getKey = useCallback((baseKey: string) => user?.outletId ? `${baseKey}_${user.outletId}` : baseKey, [user?.outletId]);
+    const getKey = useCallback((baseKey: string) => {
+        if (!isReady || !user?.outletId) return baseKey;
+        return `${baseKey}_${user.outletId}`;
+    }, [isReady, user?.outletId]);
     // Helper to generate tenant-specific keys (for settings that should not change with active outlet)
-    const getTenantKey = useCallback((baseKey: string) => user?.tenantId ? `${baseKey}_${user.tenantId}` : baseKey, [user?.tenantId]);
+    const getTenantKey = useCallback((baseKey: string) => {
+        if (!isReady || !user?.tenantId) return baseKey;
+        return `${baseKey}_${user.tenantId}`;
+    }, [isReady, user?.tenantId]);
+
+    // Migrate data from legacy keys (without outlet/tenant ID) to new keys
+    useEffect(() => {
+        if (isLoading) return;
+
+        if (!isAuthenticated || !user?.outletId || !user?.tenantId) {
+            setIsReady(true);
+            return;
+        }
+
+        const outletSpecificKeys = [
+            'reservations', 'sales', 'preMadeFoodItems', 'stockItems', 'stockEntries',
+            'stockAdjustment', 'suppliers', 'areasFloors', 'kitchens', 'printers',
+            'counters', 'waiters', 'denominations', 'purchases', 'expenseCategories',
+            'expenses', 'wasteRecords', 'employees', 'attendanceRecords',
+            'payrollRecords', 'paymentMethods', 'deliveryPartners',
+            'isSelfOrderEnabled', 'isReservationOrderEnabled',
+            'reservationOrderReceivingUserIds', 'reservationSettings',
+            'websiteSettings', 'applicationSettings', 'soundSettings', 'roles',
+            'addonGroups'
+        ];
+
+        const tenantSpecificKeys = [
+            'activeOutletIds', 'outlets'
+        ];
+
+        try {
+            // Migrate outlet-specific keys
+            outletSpecificKeys.forEach(baseKey => {
+                const legacyKey = baseKey;
+                const newKey = `${baseKey}_${user.outletId}`;
+                const legacyValue = localStorage.getItem(legacyKey);
+                if (legacyValue !== null) {
+                    const currentValue = localStorage.getItem(newKey);
+                    if (currentValue === null) {
+                        localStorage.setItem(newKey, legacyValue);
+                        console.log(`Migrated ${baseKey} from legacy key ${legacyKey} to new key ${newKey}`);
+                    }
+                    // Don't remove legacy key yet, just in case
+                }
+            });
+
+            // Migrate tenant-specific keys
+            tenantSpecificKeys.forEach(baseKey => {
+                const legacyKey = baseKey;
+                const newKey = `${baseKey}_${user.tenantId}`;
+                const legacyValue = localStorage.getItem(legacyKey);
+                if (legacyValue !== null) {
+                    const currentValue = localStorage.getItem(newKey);
+                    if (currentValue === null) {
+                        localStorage.setItem(newKey, legacyValue);
+                        console.log(`Migrated ${baseKey} from legacy key ${legacyKey} to new key ${newKey}`);
+                    }
+                }
+            });
+        } catch (error) {
+            console.error("Error migrating localStorage data:", error);
+        } finally {
+            setIsReady(true);
+        }
+    }, [isLoading, isAuthenticated, user?.outletId, user?.tenantId]);
 
     const [activeOutletIds, setActiveOutletIds] = useLocalStorage<string[]>(getTenantKey('activeOutletIds'), [initialOutlets[0]?.id].filter(Boolean));
 
@@ -550,6 +617,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
 
     const [reservations, setReservations] = useLocalStorage<Reservation[]>(getKey('reservations'), []);
     const [sales, setSales] = useLocalStorage<Sale[]>(getKey('sales'), []);
+    const [customerPayments, setCustomerPayments] = useLocalStorage<CustomerPayment[]>(getKey('customerPayments'), []);
     const [preMadeFoodItems, setPreMadeFoodItems] = useLocalStorage<PreMadeFoodItem[]>(getKey('preMadeFoodItems'), []);
     const [stockItems, setStockItems] = useLocalStorage<StockItem[]>(getKey('stockItems'), initialStockItems);
     const [stockEntries, setStockEntries] = useLocalStorage<StockEntry[]>(getKey('stockEntries'), []);
@@ -635,8 +703,13 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
     }, [isAuthenticated, user?.roleId, user?.outletId, user?.isSuperAdmin, (user as any)?.outletIds, activeOutletIds, setActiveOutletIds]);
 
     // Apply auto-clear filter when settings change
+    const hasAppliedAutoClear = useRef(false);
     useEffect(() => {
         if (!isAuthenticated) return;
+        if (!hasAppliedAutoClear.current && applicationSettings.autoClearHistoryDays === 0) {
+            hasAppliedAutoClear.current = true;
+            return;
+        }
         
         const daysToKeep = applicationSettings.autoClearHistoryDays || 0;
         
@@ -645,6 +718,8 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         
         // Apply to reservations
         setReservations(prev => filterOldEntries(prev, daysToKeep));
+        
+        hasAppliedAutoClear.current = true;
         
         // You can also add other history types here (stock entries, expenses, etc.)
     }, [isAuthenticated, applicationSettings.autoClearHistoryDays, setSales, setReservations]);
@@ -1766,6 +1841,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         deleteSupplier: (supplierId) => setSuppliers(prev => prev.filter(s => s.id !== supplierId)),
 
         customers,
+        customerPayments,
         addCustomer: async (customerData) => {
             try {
                 const outletId = activeOutletIds.length >= 1 ? String(activeOutletIds[0]) : (user?.outletId ? String(user.outletId) : undefined);
@@ -1904,6 +1980,15 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             const newDueAmount = Math.max(0, previousDueAmount - amountReceived);
             
             setCustomers(prev => prev.map(c => c.id === customerId ? { ...c, dueAmount: newDueAmount } : c));
+            const newPayment: CustomerPayment = {
+                id: generateId(),
+                customerId,
+                amount: amountReceived,
+                paymentMethod,
+                date: new Date().toISOString(),
+                notes,
+            };
+            setCustomerPayments(prev => [...prev, newPayment]);
 
             try {
                 const token = localStorage.getItem('authToken');

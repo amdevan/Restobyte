@@ -82,6 +82,7 @@ const ManageCurrenciesPage = React.lazy(() => import('./pages/settings/ManageCur
 const LowStockReportActualPage = React.lazy(() => import('./pages/stock/LowStockReportPage'));
 const SalesHistoryPage = React.lazy(() => import('./pages/SalesHistoryPage'));
 const CustomerPage = React.lazy(() => import('./pages/CustomerPage'));
+const CustomerDetailPage = React.lazy(() => import('./pages/CustomerDetailPage'));
 const CustomerDueReceivePageActual = React.lazy(() => import('./pages/CustomerDueReceivePage'));
 const ActualPurchasePage = React.lazy(() => import('./pages/PurchasePage'));
 const AddPurchaseActualPage = React.lazy(() => import('./pages/purchase/AddPurchasePage'));
@@ -263,6 +264,7 @@ const RestaurantPanelRoutes = () => {
             <Route path="stock/low-stock-report" element={<OperationalPage page={<LowStockReportActualPage />} featureName="Low Stock Report" requiredFeatureKey="inventory" />} />
             <Route path="sale" element={<OperationalPage page={<SalesHistoryPage />} featureName="Sale History" requiredFeatureKey="customers" />} />
             <Route path="customer" element={<OperationalPage page={<CustomerPage />} featureName="Manage Customers" requiredFeatureKey="customers" />} />
+            <Route path="customer/:customerId" element={<OperationalPage page={<CustomerDetailPage />} featureName="Customer Details" requiredFeatureKey="customers" />} />
             <Route path="customer-due-receive" element={<OperationalPage page={<CustomerDueReceivePageActual />} featureName="Customer Due Receive" requiredFeatureKey="customers" />} />
             <Route path="purchase" element={<OperationalPage page={<ActualPurchasePage />} featureName="Purchases" requiredFeatureKey="purchase" />} />
             <Route path="purchase/add" element={<OperationalPage page={<AddPurchaseActualPage />} featureName="Add Purchase" requiredFeatureKey="purchase" />} />

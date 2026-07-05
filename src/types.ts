@@ -94,6 +94,15 @@ export interface Customer {
   vatPan?: string;
 }
 
+export interface CustomerPayment {
+  id: string;
+  customerId: string;
+  amount: number;
+  paymentMethod: string;
+  date: string; // ISO string
+  notes?: string;
+}
+
 export interface Waiter {
   id: string;
   name: string;
@@ -966,6 +975,7 @@ export interface RestaurantDataContextType {
     deleteSupplier: (supplierId: string) => void;
 
     customers: Customer[];
+    customerPayments: CustomerPayment[];
     addCustomer: (customerData: Omit<Customer, 'id'>) => Promise<Customer | undefined>;
     updateCustomer: (customer: Customer) => Promise<void>;
     deleteCustomer: (customerId: string) => Promise<void>;

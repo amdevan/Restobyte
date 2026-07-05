@@ -426,8 +426,12 @@ const RestaurantLayout: React.FC<{ children: React.ReactNode }> = ({ children })
   return (
     <div className="flex h-screen bg-gray-100">
       <aside className={`${isSidebarCollapsed ? 'w-20' : 'w-64'} bg-[#0b0f14] text-white p-4 space-y-2 shadow-2xl flex flex-col overflow-y-auto custom-scrollbar transition-all duration-300 border-r border-white/5`}>
-        <div className="text-xl font-bold text-left text-white py-4 border-b border-white/10 mb-2 px-2">
-          {isSidebarCollapsed ? <span className="text-amber-300">RB</span> : <>Resto<span className="text-amber-300">Byte</span></>}
+        <div className="text-xl font-bold text-left text-white py-4 border-b border-white/10 mb-2 px-2 flex items-center">
+          {isSidebarCollapsed ? (
+            <img src="/logo.png" alt="RestoByte" className="h-8 w-auto" />
+          ) : (
+            <img src="/logo.png" alt="RestoByte" className="h-10 w-auto" />
+          )}
         </div>
         <nav className="flex-grow space-y-1">
           <NavLink to="/app/dashboard" icon={<FiBarChart2 />} label="Dashboard" currentPath={currentPath} isCollapsed={isSidebarCollapsed} onCollapsedNavigate={() => setIsSidebarCollapsed(false)} />

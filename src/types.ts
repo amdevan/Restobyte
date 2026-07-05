@@ -945,9 +945,9 @@ export interface RestaurantDataContextType {
     getAvailableTables: (dateTime: string, partySize: number) => Table[];
     
     sales: Sale[];
-    recordSale: (saleData: Omit<Sale, 'id' | 'saleDate'>) => Sale; 
-    updateSale: (updatedSale: Sale) => void;
-    updateKdsOrderStatus: (saleId: string, status: 'new' | 'in-progress' | 'ready' | 'served' | 'on-hold') => void;
+    recordSale: (saleData: Omit<Sale, 'id' | 'saleDate'>) => Promise<Sale | null>;
+    updateSale: (updatedSale: Sale) => Promise<Sale | null>;
+    updateKdsOrderStatus: (saleId: string, status: 'new' | 'in-progress' | 'ready' | 'served' | 'on-hold') => Promise<void>;
     
     foodMenuCategories: FoodMenuCategory[];
     addFoodMenuCategory: (categoryData: Omit<FoodMenuCategory, 'id'>) => Promise<void>;

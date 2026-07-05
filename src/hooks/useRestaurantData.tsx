@@ -6,7 +6,7 @@ import {
     Supplier, Customer, AreaFloor, Kitchen, Printer, PrinterType, PrinterInterfaceType, Counter, Waiter,
     Currency, Denomination, Purchase, PurchaseItem, ExpenseCategory, Expense, WasteRecord, Employee,
     AttendanceRecord, AttendanceStatus, ReservationSettings, ReservationAvailability, WebsiteSettings,
-    PaymentMethod, Outlet, User, Role, ApplicationSettings, Tax, SaleTaxDetail, DeliveryPartner, Split, RestaurantDataContextType, SaasWebsiteContent, SaasPost,
+    PaymentMethod, Outlet, User, Role, ApplicationSettings, Tax, SaleTaxDetail, DeliveryPartner, Split, CustomerPayment, RestaurantDataContextType, SaasWebsiteContent, SaasPost,
     Plan, AddonGroup, PayrollRecord, SaaSSettings, SoundSettings, TenantEntitlements, PlanFeatureKey
 } from '../types';
 import { INITIAL_TABLES_COUNT } from '../constants';
@@ -132,6 +132,57 @@ const initialSales: Sale[] = [
         isClosed: true
     }
 ];
+
+const mapBackendOrderToSale = (order: any): Sale => {
+    const rawSale = order?.saleData && typeof order.saleData === 'object' ? order.saleData : {};
+    const fallbackItems = Array.isArray(order?.items)
+        ? order.items.map((item: any, index: number) => ({
+            id: item?.menuItemId || item?.id || `order-item-${index}`,
+            name: item?.menuItem?.name || item?.name || 'Item',
+            price: Number(item?.unitPrice ?? 0),
+            quantity: Number(item?.quantity ?? 0),
+        }))
+        : [];
+
+    const items = Array.isArray(rawSale?.items) && rawSale.items.length > 0 ? rawSale.items : fallbackItems;
+    const subTotal = Number(
+        rawSale?.subTotal ??
+        items.reduce((sum: number, item: any) => sum + Number(item?.price ?? item?.unitPrice ?? 0) * Number(item?.quantity ?? 0), 0)
+    );
+    const totalAmount = Number(rawSale?.totalAmount ?? order?.total ?? subTotal);
+
+    return {
+        id: String(order?.id || rawSale?.id),
+        saleDate: String(rawSale?.saleDate || order?.createdAt || new Date().toISOString()),
+        items,
+        subTotal,
+        taxDetails: Array.isArray(rawSale?.taxDetails) ? rawSale.taxDetails : [],
+        totalAmount,
+        orderType: String(rawSale?.orderType || 'Dine In'),
+        pax: rawSale?.pax,
+        waiterId: rawSale?.waiterId,
+        waiterName: rawSale?.waiterName,
+        assignedTableId: rawSale?.assignedTableId ?? null,
+        assignedTableName: rawSale?.assignedTableName,
+        outletId: String(rawSale?.outletId || order?.outletId || ''),
+        customerId: rawSale?.customerId || order?.customerId || undefined,
+        customerName: rawSale?.customerName || order?.customer?.name || undefined,
+        orderNotes: rawSale?.orderNotes,
+        paymentMethod: rawSale?.paymentMethod,
+        partialPayments: Array.isArray(rawSale?.partialPayments) ? rawSale.partialPayments : undefined,
+        isSettled: rawSale?.isSettled,
+        isClosed: rawSale?.isClosed,
+        deliveryPartnerId: rawSale?.deliveryPartnerId,
+        deliveryPartnerName: rawSale?.deliveryPartnerName,
+        deliveryCommission: rawSale?.deliveryCommission,
+        discountType: rawSale?.discountType,
+        discountAmount: rawSale?.discountAmount,
+        tipAmount: rawSale?.tipAmount,
+        splitDetails: Array.isArray(rawSale?.splitDetails) ? rawSale.splitDetails : undefined,
+        kdsStatus: rawSale?.kdsStatus,
+        kdsReadyTimestamp: rawSale?.kdsReadyTimestamp,
+    };
+};
 const initialAreasFloors: AreaFloor[] = [
     { id: 'af-1', name: 'Ground Floor', description: 'Main dining area near the entrance.' },
     { id: 'af-2', name: 'Patio', description: 'Outdoor seating area.' },
@@ -519,7 +570,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         if (!isAuthenticated || !user?.outletId || !user?.tenantId) return;
 
         const outletSpecificKeys = [
-            'reservations', 'sales', 'customerPayments', 'preMadeFoodItems', 'stockItems', 'stockEntries',
+            'reservations', 'customerPayments', 'preMadeFoodItems', 'stockItems', 'stockEntries',
             'stockAdjustment', 'suppliers', 'areasFloors', 'kitchens', 'printers',
             'counters', 'waiters', 'denominations', 'purchases', 'expenseCategories',
             'expenses', 'wasteRecords', 'employees', 'attendanceRecords',
@@ -685,21 +736,49 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         }
     }, [isAuthenticated, activeOutletIds, logout]);
 
+    const fetchSales = useCallback(async () => {
+        if (!isAuthenticated) {
+            setSales([]);
+            return;
+        }
+        const token = localStorage.getItem('authToken');
+        if (!token || activeOutletIds.length === 0) {
+            setSales([]);
+            return;
+        }
+        try {
+            const results = await Promise.all(activeOutletIds.map((outletId) =>
+                fetch(`${API_BASE_URL}/orders?outletId=${encodeURIComponent(outletId)}`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                }).then(async (res) => {
+                    if (res.status === 401) {
+                        logout();
+                        return [];
+                    }
+                    if (!res.ok) return [];
+                    return res.json().catch(() => []);
+                })
+            ));
+            const flat = results.flat().filter(Boolean);
+            const mapped = flat.map(mapBackendOrderToSale);
+            const deduped = Array.from(new Map(mapped.map((sale) => [String(sale.id), sale])).values())
+                .sort((a, b) => new Date(b.saleDate).getTime() - new Date(a.saleDate).getTime());
+            setSales(deduped);
+        } catch (err) {
+            console.error('Failed to fetch sales:', err);
+            setSales([]);
+        }
+    }, [isAuthenticated, activeOutletIds, logout]);
+
     useEffect(() => { fetchMenuItems(); }, [fetchMenuItems]);
     useEffect(() => { fetchCategories(); }, [fetchCategories]);
     useEffect(() => { fetchTables(); }, [fetchTables]);
     useEffect(() => { fetchCustomers(); }, [fetchCustomers]);
+    useEffect(() => { fetchSales(); }, [fetchSales]);
 
     const [reservations, setReservations] = useLocalStorage<Reservation[]>(getKey('reservations'), []);
-    const [sales, setSales] = useLocalStorage<Sale[]>(getKey('sales'), initialSales);
+    const [sales, setSales] = useState<Sale[]>([]);
     const [customerPayments, setCustomerPayments] = useLocalStorage<CustomerPayment[]>(getKey('customerPayments'), []);
-    
-    // If sales are empty, initialize with sample data
-    useEffect(() => {
-        if (sales.length === 0) {
-            setSales(initialSales);
-        }
-    }, [sales.length, setSales]);
     const [preMadeFoodItems, setPreMadeFoodItems] = useLocalStorage<PreMadeFoodItem[]>(getKey('preMadeFoodItems'), []);
     const [stockItems, setStockItems] = useLocalStorage<StockItem[]>(getKey('stockItems'), initialStockItems);
     const [stockEntries, setStockEntries] = useLocalStorage<StockEntry[]>(getKey('stockEntries'), []);
@@ -790,36 +869,6 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         }
         return `id-${Date.now()}-${Math.random().toString(16).slice(2)}`;
     };
-
-    // Helper to filter old history entries
-    const filterOldEntries = <T extends { saleDate?: string; dateTime?: string; createdAt?: string }>(
-        entries: T[],
-        daysToKeep: number
-    ): T[] => {
-        if (daysToKeep <= 0) return entries;
-        
-        const cutoffDate = new Date();
-        cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
-        
-        return entries.filter(entry => {
-            let entryDate: Date | null = null;
-            
-            if (entry.saleDate) {
-                entryDate = new Date(entry.saleDate);
-            } else if (entry.dateTime) {
-                entryDate = new Date(entry.dateTime);
-            } else if (entry.createdAt) {
-                entryDate = new Date(entry.createdAt);
-            }
-            
-            if (!entryDate || isNaN(entryDate.getTime())) {
-                return true; // Keep entries with invalid dates
-            }
-            
-            return entryDate >= cutoffDate;
-        });
-    };
-
     const normalizeSaasWebsiteContent = (raw: any): SaasWebsiteContent => {
         const safeObj = raw && typeof raw === 'object' ? raw : {};
 
@@ -1460,6 +1509,74 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         }
     }, [logout]);
 
+    const upsertSaleInState = useCallback((sale: Sale) => {
+        setSales((prev) => {
+            const exists = prev.some((entry) => entry.id === sale.id);
+            const next = exists ? prev.map((entry) => entry.id === sale.id ? sale : entry) : [sale, ...prev];
+            return next.sort((a, b) => new Date(b.saleDate).getTime() - new Date(a.saleDate).getTime());
+        });
+    }, []);
+
+    const persistSaleToBackend = useCallback(async (sale: Sale, mode: 'create' | 'update') => {
+        const token = localStorage.getItem('authToken');
+        if (!token) {
+            alert('Unauthorized. Please log in again.');
+            return null;
+        }
+        if (!sale.outletId) {
+            alert('A valid outlet is required before saving a sale.');
+            return null;
+        }
+
+        try {
+            const url = mode === 'create'
+                ? `${API_BASE_URL}/orders?outletId=${encodeURIComponent(sale.outletId)}`
+                : `${API_BASE_URL}/orders/${encodeURIComponent(sale.id)}`;
+
+            const res = await fetch(url, {
+                method: mode === 'create' ? 'POST' : 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                    customerId: sale.customerId ?? null,
+                    items: sale.items,
+                    status: sale.isClosed ? 'COMPLETED' : 'PENDING',
+                    outletId: sale.outletId,
+                    total: sale.totalAmount,
+                    saleData: sale,
+                }),
+            });
+
+            if (res.status === 401) {
+                logout();
+                return null;
+            }
+
+            if (!res.ok) {
+                const err = await res.json().catch(() => null);
+                alert(err?.message || `Failed to save sale (${res.status})`);
+                return null;
+            }
+
+            const savedOrder = await res.json().catch(() => null);
+            const savedSale = mapBackendOrderToSale(savedOrder);
+            upsertSaleInState(savedSale);
+
+            if (savedSale.assignedTableId && savedSale.orderType === 'Dine In') {
+                const nextStatus = (savedSale.isClosed ?? savedSale.isSettled) ? TableStatus.Free : TableStatus.Occupied;
+                void setAndPersistTableStatus(savedSale.assignedTableId, nextStatus);
+            }
+
+            return savedSale;
+        } catch (err) {
+            console.error('Failed to save sale:', err);
+            alert('Failed to save sale. Please try again.');
+            return null;
+        }
+    }, [logout, setAndPersistTableStatus, upsertSaleInState]);
+
 
     const contextValue: RestaurantDataContextType = {
         // Implement all functions from RestaurantDataContextType
@@ -1712,21 +1829,17 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         },
         
         sales,
-        recordSale: (saleData) => {
+        recordSale: async (saleData) => {
             const isClosed = saleData.isClosed ?? saleData.isSettled ?? false;
             const newSale = { ...saleData, isClosed, id: `sale-${Date.now()}`, saleDate: new Date().toISOString() };
-            setSales(prev => filterOldEntries([...prev, newSale], applicationSettings.autoClearHistoryDays || 0));
-            if (saleData.assignedTableId && saleData.orderType === 'Dine In') {
-                const nextStatus = isClosed ? TableStatus.Free : TableStatus.Occupied;
-                void setAndPersistTableStatus(saleData.assignedTableId, nextStatus);
-            }
-            return newSale;
+            return await persistSaleToBackend(newSale, 'create');
         },
-        updateSale: (updatedSale) => {
+        updateSale: async (updatedSale) => {
             const existing = sales.find(s => s.id === updatedSale.id);
             const isClosed = updatedSale.isClosed ?? updatedSale.isSettled ?? false;
             const normalized = { ...updatedSale, isClosed };
-            setSales(prev => filterOldEntries(prev.map(s => s.id === updatedSale.id ? normalized : s), applicationSettings.autoClearHistoryDays || 0));
+            const savedSale = await persistSaleToBackend(normalized, 'update');
+            if (!savedSale) return null;
 
             if (updatedSale.orderType === 'Dine In' && updatedSale.assignedTableId) {
                 const wasClosed = Boolean(existing?.isClosed ?? existing?.isSettled);
@@ -1738,8 +1851,17 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                     void setAndPersistTableStatus(updatedSale.assignedTableId, TableStatus.Occupied);
                 }
             }
+            return savedSale;
         },
-        updateKdsOrderStatus: (saleId, status) => setSales(prev => filterOldEntries(prev.map(s => s.id === saleId ? { ...s, kdsStatus: status, kdsReadyTimestamp: status === 'ready' ? new Date().toISOString() : s.kdsReadyTimestamp } : s), applicationSettings.autoClearHistoryDays || 0)),
+        updateKdsOrderStatus: async (saleId, status) => {
+            const existing = sales.find((sale) => sale.id === saleId);
+            if (!existing) return;
+            await persistSaleToBackend({
+                ...existing,
+                kdsStatus: status,
+                kdsReadyTimestamp: status === 'ready' ? new Date().toISOString() : existing.kdsReadyTimestamp,
+            }, 'update');
+        },
         
         foodMenuCategories,
         addFoodMenuCategory: async (categoryData) => {

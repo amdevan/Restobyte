@@ -182,7 +182,7 @@ const PosPage: React.FC = () => {
   }, [navigate, tableId]);
 
 // FIX: Moved handleSendKot before the useEffect that uses it.
-const handleSendKot = useCallback(() => {
+const handleSendKot = useCallback(async () => {
     const newItems = currentOrderItems.filter(item => item.status === 'new');
     if (newItems.length === 0) {
       alert("No new items to send to the kitchen.");
@@ -210,7 +210,7 @@ const handleSendKot = useCallback(() => {
     const totalAmount = totalAfterDiscount + totalTaxAmount;
 
     if (editingSale) {
-        updateSale({
+        const savedSale = await updateSale({
             ...editingSale,
             items: currentOrderItems,
             subTotal,
@@ -219,8 +219,10 @@ const handleSendKot = useCallback(() => {
             isSettled: false,
             isClosed: false,
         });
+        if (!savedSale) return;
+        setEditingSale(savedSale);
     } else {
-        const newSale = recordSale({
+        const newSale = await recordSale({
             items: currentOrderItems,
             subTotal,
             taxDetails,
@@ -244,6 +246,7 @@ const handleSendKot = useCallback(() => {
             tipAmount: undefined,
             outletId: singleActiveOutlet.id,
         });
+        if (!newSale) return;
         setEditingSale(newSale);
     }
     
@@ -462,7 +465,7 @@ const handleSendKot = useCallback(() => {
     }
   }, [currentOrderItems, subTotal, discountType, discountAmount, taxes, grandTotal]);
 
-  const handleFinalizeSale = useCallback((paymentDetails: {
+  const handleFinalizeSale = useCallback(async (paymentDetails: {
     payments: PartialPayment[],
     tip: number,
     isSettled: boolean,
@@ -508,9 +511,11 @@ const handleSendKot = useCallback(() => {
             tipAmount: paymentDetails.tip > 0 ? paymentDetails.tip : undefined,
             splitDetails: paymentDetails.splitDetails,
         };
-        updateSale(saleToProcess);
+        const savedSale = await updateSale(saleToProcess);
+        if (!savedSale) return;
+        saleToProcess = savedSale;
     } else {
-        saleToProcess = recordSale({
+        const savedSale = await recordSale({
           items: currentOrderItems,
           subTotal: subTotal,
           taxDetails: taxDetails,
@@ -537,6 +542,8 @@ const handleSendKot = useCallback(() => {
           splitDetails: paymentDetails.splitDetails,
           outletId: singleActiveOutlet.id,
         });
+        if (!savedSale) return;
+        saleToProcess = savedSale;
     }
 
     if (!paymentDetails.isSettled && saleToProcess.customerId && outstandingAmount > 0) {

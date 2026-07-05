@@ -147,6 +147,7 @@ model Order {
   total      Float       @default(0)
   status     String      @default("PENDING") // PENDING, COMPLETED, CANCELLED
   outletId   String?
+  saleData   Json?
 }
 
 model OrderItem {

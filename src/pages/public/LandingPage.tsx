@@ -483,9 +483,26 @@ const LandingPage: React.FC = () => {
                         <p className="text-center text-sm font-bold text-[#5a4039]/60 uppercase tracking-[0.2em] mb-12">Powering the world's most innovative kitchens</p>
                         <div className="flex flex-wrap justify-center items-center gap-x-16 gap-y-10 opacity-30 grayscale contrast-125">
                             {content.trustedByLogos && content.trustedByLogos.length > 0 ? (
-                                content.trustedByLogos.map((logo, i) => (
-                                    <img key={logo.id || i} src={logo.logoUrl} alt={logo.name || 'Partner Logo'} className="h-12 w-auto object-contain" crossOrigin="anonymous" />
-                                ))
+                                content.trustedByLogos.map((logo, i) => {
+                                    const hasLogoUrl = typeof logo.logoUrl === 'string' && logo.logoUrl.trim().length > 0;
+
+                                    return hasLogoUrl ? (
+                                        <img
+                                            key={logo.id || i}
+                                            src={logo.logoUrl}
+                                            alt={logo.name || 'Partner Logo'}
+                                            className="h-12 w-auto object-contain"
+                                            crossOrigin="anonymous"
+                                        />
+                                    ) : (
+                                        <div
+                                            key={logo.id || i}
+                                            className="text-lg font-black tracking-tight text-[#2d1510]"
+                                        >
+                                            {logo.name || 'Partner'}
+                                        </div>
+                                    );
+                                })
                             ) : (
                                 <>
                                     <div className="flex items-center gap-2">

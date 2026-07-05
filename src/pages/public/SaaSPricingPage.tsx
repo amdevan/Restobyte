@@ -12,7 +12,6 @@ const RegisterPage = React.lazy(() => import('../auth/RegisterPage'));
 const SaaSPricingPage: React.FC = () => {
     const { saasWebsiteContent, plans } = useRestaurantData();
     const content = saasWebsiteContent;
-    const hasCmsPricing = (content.pricing || []).length > 0;
 
     useEffect(() => {
         const observerOptions = {
@@ -370,24 +369,24 @@ const SaaSPricingPage: React.FC = () => {
                                     return (
                                         <div
                                             key={plan.id}
-                                            className={`bg-white rounded-[28px] border p-8 flex flex-col h-full transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${
-                                                isFeatured ? 'border-[#8b2d1d] shadow-lg' : 'border-[#f3e9e5]'
+                                            className={`bg-white rounded-3xl border p-7 md:p-8 flex flex-col h-full transition-all duration-300 ${
+                                                isFeatured ? 'border-[#8b2d1d] shadow-md' : 'border-[#ece7e4]'
                                             }`}
                                         >
                                             <div className="flex items-center justify-between gap-3">
-                                                <h3 className="text-xl font-black text-[#2d1510]">{plan.name}</h3>
+                                                <h3 className="text-xl font-bold text-[#2d1510]">{plan.name}</h3>
                                                 {isFeatured && (
-                                                    <span className="text-[10px] font-black tracking-widest uppercase text-[#8b2d1d]">Recommended</span>
+                                                    <span className="text-[11px] font-semibold text-[#8b2d1d]">Popular</span>
                                                 )}
                                             </div>
                                             <p className="text-xs text-[#5a4039]/70 mt-2">{plan.subtitle}</p>
 
-                                            <div className="mt-6">
+                                            <div className="mt-8 pb-6 border-b border-[#f3e9e5]">
                                                 <span className="text-4xl font-black text-[#2d1510]">{plan.priceLabel}</span>
-                                                <span className="text-sm text-[#5a4039]/60">{plan.periodLabel}</span>
+                                                <span className="ml-1 text-sm text-[#5a4039]/60">{plan.periodLabel}</span>
                                             </div>
 
-                                            <ul className="mt-8 space-y-3 mb-10 flex-grow text-sm text-[#5a4039]">
+                                            <ul className="mt-6 space-y-3 mb-8 flex-grow text-sm text-[#5a4039]">
                                                 {(plan.features || []).slice(0, 7).map((f, i) => (
                                                     <li key={i} className="flex items-start gap-2">
                                                         <FiCheck className="text-[#8b2d1d] flex-shrink-0 mt-0.5" />
@@ -398,7 +397,7 @@ const SaaSPricingPage: React.FC = () => {
 
                                             <Button
                                                 onClick={openRegisterModal}
-                                                className={`w-full rounded-2xl py-3 text-sm font-bold border-none ${
+                                                className={`w-full rounded-xl py-3 text-sm font-semibold border-none ${
                                                     isFeatured
                                                         ? '!bg-[#8b2d1d] hover:!bg-[#7a2719] text-white'
                                                         : '!bg-[#2d1510] hover:!bg-black text-white'
@@ -409,7 +408,7 @@ const SaaSPricingPage: React.FC = () => {
                                             <button
                                                 type="button"
                                                 onClick={(e) => handleNavClick(e as unknown as React.MouseEvent<HTMLAnchorElement>, 'comparison')}
-                                                className="mt-3 w-full text-xs font-bold text-[#5a4039]/60 hover:text-[#8b2d1d] transition-colors inline-flex items-center justify-center gap-1"
+                                                className="mt-3 w-full text-xs font-medium text-[#5a4039]/60 hover:text-[#8b2d1d] transition-colors inline-flex items-center justify-center gap-1"
                                             >
                                                 View Full Features <FiChevronDown size={12} />
                                             </button>
@@ -417,14 +416,14 @@ const SaaSPricingPage: React.FC = () => {
                                     );
                                 })}
 
-                                <div className="bg-[#2d1510] text-white rounded-[28px] border border-[#2d1510] p-8 flex flex-col h-full transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
-                                    <h3 className="text-xl font-black text-[#ff7b5f]">Custom Plan</h3>
+                                <div className="bg-[#2d1510] text-white rounded-3xl border border-[#2d1510] p-7 md:p-8 flex flex-col h-full transition-all duration-300 shadow-md">
+                                    <h3 className="text-xl font-bold text-white">Custom Plan</h3>
                                     <p className="text-xs text-white/70 mt-2">Bespoke solutions for high-volume franchises.</p>
-                                    <div className="mt-6">
+                                    <div className="mt-8 pb-6 border-b border-white/10">
                                         <div className="text-4xl font-black">Custom</div>
                                         <div className="text-sm text-white/60 mt-1">Tailored to your needs</div>
                                     </div>
-                                    <ul className="mt-8 space-y-3 mb-10 flex-grow text-sm text-white/85">
+                                    <ul className="mt-6 space-y-3 mb-8 flex-grow text-sm text-white/85">
                                         {[
                                             'Unlimited Everything',
                                             'Custom Feature Development',
@@ -433,18 +432,18 @@ const SaaSPricingPage: React.FC = () => {
                                             'SLA Guarantee Support',
                                         ].map((f, i) => (
                                             <li key={i} className="flex items-start gap-2">
-                                                <FiCheck className="text-[#ff7b5f] flex-shrink-0 mt-0.5" />
+                                                <FiCheck className="text-white flex-shrink-0 mt-0.5" />
                                                 <span className="leading-relaxed">{f}</span>
                                             </li>
                                         ))}
                                     </ul>
-                                    <Button onClick={openDemoModal} className="w-full bg-white/10 hover:bg-white/15 text-white rounded-2xl py-3 text-sm font-bold border border-white/15 transition-all">
+                                    <Button onClick={openDemoModal} className="w-full bg-white text-[#2d1510] hover:bg-[#f3e9e5] rounded-xl py-3 text-sm font-semibold border-none transition-all">
                                         Talk to Sales
                                     </Button>
                                     <button
                                         type="button"
                                         onClick={(e) => handleNavClick(e as unknown as React.MouseEvent<HTMLAnchorElement>, 'comparison')}
-                                        className="mt-3 w-full text-xs font-bold text-white/60 hover:text-white transition-colors inline-flex items-center justify-center gap-1"
+                                        className="mt-3 w-full text-xs font-medium text-white/60 hover:text-white transition-colors inline-flex items-center justify-center gap-1"
                                     >
                                         View Full Features <FiChevronDown size={12} />
                                     </button>

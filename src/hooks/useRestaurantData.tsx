@@ -305,6 +305,9 @@ const initialSaasWebsiteContent: SaasWebsiteContent = {
 const useLocalStorage = <T,>(key: string, initialValue: T): [T, React.Dispatch<React.SetStateAction<T>>] => {
     const backupKey = `${key}_backup`;
     
+    // State to hold the current key
+    const [currentKey, setCurrentKey] = useState(key);
+    
     const [storedValue, setStoredValue] = useState<T>(() => {
       if (typeof window === 'undefined') {
         return initialValue;
@@ -354,7 +357,7 @@ const useLocalStorage = <T,>(key: string, initialValue: T): [T, React.Dispatch<R
     // Listen for changes in other tabs/windows
     useEffect(() => {
         const handleStorageChange = (e: StorageEvent) => {
-            if (e.key === key) {
+            if (e.key === currentKey) {
                 try {
                     setStoredValue(e.newValue ? JSON.parse(e.newValue) : initialValueRef.current);
                 } catch (error) {
@@ -365,10 +368,13 @@ const useLocalStorage = <T,>(key: string, initialValue: T): [T, React.Dispatch<R
 
         window.addEventListener('storage', handleStorageChange);
         return () => window.removeEventListener('storage', handleStorageChange);
-    }, [key]);
+    }, [currentKey]);
 
     // Update stored value if key changes
     useEffect(() => {
+        if (key === currentKey) return;
+        
+        setCurrentKey(key);
         try {
             const item = window.localStorage.getItem(key);
             if (item) {
@@ -376,26 +382,20 @@ const useLocalStorage = <T,>(key: string, initialValue: T): [T, React.Dispatch<R
                     setStoredValue(JSON.parse(item));
                 } catch (parseError) {
                     console.error(`Error parsing ${key} on key change, trying backup...`, parseError);
-                    const backupItem = window.localStorage.getItem(backupKey);
+                    const backupItem = window.localStorage.getItem(`${key}_backup`);
                     if (backupItem) {
                         try {
                             setStoredValue(JSON.parse(backupItem));
                         } catch (backupParseError) {
-                            console.error(`Error parsing backup for ${key}, keeping current value`, backupParseError);
-                            // Don't reset to initial value, keep current
+                            console.error(`Error parsing backup for ${key}`, backupParseError);
                         }
-                    } else {
-                        // Don't reset to initial value, keep current
                     }
                 }
             }
-            // If no item at new key, don't reset to initial value, keep current value
         } catch (error) {
             console.error(`Error loading ${key} on key change`, error);
-            // Don't reset to initial value, keep current
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [key]);
+    }, [key, currentKey]);
   
     const setValue: React.Dispatch<React.SetStateAction<T>> = useCallback(value => {
       try {
@@ -403,46 +403,35 @@ const useLocalStorage = <T,>(key: string, initialValue: T): [T, React.Dispatch<R
         setStoredValue(valueToStore);
         if (typeof window !== 'undefined') {
             const serializedValue = JSON.stringify(valueToStore);
-            window.localStorage.setItem(key, serializedValue);
+            window.localStorage.setItem(currentKey, serializedValue);
             // Also save a backup for safety
-            window.localStorage.setItem(backupKey, serializedValue);
-            // Dispatch a custom event so the current window also updates if we have multiple hooks using the same key (unlikely here but good practice)
-            window.dispatchEvent(new StorageEvent('storage', { key, newValue: serializedValue }));
+            window.localStorage.setItem(`${currentKey}_backup`, serializedValue);
+            // Dispatch a custom event so the current window also updates if we have multiple hooks using the same key
+            window.dispatchEvent(new StorageEvent('storage', { key: currentKey, newValue: serializedValue }));
         }
       } catch (error) {
         console.error(error);
       }
-    }, [key, backupKey]);
+    }, [currentKey]);
   
     return [storedValue, setValue];
 };
 
 export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const { user, isAuthenticated, logout, isLoading } = useAuth();
-    const [isReady, setIsReady] = useState(false);
 
     // Helper to generate outlet-specific keys
-    const getKey = useCallback((baseKey: string) => {
-        if (!isReady || !user?.outletId) return baseKey;
-        return `${baseKey}_${user.outletId}`;
-    }, [isReady, user?.outletId]);
+    const getKey = useCallback((baseKey: string) => user?.outletId ? `${baseKey}_${user.outletId}` : baseKey, [user?.outletId]);
     // Helper to generate tenant-specific keys (for settings that should not change with active outlet)
-    const getTenantKey = useCallback((baseKey: string) => {
-        if (!isReady || !user?.tenantId) return baseKey;
-        return `${baseKey}_${user.tenantId}`;
-    }, [isReady, user?.tenantId]);
+    const getTenantKey = useCallback((baseKey: string) => user?.tenantId ? `${baseKey}_${user.tenantId}` : baseKey, [user?.tenantId]);
 
     // Migrate data from legacy keys (without outlet/tenant ID) to new keys
     useEffect(() => {
         if (isLoading) return;
-
-        if (!isAuthenticated || !user?.outletId || !user?.tenantId) {
-            setIsReady(true);
-            return;
-        }
+        if (!isAuthenticated || !user?.outletId || !user?.tenantId) return;
 
         const outletSpecificKeys = [
-            'reservations', 'sales', 'preMadeFoodItems', 'stockItems', 'stockEntries',
+            'reservations', 'sales', 'customerPayments', 'preMadeFoodItems', 'stockItems', 'stockEntries',
             'stockAdjustment', 'suppliers', 'areasFloors', 'kitchens', 'printers',
             'counters', 'waiters', 'denominations', 'purchases', 'expenseCategories',
             'expenses', 'wasteRecords', 'employees', 'attendanceRecords',
@@ -488,8 +477,6 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             });
         } catch (error) {
             console.error("Error migrating localStorage data:", error);
-        } finally {
-            setIsReady(true);
         }
     }, [isLoading, isAuthenticated, user?.outletId, user?.tenantId]);
 
@@ -701,28 +688,6 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         if (next.length === activeOutletIds.length && next.every((id, i) => id === activeOutletIds[i])) return;
         setActiveOutletIds(next);
     }, [isAuthenticated, user?.roleId, user?.outletId, user?.isSuperAdmin, (user as any)?.outletIds, activeOutletIds, setActiveOutletIds]);
-
-    // Apply auto-clear filter when settings change
-    const hasAppliedAutoClear = useRef(false);
-    useEffect(() => {
-        if (!isAuthenticated) return;
-        if (!hasAppliedAutoClear.current && applicationSettings.autoClearHistoryDays === 0) {
-            hasAppliedAutoClear.current = true;
-            return;
-        }
-        
-        const daysToKeep = applicationSettings.autoClearHistoryDays || 0;
-        
-        // Apply to sales
-        setSales(prev => filterOldEntries(prev, daysToKeep));
-        
-        // Apply to reservations
-        setReservations(prev => filterOldEntries(prev, daysToKeep));
-        
-        hasAppliedAutoClear.current = true;
-        
-        // You can also add other history types here (stock entries, expenses, etc.)
-    }, [isAuthenticated, applicationSettings.autoClearHistoryDays, setSales, setReservations]);
 
     const generateId = () => {
         if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {

@@ -3,6 +3,7 @@ import prisma from '../db/prisma.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import type { AuthRequest } from '../middleware/authMiddleware.js';
+import { validateRoleForUser } from './roleController.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your_super_secret_key';
 
@@ -71,18 +72,24 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       ? outletIds.map((v: any) => String(v)).filter(Boolean)
       : (typeof outletId === 'string' && outletId ? [String(outletId)] : []);
 
+    const resolvedRoleId = typeof roleId === 'string' && roleId.trim() ? roleId.trim() : '';
+    if (!resolvedRoleId || !(await validateRoleForUser(resolvedRoleId, null))) {
+      res.status(400).json({ message: 'A valid role is required' });
+      return;
+    }
+
     const user = await prisma.user.create({
       data: {
         username,
         password: hashedPassword,
-        roleId,
+        roleId: resolvedRoleId,
         outletId: requestedOutletIds[0] || outletId,
         outletIds: requestedOutletIds,
         isSuperAdmin: isSuperAdmin || false
       }
     } as any);
 
-    if (roleId === 'role-customer') {
+    if (resolvedRoleId === 'role-customer') {
       try {
         await prisma.customer.create({
           data: {

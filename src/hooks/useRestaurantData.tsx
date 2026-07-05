@@ -619,7 +619,8 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         }
     }, [isLoading, isAuthenticated, user?.outletId, user?.tenantId]);
 
-    const [activeOutletIds, setActiveOutletIds] = useLocalStorage<string[]>(getTenantKey('activeOutletIds'), [initialOutlets[0]?.id].filter(Boolean));
+    const [activeOutletIds, setActiveOutletIds] = useState<string[]>([initialOutlets[0]?.id].filter(Boolean));
+    const selectedDataOutletId = activeOutletIds[0] || (user?.outletId ? String(user.outletId) : undefined);
 
     // This is a simplified implementation. A real app would use a more robust state management solution.
     const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
@@ -776,20 +777,20 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
     useEffect(() => { fetchCustomers(); }, [fetchCustomers]);
     useEffect(() => { fetchSales(); }, [fetchSales]);
 
-    const [reservations, setReservations] = useLocalStorage<Reservation[]>(getKey('reservations'), []);
+    const [reservations, setReservations] = useState<Reservation[]>([]);
     const [sales, setSales] = useState<Sale[]>([]);
-    const [customerPayments, setCustomerPayments] = useLocalStorage<CustomerPayment[]>(getKey('customerPayments'), []);
-    const [preMadeFoodItems, setPreMadeFoodItems] = useLocalStorage<PreMadeFoodItem[]>(getKey('preMadeFoodItems'), []);
-    const [stockItems, setStockItems] = useLocalStorage<StockItem[]>(getKey('stockItems'), initialStockItems);
-    const [stockEntries, setStockEntries] = useLocalStorage<StockEntry[]>(getKey('stockEntries'), []);
-    const [stockAdjustments, setStockAdjustments] = useLocalStorage<StockAdjustment[]>(getKey('stockAdjustment'), []);
-    const [suppliers, setSuppliers] = useLocalStorage<Supplier[]>(getKey('suppliers'), []);
+    const [customerPayments, setCustomerPayments] = useState<CustomerPayment[]>([]);
+    const [preMadeFoodItems, setPreMadeFoodItems] = useState<PreMadeFoodItem[]>([]);
+    const [stockItems, setStockItems] = useState<StockItem[]>(initialStockItems);
+    const [stockEntries, setStockEntries] = useState<StockEntry[]>([]);
+    const [stockAdjustments, setStockAdjustments] = useState<StockAdjustment[]>([]);
+    const [suppliers, setSuppliers] = useState<Supplier[]>([]);
 
-    const [areasFloors, setAreasFloors] = useLocalStorage<AreaFloor[]>(getKey('areasFloors'), initialAreasFloors);
-    const [kitchens, setKitchens] = useLocalStorage<Kitchen[]>(getKey('kitchens'), initialKitchens);
-    const [printers, setPrinters] = useLocalStorage<Printer[]>(getKey('printers'), initialPrinters);
-    const [counters, setCounters] = useLocalStorage<Counter[]>(getKey('counters'), initialCounters);
-    const [waiters, setWaiters] = useLocalStorage<Waiter[]>(getKey('waiters'), initialWaiters);
+    const [areasFloors, setAreasFloors] = useState<AreaFloor[]>(initialAreasFloors);
+    const [kitchens, setKitchens] = useState<Kitchen[]>(initialKitchens);
+    const [printers, setPrinters] = useState<Printer[]>(initialPrinters);
+    const [counters, setCounters] = useState<Counter[]>(initialCounters);
+    const [waiters, setWaiters] = useState<Waiter[]>(initialWaiters);
     const [currencies, setCurrencies] = useState<Currency[]>(initialCurrencies);
 
     useEffect(() => {
@@ -806,46 +807,438 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         fetchCurrencies();
     }, []);
 
-    const [denominations, setDenominations] = useLocalStorage<Denomination[]>(getKey('denominations'), initialDenominations);
-    const [purchases, setPurchases] = useLocalStorage<Purchase[]>(getKey('purchases'), initialPurchases);
-    const [expenseCategories, setExpenseCategories] = useLocalStorage<ExpenseCategory[]>(getKey('expenseCategories'), initialExpenseCategories);
-    const [expenses, setExpenses] = useLocalStorage<Expense[]>(getKey('expenses'), initialExpenses);
-    const [wasteRecords, setWasteRecords] = useLocalStorage<WasteRecord[]>(getKey('wasteRecords'), initialWasteRecords);
-    const [employees, setEmployees] = useLocalStorage<Employee[]>(getKey('employees'), initialEmployees);
-    const [attendanceRecords, setAttendanceRecords] = useLocalStorage<AttendanceRecord[]>(getKey('attendanceRecords'), initialAttendanceRecords);
-    const [payrollRecords, setPayrollRecords] = useLocalStorage<PayrollRecord[]>(getKey('payrollRecords'), initialPayrollRecords);
-    const [paymentMethods, setPaymentMethods] = useLocalStorage<PaymentMethod[]>(getKey('paymentMethods'), initialPaymentMethods);
-    const [deliveryPartners, setDeliveryPartners] = useLocalStorage<DeliveryPartner[]>(getKey('deliveryPartners'), initialDeliveryPartners);
-    const [isSelfOrderEnabled, setSelfOrderStatus] = useLocalStorage<boolean>(getKey('isSelfOrderEnabled'), false);
-    const [isReservationOrderEnabled, setReservationOrderStatus] = useLocalStorage<boolean>(getKey('isReservationOrderEnabled'), false);
-    const [reservationOrderReceivingUserIds, setReservationOrderReceivingUserIds] = useLocalStorage<string[]>(getKey('reservationOrderReceivingUserIds'), []);
-    const [reservationSettings, setReservationSettings] = useLocalStorage<ReservationSettings>(getKey('reservationSettings'), { enabled: true, availability: [] });
-    const [websiteSettings, setWebsiteSettings] = useLocalStorage<WebsiteSettings>(getKey('websiteSettings'), { orderEnabled: true, orderReceivingUserIds: [], whiteLabel: { appName: 'RestoByte', primaryColor: '#0ea5e9' }, homePageContent: { bannerSection: { title: 'Welcome', subtitle: '' }, serviceSection: {services:[]}, exploreMenuSection: {title: 'Explore', subtitle: '', buttonText: 'View Menu'}, gallery: [], socialMedia: []}, availableOnlineFoodIds: [], aboutUsContent: {title: '', content: ''}, contactUsContent: {address: '', phone: '', email: ''}, contactMessages: [], commonMenuPage: {title: 'Our Menu'}, socialLogin: {google: false, facebook: false}, emailSettings: {mailer: 'log'}, paymentSettings: {paypalEnabled: false, stripeEnabled: false, fonepayEnabled: false} });
-    const [applicationSettings, setApplicationSettings] = useLocalStorage<ApplicationSettings>(getKey('applicationSettings'), initialApplicationSettings);
-    const [soundSettings, setSoundSettings] = useLocalStorage<SoundSettings>(getKey('soundSettings'), { soundsEnabled: true });
+    const [denominations, setDenominations] = useState<Denomination[]>(initialDenominations);
+    const [purchases, setPurchases] = useState<Purchase[]>(initialPurchases);
+    const [expenseCategories, setExpenseCategories] = useState<ExpenseCategory[]>(initialExpenseCategories);
+    const [expenses, setExpenses] = useState<Expense[]>(initialExpenses);
+    const [wasteRecords, setWasteRecords] = useState<WasteRecord[]>(initialWasteRecords);
+    const [employees, setEmployees] = useState<Employee[]>(initialEmployees);
+    const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>(initialAttendanceRecords);
+    const [payrollRecords, setPayrollRecords] = useState<PayrollRecord[]>(initialPayrollRecords);
+    const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>(initialPaymentMethods);
+    const [deliveryPartners, setDeliveryPartners] = useState<DeliveryPartner[]>(initialDeliveryPartners);
+    const [isSelfOrderEnabled, setSelfOrderStatus] = useState<boolean>(false);
+    const [isReservationOrderEnabled, setReservationOrderStatus] = useState<boolean>(false);
+    const [reservationOrderReceivingUserIds, setReservationOrderReceivingUserIds] = useState<string[]>([]);
+    const [reservationSettings, setReservationSettings] = useState<ReservationSettings>({ enabled: true, availability: [] });
+    const [websiteSettings, setWebsiteSettings] = useState<WebsiteSettings>({ orderEnabled: true, orderReceivingUserIds: [], whiteLabel: { appName: 'RestoByte', primaryColor: '#0ea5e9' }, homePageContent: { bannerSection: { title: 'Welcome', subtitle: '' }, serviceSection: {services:[]}, exploreMenuSection: {title: 'Explore', subtitle: '', buttonText: 'View Menu'}, gallery: [], socialMedia: []}, availableOnlineFoodIds: [], aboutUsContent: {title: '', content: ''}, contactUsContent: {address: '', phone: '', email: ''}, contactMessages: [], commonMenuPage: {title: 'Our Menu'}, socialLogin: {google: false, facebook: false}, emailSettings: {mailer: 'log'}, paymentSettings: {paypalEnabled: false, stripeEnabled: false, fonepayEnabled: false} });
+    const [applicationSettings, setApplicationSettings] = useState<ApplicationSettings>(initialApplicationSettings);
+    const [soundSettings, setSoundSettings] = useState<SoundSettings>({ soundsEnabled: true });
     const [outlets, setOutlets] = useLocalStorage<Outlet[]>(getTenantKey('outlets'), initialOutlets);
-    const [roles, setRoles] = useLocalStorage<Role[]>(getKey('roles'), initialRoles);
+    const [roles, setRoles] = useState<Role[]>(initialRoles);
     const [users, setUsers] = useState<User[]>([]);
-    const [saasWebsiteContent, setSaasWebsiteContent] = useLocalStorage<SaasWebsiteContent>('saasWebsiteContent', initialSaasWebsiteContent);
+    const [saasWebsiteContent, setSaasWebsiteContent] = useState<SaasWebsiteContent>(initialSaasWebsiteContent);
     const [plans, setPlans] = useState<Plan[]>(initialPlans);
     const [tenantEntitlements, setTenantEntitlements] = useState<TenantEntitlements | null>(null);
-    const [saasSettings, setSaaSSettings] = useLocalStorage<SaaSSettings>(getKey('saasSettings'), initialSaasSettings);
-    const [addonGroups, setAddonGroups] = useLocalStorage<AddonGroup[]>(getKey('addonGroups'), initialAddonGroups);
+    const [saasSettings, setSaaSSettings] = useState<SaaSSettings>(initialSaasSettings);
+    const [addonGroups, setAddonGroups] = useState<AddonGroup[]>(initialAddonGroups);
+
+    const outletAppDataReadyRef = useRef<Record<string, boolean>>({});
+    const outletAppDataSerializedRef = useRef<Record<string, string>>({});
+    const userAppDataReadyRef = useRef<Record<string, boolean>>({});
+    const userAppDataSerializedRef = useRef<Record<string, string>>({});
+    const globalAppDataReadyRef = useRef<Record<string, boolean>>({});
+    const globalAppDataSerializedRef = useRef<Record<string, string>>({});
+
+    const fetchOutletAppData = useCallback(async (key: string, outletId: string) => {
+        if (!isAuthenticated) return null;
+        const token = localStorage.getItem('authToken');
+        if (!token) return null;
+
+        try {
+            const res = await fetch(`${API_BASE_URL}/app-data/${encodeURIComponent(key)}?outletId=${encodeURIComponent(outletId)}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            if (res.status === 401) {
+                logout();
+                return null;
+            }
+
+            if (!res.ok) return null;
+
+            const payload = await res.json().catch(() => null);
+            return payload?.data ?? null;
+        } catch (err) {
+            console.error(`Failed to fetch app data for ${key}:`, err);
+            return null;
+        }
+    }, [isAuthenticated, logout]);
+
+    const persistOutletAppData = useCallback(async (key: string, outletId: string, data: unknown) => {
+        if (!isAuthenticated) return;
+        const token = localStorage.getItem('authToken');
+        if (!token) return;
+
+        try {
+            const res = await fetch(`${API_BASE_URL}/app-data/${encodeURIComponent(key)}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ outletId, data }),
+            });
+
+            if (res.status === 401) {
+                logout();
+                return;
+            }
+
+            if (!res.ok) {
+                const err = await res.json().catch(() => null);
+                console.error(`Failed to persist app data for ${key}:`, err?.message || res.statusText);
+            }
+        } catch (err) {
+            console.error(`Failed to persist app data for ${key}:`, err);
+        }
+    }, [isAuthenticated, logout]);
+
+    const fetchUserAppData = useCallback(async (key: string) => {
+        if (!isAuthenticated) return null;
+        const token = localStorage.getItem('authToken');
+        if (!token) return null;
+
+        try {
+            const res = await fetch(`${API_BASE_URL}/app-data/user/${encodeURIComponent(key)}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            if (res.status === 401) {
+                logout();
+                return null;
+            }
+
+            if (!res.ok) return null;
+
+            const payload = await res.json().catch(() => null);
+            return payload?.data ?? null;
+        } catch (err) {
+            console.error(`Failed to fetch user app data for ${key}:`, err);
+            return null;
+        }
+    }, [isAuthenticated, logout]);
+
+    const persistUserAppData = useCallback(async (key: string, data: unknown) => {
+        if (!isAuthenticated) return;
+        const token = localStorage.getItem('authToken');
+        if (!token) return;
+
+        try {
+            const res = await fetch(`${API_BASE_URL}/app-data/user/${encodeURIComponent(key)}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ data }),
+            });
+
+            if (res.status === 401) {
+                logout();
+                return;
+            }
+
+            if (!res.ok) {
+                const err = await res.json().catch(() => null);
+                console.error(`Failed to persist user app data for ${key}:`, err?.message || res.statusText);
+            }
+        } catch (err) {
+            console.error(`Failed to persist user app data for ${key}:`, err);
+        }
+    }, [isAuthenticated, logout]);
+
+    const fetchGlobalAppData = useCallback(async (key: string) => {
+        if (!isAuthenticated || !user?.isSuperAdmin) return null;
+        const token = localStorage.getItem('authToken');
+        if (!token) return null;
+
+        try {
+            const res = await fetch(`${API_BASE_URL}/app-data/global/${encodeURIComponent(key)}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            if (res.status === 401) {
+                logout();
+                return null;
+            }
+
+            if (!res.ok) return null;
+
+            const payload = await res.json().catch(() => null);
+            return payload?.data ?? null;
+        } catch (err) {
+            console.error(`Failed to fetch global app data for ${key}:`, err);
+            return null;
+        }
+    }, [isAuthenticated, logout, user?.isSuperAdmin]);
+
+    const persistGlobalAppData = useCallback(async (key: string, data: unknown) => {
+        if (!isAuthenticated || !user?.isSuperAdmin) return;
+        const token = localStorage.getItem('authToken');
+        if (!token) return;
+
+        try {
+            const res = await fetch(`${API_BASE_URL}/app-data/global/${encodeURIComponent(key)}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ data }),
+            });
+
+            if (res.status === 401) {
+                logout();
+                return;
+            }
+
+            if (!res.ok) {
+                const err = await res.json().catch(() => null);
+                console.error(`Failed to persist global app data for ${key}:`, err?.message || res.statusText);
+            }
+        } catch (err) {
+            console.error(`Failed to persist global app data for ${key}:`, err);
+        }
+    }, [isAuthenticated, logout, user?.isSuperAdmin]);
 
     useEffect(() => {
-        if (!isAuthenticated || !user?.tenantId) return;
-        try {
-            const legacyValue = localStorage.getItem(getKey('activeOutletIds'));
-            if (legacyValue != null) {
-                const currentValue = localStorage.getItem(getTenantKey('activeOutletIds'));
-                if (currentValue == null) {
-                    localStorage.setItem(getTenantKey('activeOutletIds'), legacyValue);
+        if (!isAuthenticated || !selectedDataOutletId) return;
+
+        let cancelled = false;
+        const configs: Array<{ key: string; fallback: unknown; setValue: (value: any) => void }> = [
+            { key: 'reservations', fallback: [] as Reservation[], setValue: (value) => setReservations(value) },
+            { key: 'customerPayments', fallback: [] as CustomerPayment[], setValue: (value) => setCustomerPayments(value) },
+            { key: 'preMadeFoodItems', fallback: [] as PreMadeFoodItem[], setValue: (value) => setPreMadeFoodItems(value) },
+            { key: 'stockItems', fallback: initialStockItems, setValue: (value) => setStockItems(value) },
+            { key: 'stockEntries', fallback: [] as StockEntry[], setValue: (value) => setStockEntries(value) },
+            { key: 'stockAdjustments', fallback: [] as StockAdjustment[], setValue: (value) => setStockAdjustments(value) },
+            { key: 'suppliers', fallback: [] as Supplier[], setValue: (value) => setSuppliers(value) },
+            { key: 'areasFloors', fallback: initialAreasFloors, setValue: (value) => setAreasFloors(value) },
+            { key: 'kitchens', fallback: initialKitchens, setValue: (value) => setKitchens(value) },
+            { key: 'printers', fallback: initialPrinters, setValue: (value) => setPrinters(value) },
+            { key: 'counters', fallback: initialCounters, setValue: (value) => setCounters(value) },
+            { key: 'waiters', fallback: initialWaiters, setValue: (value) => setWaiters(value) },
+            { key: 'denominations', fallback: initialDenominations, setValue: (value) => setDenominations(value) },
+            { key: 'purchases', fallback: initialPurchases, setValue: (value) => setPurchases(value) },
+            { key: 'expenseCategories', fallback: initialExpenseCategories, setValue: (value) => setExpenseCategories(value) },
+            { key: 'expenses', fallback: initialExpenses, setValue: (value) => setExpenses(value) },
+            { key: 'wasteRecords', fallback: initialWasteRecords, setValue: (value) => setWasteRecords(value) },
+            { key: 'employees', fallback: initialEmployees, setValue: (value) => setEmployees(value) },
+            { key: 'attendanceRecords', fallback: initialAttendanceRecords, setValue: (value) => setAttendanceRecords(value) },
+            { key: 'payrollRecords', fallback: initialPayrollRecords, setValue: (value) => setPayrollRecords(value) },
+            { key: 'paymentMethods', fallback: initialPaymentMethods, setValue: (value) => setPaymentMethods(value) },
+            { key: 'deliveryPartners', fallback: initialDeliveryPartners, setValue: (value) => setDeliveryPartners(value) },
+            { key: 'isSelfOrderEnabled', fallback: false, setValue: (value) => setSelfOrderStatus(Boolean(value)) },
+            { key: 'isReservationOrderEnabled', fallback: false, setValue: (value) => setReservationOrderStatus(Boolean(value)) },
+            { key: 'reservationOrderReceivingUserIds', fallback: [] as string[], setValue: (value) => setReservationOrderReceivingUserIds(Array.isArray(value) ? value : []) },
+            { key: 'reservationSettings', fallback: { enabled: true, availability: [] } as ReservationSettings, setValue: (value) => setReservationSettings(value) },
+            { key: 'websiteSettings', fallback: { orderEnabled: true, orderReceivingUserIds: [], whiteLabel: { appName: 'RestoByte', primaryColor: '#0ea5e9' }, homePageContent: { bannerSection: { title: 'Welcome', subtitle: '' }, serviceSection: { services: [] }, exploreMenuSection: { title: 'Explore', subtitle: '', buttonText: 'View Menu' }, gallery: [], socialMedia: [] }, availableOnlineFoodIds: [], aboutUsContent: { title: '', content: '' }, contactUsContent: { address: '', phone: '', email: '' }, contactMessages: [], commonMenuPage: { title: 'Our Menu' }, socialLogin: { google: false, facebook: false }, emailSettings: { mailer: 'log' }, paymentSettings: { paypalEnabled: false, stripeEnabled: false, fonepayEnabled: false } } as WebsiteSettings, setValue: (value) => setWebsiteSettings(value) },
+            { key: 'applicationSettings', fallback: initialApplicationSettings, setValue: (value) => setApplicationSettings(value) },
+            { key: 'soundSettings', fallback: { soundsEnabled: true } as SoundSettings, setValue: (value) => setSoundSettings(value) },
+            { key: 'addonGroups', fallback: initialAddonGroups, setValue: (value) => setAddonGroups(value) },
+        ];
+
+        void Promise.all(configs.map(async ({ key, fallback, setValue }) => {
+            const scopeKey = `${selectedDataOutletId}:${key}`;
+            outletAppDataReadyRef.current[scopeKey] = false;
+
+            const loaded = await fetchOutletAppData(key, selectedDataOutletId);
+            if (cancelled) return;
+
+            const nextValue = loaded ?? fallback;
+            outletAppDataSerializedRef.current[scopeKey] = JSON.stringify(nextValue);
+            setValue(nextValue);
+            outletAppDataReadyRef.current[scopeKey] = true;
+        }));
+
+        return () => {
+            cancelled = true;
+        };
+    }, [isAuthenticated, selectedDataOutletId, fetchOutletAppData]);
+
+    useEffect(() => {
+        if (!isAuthenticated || !selectedDataOutletId) return;
+
+        const configs = [
+            { key: 'reservations', value: reservations },
+            { key: 'customerPayments', value: customerPayments },
+            { key: 'preMadeFoodItems', value: preMadeFoodItems },
+            { key: 'stockItems', value: stockItems },
+            { key: 'stockEntries', value: stockEntries },
+            { key: 'stockAdjustments', value: stockAdjustments },
+            { key: 'suppliers', value: suppliers },
+            { key: 'areasFloors', value: areasFloors },
+            { key: 'kitchens', value: kitchens },
+            { key: 'printers', value: printers },
+            { key: 'counters', value: counters },
+            { key: 'waiters', value: waiters },
+            { key: 'denominations', value: denominations },
+            { key: 'purchases', value: purchases },
+            { key: 'expenseCategories', value: expenseCategories },
+            { key: 'expenses', value: expenses },
+            { key: 'wasteRecords', value: wasteRecords },
+            { key: 'employees', value: employees },
+            { key: 'attendanceRecords', value: attendanceRecords },
+            { key: 'payrollRecords', value: payrollRecords },
+            { key: 'paymentMethods', value: paymentMethods },
+            { key: 'deliveryPartners', value: deliveryPartners },
+            { key: 'isSelfOrderEnabled', value: isSelfOrderEnabled },
+            { key: 'isReservationOrderEnabled', value: isReservationOrderEnabled },
+            { key: 'reservationOrderReceivingUserIds', value: reservationOrderReceivingUserIds },
+            { key: 'reservationSettings', value: reservationSettings },
+            { key: 'websiteSettings', value: websiteSettings },
+            { key: 'applicationSettings', value: applicationSettings },
+            { key: 'soundSettings', value: soundSettings },
+            { key: 'addonGroups', value: addonGroups },
+        ];
+
+        configs.forEach(({ key, value }) => {
+            const scopeKey = `${selectedDataOutletId}:${key}`;
+            if (!outletAppDataReadyRef.current[scopeKey]) return;
+
+            const serialized = JSON.stringify(value);
+            if (outletAppDataSerializedRef.current[scopeKey] === serialized) return;
+
+            outletAppDataSerializedRef.current[scopeKey] = serialized;
+            void persistOutletAppData(key, selectedDataOutletId, value);
+        });
+    }, [
+        isAuthenticated,
+        selectedDataOutletId,
+        reservations,
+        customerPayments,
+        preMadeFoodItems,
+        stockItems,
+        stockEntries,
+        stockAdjustments,
+        suppliers,
+        areasFloors,
+        kitchens,
+        printers,
+        counters,
+        waiters,
+        denominations,
+        purchases,
+        expenseCategories,
+        expenses,
+        wasteRecords,
+        employees,
+        attendanceRecords,
+        payrollRecords,
+        paymentMethods,
+        deliveryPartners,
+        isSelfOrderEnabled,
+        isReservationOrderEnabled,
+        reservationOrderReceivingUserIds,
+        reservationSettings,
+        websiteSettings,
+        applicationSettings,
+        soundSettings,
+        addonGroups,
+        persistOutletAppData,
+    ]);
+
+    useEffect(() => {
+        if (!isAuthenticated) return;
+
+        let cancelled = false;
+        userAppDataReadyRef.current.activeOutletIds = false;
+
+        const loadActiveOutletIds = async () => {
+            const legacyValue = (() => {
+                try {
+                    return localStorage.getItem(getTenantKey('activeOutletIds')) || localStorage.getItem(getKey('activeOutletIds'));
+                } catch {
+                    return null;
                 }
-                localStorage.removeItem(getKey('activeOutletIds'));
-            }
+            })();
+
+            const legacyIds = (() => {
+                if (!legacyValue) return [];
+                try {
+                    const parsed = JSON.parse(legacyValue);
+                    return Array.isArray(parsed) ? parsed.map(String).filter(Boolean) : [];
+                } catch {
+                    return [];
+                }
+            })();
+
+            const fallbackIds = legacyIds.length > 0
+                ? legacyIds
+                : (user?.outletId ? [String(user.outletId)] : []);
+
+            const loaded = await fetchUserAppData('activeOutletIds');
+            if (cancelled) return;
+
+            const nextValue = Array.isArray(loaded) ? loaded.map(String).filter(Boolean) : fallbackIds;
+            const normalized = nextValue.length > 0 ? nextValue : fallbackIds;
+            userAppDataSerializedRef.current.activeOutletIds = JSON.stringify(normalized);
+            setActiveOutletIds(normalized);
+            userAppDataReadyRef.current.activeOutletIds = true;
+        };
+
+        void loadActiveOutletIds();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [isAuthenticated, user?.outletId, fetchUserAppData, getKey, getTenantKey]);
+
+    useEffect(() => {
+        if (!isAuthenticated || !userAppDataReadyRef.current.activeOutletIds) return;
+
+        const serialized = JSON.stringify(activeOutletIds);
+        if (userAppDataSerializedRef.current.activeOutletIds === serialized) return;
+
+        userAppDataSerializedRef.current.activeOutletIds = serialized;
+        void persistUserAppData('activeOutletIds', activeOutletIds);
+    }, [isAuthenticated, activeOutletIds, persistUserAppData]);
+
+    useEffect(() => {
+        if (!isAuthenticated || !user?.isSuperAdmin) return;
+
+        let cancelled = false;
+        globalAppDataReadyRef.current.saasSettings = false;
+
+        const loadSaasSettings = async () => {
+            const loaded = await fetchGlobalAppData('saasSettings');
+            if (cancelled) return;
+
+            const nextValue = loaded && typeof loaded === 'object'
+                ? { ...initialSaasSettings, ...(loaded as Partial<SaaSSettings>) }
+                : initialSaasSettings;
+
+            globalAppDataSerializedRef.current.saasSettings = JSON.stringify(nextValue);
+            setSaaSSettings(nextValue);
+            globalAppDataReadyRef.current.saasSettings = true;
+        };
+
+        void loadSaasSettings();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [isAuthenticated, user?.isSuperAdmin, fetchGlobalAppData]);
+
+    useEffect(() => {
+        if (!isAuthenticated || !user?.isSuperAdmin || !globalAppDataReadyRef.current.saasSettings) return;
+
+        const serialized = JSON.stringify(saasSettings);
+        if (globalAppDataSerializedRef.current.saasSettings === serialized) return;
+
+        globalAppDataSerializedRef.current.saasSettings = serialized;
+        void persistGlobalAppData('saasSettings', saasSettings);
+    }, [isAuthenticated, user?.isSuperAdmin, saasSettings, persistGlobalAppData]);
+
+    useEffect(() => {
+        if (!isAuthenticated) return;
+        try {
+            localStorage.removeItem(getKey('activeOutletIds'));
+            localStorage.removeItem(getTenantKey('activeOutletIds'));
         } catch {
         }
-    }, [isAuthenticated, user?.tenantId, getKey, getTenantKey]);
+    }, [isAuthenticated, getKey, getTenantKey]);
 
     useEffect(() => {
         if (!isAuthenticated) return;
@@ -1380,15 +1773,38 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
     useEffect(() => {
         const run = async () => {
             if (!isAuthenticated) {
+                setRoles(initialRoles);
                 setUsers([]);
                 return;
             }
             const token = localStorage.getItem('authToken');
             if (!token) {
+                setRoles(initialRoles);
                 setUsers([]);
                 return;
             }
             try {
+                const rolesRes = await fetch(`${API_BASE_URL}/roles`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                if (rolesRes.status === 401) {
+                    logout();
+                    return;
+                }
+                if (rolesRes.ok) {
+                    const roleData = await rolesRes.json().catch(() => null);
+                    if (Array.isArray(roleData)) {
+                        const normalizedRoles: Role[] = roleData.map((role: any) => ({
+                            id: String(role.id),
+                            name: String(role.name),
+                            permissions: Array.isArray(role.permissions) ? role.permissions.map((v: any) => String(v)).filter(Boolean) : [],
+                            tenantId: role.tenantId ? String(role.tenantId) : undefined,
+                            isSystem: Boolean(role.isSystem),
+                        }));
+                        setRoles(normalizedRoles.length > 0 ? normalizedRoles : initialRoles);
+                    }
+                }
+
                 const res = await fetch(`${API_BASE_URL}/users`, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
@@ -2647,7 +3063,117 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             }
         },
         
-        roles, users,
+        roles,
+        addRole: async (roleData) => {
+            const token = localStorage.getItem('authToken');
+            if (!token) return { success: false, message: 'Unauthorized. Please log in again.' };
+
+            try {
+                const res = await fetch(`${API_BASE_URL}/roles`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({
+                        name: roleData.name,
+                        permissions: roleData.permissions,
+                    }),
+                });
+
+                if (res.status === 401) {
+                    logout();
+                    return { success: false, message: 'Unauthorized. Please log in again.' };
+                }
+
+                const data = await res.json().catch(() => null);
+                if (!res.ok) {
+                    return { success: false, message: data?.message || `Failed to add role (${res.status})` };
+                }
+
+                const normalized: Role = {
+                    id: String(data.id),
+                    name: String(data.name),
+                    permissions: Array.isArray(data.permissions) ? data.permissions.map((v: any) => String(v)).filter(Boolean) : [],
+                    tenantId: data.tenantId ? String(data.tenantId) : undefined,
+                    isSystem: Boolean(data.isSystem),
+                };
+                setRoles(prev => [...prev, normalized].sort((a, b) => a.name.localeCompare(b.name)));
+                return { success: true };
+            } catch (err) {
+                console.error('Failed to add role:', err);
+                return { success: false, message: 'Failed to add role. Please try again.' };
+            }
+        },
+        updateRole: async (role) => {
+            const token = localStorage.getItem('authToken');
+            if (!token) return { success: false, message: 'Unauthorized. Please log in again.' };
+
+            try {
+                const res = await fetch(`${API_BASE_URL}/roles/${encodeURIComponent(role.id)}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({
+                        name: role.name,
+                        permissions: role.permissions,
+                    }),
+                });
+
+                if (res.status === 401) {
+                    logout();
+                    return { success: false, message: 'Unauthorized. Please log in again.' };
+                }
+
+                const data = await res.json().catch(() => null);
+                if (!res.ok) {
+                    return { success: false, message: data?.message || `Failed to update role (${res.status})` };
+                }
+
+                const normalized: Role = {
+                    id: String(data.id),
+                    name: String(data.name),
+                    permissions: Array.isArray(data.permissions) ? data.permissions.map((v: any) => String(v)).filter(Boolean) : [],
+                    tenantId: data.tenantId ? String(data.tenantId) : undefined,
+                    isSystem: Boolean(data.isSystem),
+                };
+                setRoles(prev => prev.map(r => (r.id === normalized.id ? normalized : r)));
+                return { success: true };
+            } catch (err) {
+                console.error('Failed to update role:', err);
+                return { success: false, message: 'Failed to update role. Please try again.' };
+            }
+        },
+        deleteRole: async (roleId) => {
+            const token = localStorage.getItem('authToken');
+            if (!token) return { success: false, message: 'Unauthorized. Please log in again.' };
+
+            try {
+                const res = await fetch(`${API_BASE_URL}/roles/${encodeURIComponent(roleId)}`, {
+                    method: 'DELETE',
+                    headers: { Authorization: `Bearer ${token}` },
+                });
+
+                if (res.status === 401) {
+                    logout();
+                    return { success: false, message: 'Unauthorized. Please log in again.' };
+                }
+
+                if (!res.ok) {
+                    const err = await res.json().catch(() => null);
+                    return { success: false, message: err?.message || `Failed to delete role (${res.status})` };
+                }
+
+                setRoles(prev => prev.filter(role => role.id !== roleId));
+                return { success: true };
+            } catch (err) {
+                console.error('Failed to delete role:', err);
+                return { success: false, message: 'Failed to delete role. Please try again.' };
+            }
+        },
+        users,
         addUser: async (userData) => {
             const token = localStorage.getItem('authToken');
             if (!token) return { success: false, message: 'Unauthorized. Please log in again.' };
@@ -2836,7 +3362,16 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             return tenantEntitlements.featureKeys.includes(featureKey);
         },
         saasSettings,
-        updateSaaSSettings: (settings) => setSaaSSettings(prev => ({...prev, ...settings})),
+        updateSaaSSettings: async (settings) => {
+            const nextSettings = { ...saasSettings, ...settings };
+            setSaaSSettings(nextSettings);
+
+            if (!user?.isSuperAdmin) return;
+
+            globalAppDataSerializedRef.current.saasSettings = JSON.stringify(nextSettings);
+            await persistGlobalAppData('saasSettings', nextSettings);
+            globalAppDataReadyRef.current.saasSettings = true;
+        },
         addonGroups,
         addAddonGroup: (group) => setAddonGroups(prev => [...prev, { ...group, id: `ag-${Date.now()}` }]),
         updateAddonGroup: (group) => setAddonGroups(prev => prev.map(g => g.id === group.id ? group : g)),

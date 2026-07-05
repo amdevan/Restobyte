@@ -2,10 +2,11 @@ import type { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import prisma from '../db/prisma.js';
 import type { AuthRequest } from '../middleware/authMiddleware.js';
+import { isAdminLike } from '../utils/roleUtils.js';
+import { validateRoleForUser } from './roleController.js';
 
 function isAdmin(user: AuthRequest['user'] | undefined) {
-  if (!user) return false;
-  return user.isSuperAdmin || user.roleId === 'role-admin';
+  return isAdminLike(user);
 }
 
 async function ensureOutletBelongsToTenant(outletId: string, tenantId: string) {
@@ -128,6 +129,11 @@ export const createUser = async (req: Request, res: Response) => {
     return;
   }
 
+  if (typeof roleId !== 'string' || !(await validateRoleForUser(roleId, tenantId))) {
+    res.status(400).json({ message: 'A valid role is required' });
+    return;
+  }
+
   const existing = await prisma.user.findUnique({ where: { username: trimmedUsername } });
   if (existing) {
     res.status(400).json({ message: 'User already exists' });
@@ -214,6 +220,11 @@ export const updateUser = async (req: Request, res: Response) => {
       res.status(403).json({ message: 'Unauthorized' });
       return;
     }
+  }
+
+  if (typeof roleId === 'string' && !(await validateRoleForUser(roleId, tenantId))) {
+    res.status(400).json({ message: 'A valid role is required' });
+    return;
   }
 
   const data: any = {

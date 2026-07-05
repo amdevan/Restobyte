@@ -74,7 +74,7 @@ const SaaSSettingsPage: React.FC = () => {
     };
 
     const handleSave = async () => {
-        updateSaaSSettings(localSettings);
+        await updateSaaSSettings(localSettings);
         try {
           if (localSettings.email?.provider === 'smtp') {
             await fetch(`${API_BASE_URL}/email/settings`, {

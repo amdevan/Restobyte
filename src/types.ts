@@ -642,7 +642,9 @@ export interface Role {
   id: string;
   name: string;
   // In a real app, this would be a more robust permission system
-  permissions: string[]; 
+  permissions: string[];
+  tenantId?: string;
+  isSystem?: boolean;
 }
 
 export interface User {
@@ -1083,6 +1085,9 @@ export interface RestaurantDataContextType {
     
     // User Management
     roles: Role[];
+    addRole: (roleData: Omit<Role, 'id'>) => Promise<{ success: boolean; message?: string }>;
+    updateRole: (role: Role) => Promise<{ success: boolean; message?: string }>;
+    deleteRole: (roleId: string) => Promise<{ success: boolean; message?: string }>;
     users: User[];
     addUser: (userData: Omit<User, 'id'>) => Promise<{ success: boolean; message?: string }>;
     updateUser: (user: User) => Promise<{ success: boolean; message?: string }>;
@@ -1105,7 +1110,7 @@ export interface RestaurantDataContextType {
 
     // SaaS Settings
     saasSettings: SaaSSettings;
-    updateSaaSSettings: (settings: Partial<SaaSSettings>) => void;
+    updateSaaSSettings: (settings: Partial<SaaSSettings>) => Promise<void>;
     
     addonGroups: AddonGroup[];
     addAddonGroup: (group: Omit<AddonGroup, 'id'>) => void;

@@ -1,19 +1,25 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useRestaurantData } from '@/hooks/useRestaurantData';
-import { User, Role, Outlet } from '@/types';
+import { User, Role } from '@/types';
 import Button from '@/components/common/Button';
 import Card from '@/components/common/Card';
 import Modal from '@/components/common/Modal';
 import Input from '@/components/common/Input';
 import UserForm from '@/components/users/UserForm';
-import { FiPlusCircle, FiEdit, FiTrash2, FiUsers, FiSearch, FiCheckCircle, FiXCircle as FiStatusX } from 'react-icons/fi';
+import { FiPlusCircle, FiEdit, FiTrash2, FiUsers, FiSearch, FiCheckCircle, FiXCircle as FiStatusX, FiShield } from 'react-icons/fi';
 
 const AccountAndUserPage: React.FC = () => {
-  const { users, roles, outlets, addUser, updateUser, deleteUser } = useRestaurantData();
+  const { users, roles, outlets, addUser, updateUser, deleteUser, addRole, updateRole, deleteRole } = useRestaurantData();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
+  const [editingRole, setEditingRole] = useState<Role | null>(null);
+  const [roleName, setRoleName] = useState('');
+  const [rolePermissions, setRolePermissions] = useState('');
+  const [roleError, setRoleError] = useState('');
+  const [isRoleSubmitting, setIsRoleSubmitting] = useState(false);
 
   const handleOpenModalForAdd = () => {
     setEditingUser(null);
@@ -30,6 +36,22 @@ const AccountAndUserPage: React.FC = () => {
     setEditingUser(null);
   };
 
+  useEffect(() => {
+    if (!isRoleModalOpen) {
+      setEditingRole(null);
+      setRoleName('');
+      setRolePermissions('');
+      setRoleError('');
+      setIsRoleSubmitting(false);
+      return;
+    }
+
+    setRoleName(editingRole?.name || '');
+    setRolePermissions(editingRole?.permissions?.join(', ') || '');
+    setRoleError('');
+    setIsRoleSubmitting(false);
+  }, [isRoleModalOpen, editingRole]);
+
   const handleDelete = async (userId: string) => {
     const userToDelete = users.find(u => u.id === userId);
     if (userToDelete?.id === 'user-admin') {
@@ -41,6 +63,67 @@ const AccountAndUserPage: React.FC = () => {
       if (!result.success) {
         alert(result.message || 'Failed to delete user.');
       }
+    }
+  };
+
+  const handleOpenRoleModalForAdd = () => {
+    setEditingRole(null);
+    setIsRoleModalOpen(true);
+  };
+
+  const handleOpenRoleModalForEdit = (role: Role) => {
+    setEditingRole(role);
+    setIsRoleModalOpen(true);
+  };
+
+  const handleCloseRoleModal = () => {
+    setIsRoleModalOpen(false);
+  };
+
+  const handleDeleteRole = async (role: Role) => {
+    if (role.isSystem) {
+      alert('System roles cannot be deleted.');
+      return;
+    }
+    if (window.confirm(`Are you sure you want to delete the role "${role.name}"?`)) {
+      const result = await deleteRole(role.id);
+      if (!result.success) {
+        alert(result.message || 'Failed to delete role.');
+      }
+    }
+  };
+
+  const handleRoleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isRoleSubmitting) return;
+
+    const trimmedName = roleName.trim();
+    const permissions = rolePermissions
+      .split(',')
+      .map((permission) => permission.trim())
+      .filter(Boolean);
+
+    if (!trimmedName) {
+      setRoleError('Role name is required.');
+      return;
+    }
+
+    setIsRoleSubmitting(true);
+    setRoleError('');
+
+    try {
+      const result = editingRole
+        ? await updateRole({ ...editingRole, name: trimmedName, permissions })
+        : await addRole({ name: trimmedName, permissions, tenantId: undefined, isSystem: false });
+
+      if (!result.success) {
+        setRoleError(result.message || 'Failed to save role.');
+        return;
+      }
+
+      handleCloseRoleModal();
+    } finally {
+      setIsRoleSubmitting(false);
     }
   };
   
@@ -64,6 +147,14 @@ const AccountAndUserPage: React.FC = () => {
       getOutletNames(user).toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [users, roles, outlets, searchTerm]);
+
+  const sortedRoles = useMemo(
+    () => [...roles].sort((a, b) => {
+      if (Boolean(a.isSystem) !== Boolean(b.isSystem)) return a.isSystem ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    }),
+    [roles]
+  );
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
@@ -138,6 +229,52 @@ const AccountAndUserPage: React.FC = () => {
         )}
       </Card>
 
+      <Card>
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-4">
+          <div>
+            <h2 className="text-xl font-semibold text-gray-800 flex items-center">
+              <FiShield className="mr-2 text-sky-600" /> Role Management
+            </h2>
+            <p className="text-sm text-gray-500">Database-backed roles now sync across devices.</p>
+          </div>
+          <Button onClick={handleOpenRoleModalForAdd} leftIcon={<FiPlusCircle size={18} />}>
+            Add Role
+          </Button>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-max">
+            <thead className="bg-gray-100 border-b border-gray-300">
+              <tr>
+                <th className="py-3 px-4 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Role</th>
+                <th className="py-3 px-4 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Permissions</th>
+                <th className="py-3 px-4 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Type</th>
+                <th className="py-3 px-4 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {sortedRoles.map(role => (
+                <tr key={role.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="py-3 px-4 text-sm font-medium text-gray-800">{role.name}</td>
+                  <td className="py-3 px-4 text-sm text-gray-600">{role.permissions.length > 0 ? role.permissions.join(', ') : 'No permissions set'}</td>
+                  <td className="py-3 px-4 text-sm text-gray-600">{role.isSystem ? 'System' : 'Custom'}</td>
+                  <td className="py-3 px-4 text-sm">
+                    <div className="flex space-x-2">
+                      <Button onClick={() => handleOpenRoleModalForEdit(role)} variant="secondary" size="sm" aria-label="Edit Role" disabled={role.isSystem}>
+                        <FiEdit />
+                      </Button>
+                      <Button onClick={() => handleDeleteRole(role)} variant="danger" size="sm" aria-label="Delete Role" disabled={role.isSystem}>
+                        <FiTrash2 />
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
       <Modal 
         isOpen={isModalOpen} 
         onClose={handleCloseModal} 
@@ -150,6 +287,35 @@ const AccountAndUserPage: React.FC = () => {
           onUpdate={updateUser}
           onClose={handleCloseModal}
         />
+      </Modal>
+
+      <Modal
+        isOpen={isRoleModalOpen}
+        onClose={handleCloseRoleModal}
+        title={editingRole ? 'Edit Role' : 'Add Role'}
+        size="md"
+      >
+        <form onSubmit={handleRoleSubmit} className="space-y-4">
+          <Input label="Role Name *" value={roleName} onChange={(e) => setRoleName(e.target.value)} required />
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Permissions</label>
+            <textarea
+              value={rolePermissions}
+              onChange={(e) => setRolePermissions(e.target.value)}
+              rows={4}
+              className="w-full p-2 border border-gray-300 rounded-md"
+              placeholder="pos, sales_history, reports"
+            />
+            <p className="text-xs text-gray-500 mt-1">Use comma-separated permission keys.</p>
+          </div>
+          {roleError && <p className="text-xs text-red-600">{roleError}</p>}
+          <div className="flex justify-end space-x-3 pt-4 border-t">
+            <Button type="button" variant="secondary" onClick={handleCloseRoleModal} disabled={isRoleSubmitting}>Cancel</Button>
+            <Button type="submit" variant="primary" disabled={isRoleSubmitting}>
+              {editingRole ? 'Update Role' : 'Save Role'}
+            </Button>
+          </div>
+        </form>
       </Modal>
     </div>
   );

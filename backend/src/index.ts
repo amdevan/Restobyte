@@ -20,11 +20,14 @@ import emailRoutes from './routes/emailRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
 import meRoutes from './routes/meRoutes.js';
 import userRoutes from './routes/userRoutes.js';
+import roleRoutes from './routes/roleRoutes.js';
 import outletRoutes from './routes/outletRoutes.js';
 import saasWebsiteContentRoutes from './routes/saasWebsiteContentRoutes.js';
 import saasWebsiteContentAdminRoutes from './routes/saasWebsiteContentAdminRoutes.js';
 import planRoutes from './routes/planRoutes.js';
+import appDataRoutes from './routes/appDataRoutes.js';
 import { DEFAULT_PLAN_DEFINITIONS } from './utils/planConfig.js';
+import { ensureSystemRoles } from './utils/roleUtils.js';
 import { backfillMissingInvoices } from './services/invoiceService.js';
 
 dotenv.config();
@@ -60,10 +63,12 @@ app.use('/api/email', emailRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/me', meRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/roles', roleRoutes);
 app.use('/api/outlets', outletRoutes);
 app.use('/api/public', saasWebsiteContentRoutes);
 app.use('/api/saas', saasWebsiteContentAdminRoutes);
 app.use('/api/plans', planRoutes);
+app.use('/api/app-data', appDataRoutes);
 
 async function start() {
   try {
@@ -96,6 +101,13 @@ async function start() {
     } catch (error) {
       console.error('[bootstrap]: Failed to reset superadmin password', error);
     }
+  }
+
+  try {
+    await ensureSystemRoles();
+    console.log('[bootstrap]: Ensured system roles');
+  } catch (error) {
+    console.error('[bootstrap]: Failed to ensure system roles', error);
   }
 
   const shouldSeedDemoUsers = process.env.SEED_DEMO_USERS === 'true';

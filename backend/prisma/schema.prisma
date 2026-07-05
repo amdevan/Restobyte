@@ -24,6 +24,7 @@ model Tenant {
   updatedAt          DateTime @updatedAt
   outlets            Outlet[]
   users              User[]
+  roles              Role[]
   payments           Payment[]
   loginHistory       TenantLoginHistory[]
   invoices           SubscriptionInvoice[]
@@ -150,6 +151,36 @@ model Order {
   saleData   Json?
 }
 
+model OutletAppData {
+  id        String   @id @default(uuid())
+  outletId  String
+  key       String
+  data      Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([outletId, key])
+}
+
+model UserAppData {
+  id        String   @id @default(uuid())
+  userId    String
+  key       String
+  data      Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, key])
+}
+
+model GlobalAppData {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  data      Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model OrderItem {
   id         String   @id @default(uuid())
   orderId    String
@@ -206,6 +237,19 @@ model PlanDefinition {
   isFeatured  Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model Role {
+  id          String   @id
+  name        String
+  permissions Json?
+  tenantId    String?
+  tenant      Tenant?  @relation(fields: [tenantId], references: [id])
+  isSystem    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([tenantId, name])
 }
 
 model Payment {

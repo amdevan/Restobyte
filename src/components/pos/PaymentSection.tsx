@@ -71,8 +71,9 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({ grandTotal, onFi
     }
 
     const finalTotalPaidBase = finalPayments.reduce((sum, p) => sum + p.amount, 0);
+    const epsilon = 0.001; // Small amount to account for floating-point precision errors
 
-    if (paymentMethod === 'Due' || finalTotalPaidBase < grandTotal) {
+    if (paymentMethod === 'Due' || finalTotalPaidBase < grandTotal - epsilon) {
        const paidFormatted = formatMoney(finalTotalPaidBase, selectedCurrency, applicationSettings);
        const totalFormatted = formatMoney(grandTotal, selectedCurrency, applicationSettings);
        if(paymentMethod !== 'Due' && !window.confirm(`Amount paid (${paidFormatted}) is less than total (${totalFormatted}). Mark remaining as due?`)) {
@@ -99,7 +100,8 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({ grandTotal, onFi
   const handleFonepayPaidConfirmed = (paidAmount: number) => {
     const payments = [...partialPayments, { method: 'Fonepay', amount: paidAmount }];
     const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
-    const isSettled = totalPaid >= grandTotal;
+    const epsilon = 0.001;
+    const isSettled = totalPaid >= grandTotal - epsilon;
     setIsFonepayQROpen(false);
     onFinalize(payments, isSettled);
   };

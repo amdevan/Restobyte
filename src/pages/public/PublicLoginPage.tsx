@@ -31,6 +31,7 @@ const PublicLoginPage: React.FC = () => {
     <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8 bg-white p-10 rounded-3xl shadow-xl">
         <div className="text-center">
+            <img src="/logo.png" alt="RestoByte" className="h-16 mx-auto mb-2" />
             <h2 className="mt-2 text-3xl font-serif font-bold text-gray-900">Welcome Back</h2>
             <p className="mt-2 text-sm text-gray-600">Please sign in to your account</p>
         </div>

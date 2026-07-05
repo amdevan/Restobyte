@@ -23,10 +23,7 @@ export const SaaSFooter: React.FC<SaaSFooterProps> = ({ scrollToTop, handleNavCl
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-16 mb-24">
                     <div className="lg:col-span-1">
                         <Link to="/" className="flex items-center gap-2 mb-8" onClick={scrollToTop}>
-                            <div className="w-8 h-8 bg-[#8b2d1d] rounded-lg flex items-center justify-center">
-                                <FiDatabase className="text-white" />
-                            </div>
-                            <span className="text-xl font-bold tracking-tight text-[#8b2d1d]">{content?.brandTitle || 'RestoByte'}</span>
+                            <img src="/logo.png" alt="RestoByte" className="h-8 w-auto" />
                         </Link>
                         <p className="text-[#5a4039] leading-relaxed mb-8">{content?.brandDescription || 'Empower your restaurant with the modern tools it deserves. Join the community of successful restaurateurs today.'}</p>
                         <div className="flex gap-4">

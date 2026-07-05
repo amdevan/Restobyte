@@ -36,9 +36,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onSwitchToRegister }) => {
   return (
     <div className="w-full max-w-md p-4 bg-white rounded-2xl space-y-6">
         <div className="text-center">
-            <h1 className="text-3xl font-bold text-sky-700">
-                Resto<span className="text-amber-500">Byte</span>
-            </h1>
+            <img src="/logo.png" alt="RestoByte" className="h-16 mx-auto mb-2" />
             <p className="text-gray-500 mt-2">Sign in to your dashboard</p>
         </div>
         <form onSubmit={handleLogin} className="space-y-4">

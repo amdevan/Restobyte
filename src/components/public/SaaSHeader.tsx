@@ -103,12 +103,7 @@ export const SaaSHeader: React.FC<SaaSHeaderProps> = ({ openDemoModal, openLogin
                     {content?.logoUrl ? (
                         <img src={content.logoUrl} alt="RestoByte" className="h-10 w-auto" />
                     ) : (
-                        <>
-                            <div className="w-10 h-10 bg-[#8b2d1d] rounded-xl flex items-center justify-center transition-transform group-hover:rotate-12">
-                                <FiDatabase className="text-white text-xl" />
-                            </div>
-                            <span className="text-2xl font-black tracking-tight text-[#8b2d1d]">{content?.brandName || 'RestoByte'}</span>
-                        </>
+                        <img src="/logo.png" alt="RestoByte" className="h-10 w-auto" />
                     )}
                 </Link>
                 

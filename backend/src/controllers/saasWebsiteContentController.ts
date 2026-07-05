@@ -263,7 +263,7 @@ const getDefaultContent = () => ({
   sectionOrder: ['hero', 'trustedByLogos', 'statistics', 'cta', 'features', 'pricing', 'testimonials', 'blogPosts'],
   header: { 
     brandName: 'RestoByte',
-    logoUrl: '', 
+    logoUrl: '/logo.png', 
     navLinks: [
       { id: '2', text: 'Pricing', url: '/pricing' },
       { id: '6', text: 'Products (Shop)', url: '/products' },

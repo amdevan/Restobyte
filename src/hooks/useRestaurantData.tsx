@@ -154,7 +154,7 @@ const initialPlans: Plan[] = [
 
 const initialSaasWebsiteContent: SaasWebsiteContent = {
     sectionOrder: [],
-    header: { brandName: 'RestoByte', logoUrl: '', navLinks: [{id: 'l1', text: 'Features', url: '#features'}, {id: 'l2', text: 'Pricing', url: '#pricing'}] },
+    header: { brandName: 'RestoByte', logoUrl: '/logo.png', navLinks: [{id: 'l1', text: 'Features', url: '#features'}, {id: 'l2', text: 'Pricing', url: '#pricing'}] },
     footer: {
         brandTitle: 'RestoByte',
         brandDescription: 'Empower your restaurant with the modern tools it deserves.',

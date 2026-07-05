@@ -53,11 +53,8 @@ const PublicHeader: React.FC<PublicHeaderProps> = ({ onLoginClick, onRegisterCli
                     <img src={logoUrl} alt={brandName || 'Brand'} className="h-10 object-contain" />
                 </Link>
             ) : (
-                 <Link to={homeUrl || "/"} className="text-2xl font-bold flex items-center gap-2">
-                    <span className="p-2 rounded-xl text-white" style={{ backgroundColor: accent }}>
-                         <FiShoppingBag size={20} />
-                    </span>
-                    <span className="text-gray-900">{brandName || 'Restaurant App'}</span>
+                <Link to={homeUrl || "/"} className="text-2xl font-bold">
+                    <img src="/logo.png" alt={brandName || 'Brand'} className="h-10 object-contain" />
                 </Link>
             )}
         </div>

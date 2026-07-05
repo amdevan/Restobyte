@@ -59,7 +59,8 @@ const SaaSLoginPage: React.FC = () => {
     return (
         <div className="min-h-screen bg-gray-900 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
             <div className="sm:mx-auto sm:w-full sm:max-w-md">
-                <h2 className="mt-6 text-center text-3xl font-extrabold text-white">
+                <img src="/logo.png" alt="RestoByte" className="h-16 mx-auto mb-4" />
+                <h2 className="text-center text-3xl font-extrabold text-white">
                     RestoByte SaaS Admin
                 </h2>
                 <p className="mt-2 text-center text-sm text-gray-400">

@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 const getDefaultContent = () => ({
   sectionOrder: ['hero', 'trustedByLogos', 'statistics', 'cta', 'features', 'pricing', 'testimonials', 'blogPosts'],
   header: { 
-    logoUrl: '', 
+    logoUrl: '/logo.png', 
     navLinks: [
       { 
         id: '1', 

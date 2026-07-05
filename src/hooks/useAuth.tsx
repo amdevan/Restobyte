@@ -24,7 +24,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const navigate = useNavigate();
   const location = useLocation();
 
-  const buildHttpErrorMessage = useCallback(async (action: string, url: string, res: Response) => {
+  const buildHttpErrorMessage = useCallback(async (action: string, _url: string, res: Response) => {
     const contentType = res.headers.get('content-type') || '';
     const serverMessage = await (async () => {
       if (contentType.includes('application/json')) {
@@ -38,8 +38,24 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const text = await res.text().catch(() => '');
       return text ? text.slice(0, 180) : '';
     })();
-    const base = `${action} failed (${res.status}) at ${url}.`;
-    return serverMessage ? `${base} ${serverMessage}` : base;
+    
+    // Use server message if available, otherwise a generic professional message
+    if (serverMessage) {
+      return serverMessage;
+    }
+    
+    // Generic professional error messages based on status code
+    if (res.status === 401) {
+      return 'Invalid username or password';
+    }
+    if (res.status === 403) {
+      return 'You do not have permission to access this resource';
+    }
+    if (res.status >= 500) {
+      return 'Server error. Please try again later';
+    }
+    
+    return `${action} failed. Please try again`;
   }, []);
 
   useEffect(() => {
@@ -107,11 +123,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
       return { success: true, message: data.message || 'Login successful!' };
     } catch (error) {
-      const url = `${API_BASE_URL}/auth/login`;
       const message =
         error instanceof Error
-          ? `Network error at ${url}. Check API URL and backend is running. (${error.message})`
-          : `Network error at ${url}. Check API URL and backend is running.`;
+          ? `Network error. Please check your connection and try again. (${error.message})`
+          : 'Network error. Please check your connection and try again.';
       return { success: false, message };
     }
   }, [buildHttpErrorMessage, navigate]);
@@ -142,11 +157,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       await res.json().catch(() => null);
       return { success: true, message: 'Registration successful! Please login.' };
     } catch (error) {
-      const url = `${API_BASE_URL}/auth/register`;
       const message =
         error instanceof Error
-          ? `Network error at ${url}. Check API URL and backend is running. (${error.message})`
-          : `Network error at ${url}. Check API URL and backend is running.`;
+          ? `Network error. Please check your connection and try again. (${error.message})`
+          : 'Network error. Please check your connection and try again.';
       return { success: false, message };
     }
   }, [buildHttpErrorMessage]);
@@ -183,11 +197,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       };
       return { success: true, message: 'Registration successful! Please login.', user: newUser };
     } catch (error) {
-      const url = `${API_BASE_URL}/tenants`;
       const message =
         error instanceof Error
-          ? `Network error at ${url}. Check API URL and backend is running. (${error.message})`
-          : `Network error at ${url}. Check API URL and backend is running.`;
+          ? `Network error. Please check your connection and try again. (${error.message})`
+          : 'Network error. Please check your connection and try again.';
       return { success: false, message };
     }
   }, [buildHttpErrorMessage]);

@@ -44,6 +44,94 @@ const initialCustomers: Customer[] = [
     { id: 'cust-2', name: 'Bob The Builder', phone: '555-5678', email: 'bob@example.com', address: '456 Construction Rd', dob: '1985-07-22', dueAmount: 0, companyName: 'Bob\'s Constructions', vatPan: 'PAN67890' },
     { id: 'cust-3', name: 'Charlie Brown', phone: '555-8765', email: 'charlie@example.com', address: '789 Comic Strip Ave', dob: '2000-10-04', dueAmount: 120.00 },
 ];
+const initialSales: Sale[] = [
+    {
+        id: 'sale-1',
+        saleDate: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
+        items: [
+            { id: 'item-1', name: 'Burger', price: 15, quantity: 2, notes: 'No onions' },
+            { id: 'item-2', name: 'Fries', price: 5, quantity: 1 }
+        ],
+        subTotal: 35,
+        taxDetails: [{ id: 'tax-1', name: 'VAT', rate: 5, amount: 1.75 }],
+        totalAmount: 36.75,
+        orderType: 'Dine In',
+        pax: 2,
+        outletId: 'outlet-1',
+        customerId: 'cust-1',
+        customerName: 'Alice Wonderland',
+        paymentMethod: 'Card',
+        isSettled: true,
+        isClosed: true
+    },
+    {
+        id: 'sale-2',
+        saleDate: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+        items: [
+            { id: 'item-3', name: 'Pizza', price: 25, quantity: 1 },
+            { id: 'item-4', name: 'Coke', price: 3, quantity: 2 }
+        ],
+        subTotal: 31,
+        taxDetails: [{ id: 'tax-1', name: 'VAT', rate: 5, amount: 1.55 }],
+        totalAmount: 32.55,
+        orderType: 'Takeaway',
+        outletId: 'outlet-1',
+        paymentMethod: 'Cash',
+        isSettled: true,
+        isClosed: true
+    },
+    {
+        id: 'sale-3',
+        saleDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+        items: [
+            { id: 'item-5', name: 'Pasta', price: 18, quantity: 1 },
+            { id: 'item-6', name: 'Salad', price: 10, quantity: 1 }
+        ],
+        subTotal: 28,
+        taxDetails: [{ id: 'tax-1', name: 'VAT', rate: 5, amount: 1.40 }],
+        totalAmount: 29.40,
+        orderType: 'Dine In',
+        pax: 1,
+        outletId: 'outlet-1',
+        paymentMethod: 'Online',
+        isSettled: true,
+        isClosed: true
+    },
+    {
+        id: 'sale-4',
+        saleDate: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+        items: [
+            { id: 'item-7', name: 'Sandwich', price: 12, quantity: 3 }
+        ],
+        subTotal: 36,
+        taxDetails: [{ id: 'tax-1', name: 'VAT', rate: 5, amount: 1.80 }],
+        totalAmount: 37.80,
+        orderType: 'Delivery',
+        outletId: 'outlet-1',
+        customerId: 'cust-2',
+        customerName: 'Bob The Builder',
+        paymentMethod: 'Fonepay',
+        isSettled: true,
+        isClosed: true
+    },
+    {
+        id: 'sale-5',
+        saleDate: new Date().toISOString(),
+        items: [
+            { id: 'item-8', name: 'Ice Cream', price: 8, quantity: 2 },
+            { id: 'item-9', name: 'Coffee', price: 5, quantity: 2 }
+        ],
+        subTotal: 26,
+        taxDetails: [{ id: 'tax-1', name: 'VAT', rate: 5, amount: 1.30 }],
+        totalAmount: 27.30,
+        orderType: 'Dine In',
+        pax: 2,
+        outletId: 'outlet-1',
+        paymentMethod: 'Cash',
+        isSettled: true,
+        isClosed: true
+    }
+];
 const initialAreasFloors: AreaFloor[] = [
     { id: 'af-1', name: 'Ground Floor', description: 'Main dining area near the entrance.' },
     { id: 'af-2', name: 'Patio', description: 'Outdoor seating area.' },
@@ -603,8 +691,15 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
     useEffect(() => { fetchCustomers(); }, [fetchCustomers]);
 
     const [reservations, setReservations] = useLocalStorage<Reservation[]>(getKey('reservations'), []);
-    const [sales, setSales] = useLocalStorage<Sale[]>(getKey('sales'), []);
+    const [sales, setSales] = useLocalStorage<Sale[]>(getKey('sales'), initialSales);
     const [customerPayments, setCustomerPayments] = useLocalStorage<CustomerPayment[]>(getKey('customerPayments'), []);
+    
+    // If sales are empty, initialize with sample data
+    useEffect(() => {
+        if (sales.length === 0) {
+            setSales(initialSales);
+        }
+    }, [sales.length, setSales]);
     const [preMadeFoodItems, setPreMadeFoodItems] = useLocalStorage<PreMadeFoodItem[]>(getKey('preMadeFoodItems'), []);
     const [stockItems, setStockItems] = useLocalStorage<StockItem[]>(getKey('stockItems'), initialStockItems);
     const [stockEntries, setStockEntries] = useLocalStorage<StockEntry[]>(getKey('stockEntries'), []);

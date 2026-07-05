@@ -64,6 +64,25 @@ function setContentType(res, filePath) {
   if (type) res.setHeader('content-type', type);
 }
 
+function setCacheHeaders(res, requestPath) {
+  const normalizedPath = requestPath === '/' ? '/index.html' : requestPath;
+  const isHtmlEntry = normalizedPath === '/index.html';
+  const isHashedAsset = normalizedPath.startsWith('/assets/');
+
+  if (isHtmlEntry) {
+    // Prevent stale HTML from pointing at a newer or already-pruned hashed asset bundle.
+    res.setHeader('cache-control', 'no-cache, no-store, must-revalidate');
+    return;
+  }
+
+  if (isHashedAsset) {
+    res.setHeader('cache-control', 'public, max-age=31536000, immutable');
+    return;
+  }
+
+  res.setHeader('cache-control', 'public, max-age=3600');
+}
+
 function sendText(res, statusCode, text) {
   res.statusCode = statusCode;
   res.setHeader('content-type', 'text/plain; charset=utf-8');
@@ -150,6 +169,7 @@ function serveStatic(req, res, pathname) {
     if (!err && stat.isFile()) {
       res.statusCode = 200;
       setContentType(res, filePath);
+      setCacheHeaders(res, requestPath);
       fs.createReadStream(filePath).pipe(res);
       return;
     }
@@ -168,6 +188,7 @@ function serveStatic(req, res, pathname) {
       }
       res.statusCode = 200;
       res.setHeader('content-type', mimeTypes['.html']);
+      setCacheHeaders(res, '/index.html');
       fs.createReadStream(indexPath).pipe(res);
     });
   });

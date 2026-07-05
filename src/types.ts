@@ -594,6 +594,7 @@ export interface ApplicationSettings {
   kotCharactersPerLine: number;
   defaultWalkInCustomerId: string;
   defaultOrderType: 'Dine In' | 'Delivery' | 'Pickup' | 'WhatsApp';
+  autoClearHistoryDays?: number; // 0 = never auto-clear, number of days to keep history
 }
 
 export interface Tax {

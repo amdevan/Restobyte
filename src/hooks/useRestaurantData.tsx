@@ -107,6 +107,7 @@ const initialApplicationSettings: ApplicationSettings = {
     kotCharactersPerLine: 42,
     defaultWalkInCustomerId: 'cust-walkin',
     defaultOrderType: 'Dine In',
+    autoClearHistoryDays: 0, // 0 = NEVER auto-clear history - keep everything forever
 };
 
 const initialOutlets: Outlet[] = [
@@ -302,15 +303,39 @@ const initialSaasWebsiteContent: SaasWebsiteContent = {
 };
 
 const useLocalStorage = <T,>(key: string, initialValue: T): [T, React.Dispatch<React.SetStateAction<T>>] => {
+    const backupKey = `${key}_backup`;
+    
     const [storedValue, setStoredValue] = useState<T>(() => {
       if (typeof window === 'undefined') {
         return initialValue;
       }
       try {
+        // Try to get primary data first
         const item = window.localStorage.getItem(key);
-        return item ? JSON.parse(item) : initialValue;
+        if (item) {
+          try {
+            return JSON.parse(item);
+          } catch (parseError) {
+            console.error(`Error parsing ${key}, trying backup...`, parseError);
+            // If primary fails, try backup
+            const backupItem = window.localStorage.getItem(backupKey);
+            if (backupItem) {
+              try {
+                const backupData = JSON.parse(backupItem);
+                console.log(`Restored ${key} from backup`);
+                // Restore backup to primary
+                window.localStorage.setItem(key, backupItem);
+                return backupData;
+              } catch (backupParseError) {
+                console.error(`Error parsing backup for ${key}, using initial value`, backupParseError);
+              }
+            }
+            return initialValue;
+          }
+        }
+        return initialValue;
       } catch (error) {
-        console.error(error);
+        console.error(`Error loading ${key} from localStorage`, error);
         return initialValue;
       }
     });
@@ -346,9 +371,28 @@ const useLocalStorage = <T,>(key: string, initialValue: T): [T, React.Dispatch<R
     useEffect(() => {
         try {
             const item = window.localStorage.getItem(key);
-            setStoredValue(item ? JSON.parse(item) : initialValue);
+            if (item) {
+                try {
+                    setStoredValue(JSON.parse(item));
+                } catch (parseError) {
+                    console.error(`Error parsing ${key} on key change, trying backup...`, parseError);
+                    const backupItem = window.localStorage.getItem(backupKey);
+                    if (backupItem) {
+                        try {
+                            setStoredValue(JSON.parse(backupItem));
+                        } catch (backupParseError) {
+                            console.error(`Error parsing backup for ${key}, using initial value`, backupParseError);
+                            setStoredValue(initialValue);
+                        }
+                    } else {
+                        setStoredValue(initialValue);
+                    }
+                }
+            } else {
+                setStoredValue(initialValue);
+            }
         } catch (error) {
-            console.error(error);
+            console.error(`Error loading ${key} on key change`, error);
             setStoredValue(initialValue);
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -359,14 +403,17 @@ const useLocalStorage = <T,>(key: string, initialValue: T): [T, React.Dispatch<R
         const valueToStore = value instanceof Function ? value(storedValueRef.current) : value;
         setStoredValue(valueToStore);
         if (typeof window !== 'undefined') {
-          window.localStorage.setItem(key, JSON.stringify(valueToStore));
-          // Dispatch a custom event so the current window also updates if we have multiple hooks using the same key (unlikely here but good practice)
-          window.dispatchEvent(new StorageEvent('storage', { key, newValue: JSON.stringify(valueToStore) }));
+            const serializedValue = JSON.stringify(valueToStore);
+            window.localStorage.setItem(key, serializedValue);
+            // Also save a backup for safety
+            window.localStorage.setItem(backupKey, serializedValue);
+            // Dispatch a custom event so the current window also updates if we have multiple hooks using the same key (unlikely here but good practice)
+            window.dispatchEvent(new StorageEvent('storage', { key, newValue: serializedValue }));
         }
       } catch (error) {
         console.error(error);
       }
-    }, [key]);
+    }, [key, backupKey]);
   
     return [storedValue, setValue];
 };
@@ -587,11 +634,55 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         setActiveOutletIds(next);
     }, [isAuthenticated, user?.roleId, user?.outletId, user?.isSuperAdmin, (user as any)?.outletIds, activeOutletIds, setActiveOutletIds]);
 
+    // Apply auto-clear filter when settings change
+    useEffect(() => {
+        if (!isAuthenticated) return;
+        
+        const daysToKeep = applicationSettings.autoClearHistoryDays || 0;
+        
+        // Apply to sales
+        setSales(prev => filterOldEntries(prev, daysToKeep));
+        
+        // Apply to reservations
+        setReservations(prev => filterOldEntries(prev, daysToKeep));
+        
+        // You can also add other history types here (stock entries, expenses, etc.)
+    }, [isAuthenticated, applicationSettings.autoClearHistoryDays, setSales, setReservations]);
+
     const generateId = () => {
         if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
             return crypto.randomUUID();
         }
         return `id-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    };
+
+    // Helper to filter old history entries
+    const filterOldEntries = <T extends { saleDate?: string; dateTime?: string; createdAt?: string }>(
+        entries: T[],
+        daysToKeep: number
+    ): T[] => {
+        if (daysToKeep <= 0) return entries;
+        
+        const cutoffDate = new Date();
+        cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
+        
+        return entries.filter(entry => {
+            let entryDate: Date | null = null;
+            
+            if (entry.saleDate) {
+                entryDate = new Date(entry.saleDate);
+            } else if (entry.dateTime) {
+                entryDate = new Date(entry.dateTime);
+            } else if (entry.createdAt) {
+                entryDate = new Date(entry.createdAt);
+            }
+            
+            if (!entryDate || isNaN(entryDate.getTime())) {
+                return true; // Keep entries with invalid dates
+            }
+            
+            return entryDate >= cutoffDate;
+        });
     };
 
     const normalizeSaasWebsiteContent = (raw: any): SaasWebsiteContent => {
@@ -1489,7 +1580,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         recordSale: (saleData) => {
             const isClosed = saleData.isClosed ?? saleData.isSettled ?? false;
             const newSale = { ...saleData, isClosed, id: `sale-${Date.now()}`, saleDate: new Date().toISOString() };
-            setSales(prev => [...prev, newSale]);
+            setSales(prev => filterOldEntries([...prev, newSale], applicationSettings.autoClearHistoryDays || 0));
             if (saleData.assignedTableId && saleData.orderType === 'Dine In') {
                 const nextStatus = isClosed ? TableStatus.Free : TableStatus.Occupied;
                 void setAndPersistTableStatus(saleData.assignedTableId, nextStatus);
@@ -1500,7 +1591,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             const existing = sales.find(s => s.id === updatedSale.id);
             const isClosed = updatedSale.isClosed ?? updatedSale.isSettled ?? false;
             const normalized = { ...updatedSale, isClosed };
-            setSales(prev => prev.map(s => s.id === updatedSale.id ? normalized : s));
+            setSales(prev => filterOldEntries(prev.map(s => s.id === updatedSale.id ? normalized : s), applicationSettings.autoClearHistoryDays || 0));
 
             if (updatedSale.orderType === 'Dine In' && updatedSale.assignedTableId) {
                 const wasClosed = Boolean(existing?.isClosed ?? existing?.isSettled);
@@ -1513,7 +1604,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 }
             }
         },
-        updateKdsOrderStatus: (saleId, status) => setSales(prev => prev.map(s => s.id === saleId ? { ...s, kdsStatus: status, kdsReadyTimestamp: status === 'ready' ? new Date().toISOString() : s.kdsReadyTimestamp } : s)),
+        updateKdsOrderStatus: (saleId, status) => setSales(prev => filterOldEntries(prev.map(s => s.id === saleId ? { ...s, kdsStatus: status, kdsReadyTimestamp: status === 'ready' ? new Date().toISOString() : s.kdsReadyTimestamp } : s), applicationSettings.autoClearHistoryDays || 0)),
         
         foodMenuCategories,
         addFoodMenuCategory: async (categoryData) => {

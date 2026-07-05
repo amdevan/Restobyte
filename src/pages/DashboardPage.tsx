@@ -156,14 +156,14 @@ const DashboardPage: React.FC = () => {
               sale.partialPayments.forEach(p => {
                   if (p.method === 'Cash') {
                       cashInHand += p.amount;
-                  } else if (p.method === 'Card' || p.method === 'Online Payment') {
+                  } else if (p.method === 'Card' || p.method === 'Online' || p.method === 'Online Payment' || p.method === 'Fonepay') {
                       cashAtBank += p.amount;
                   }
               });
           } else if (sale.paymentMethod) {
               if (sale.paymentMethod === 'Cash') {
                   cashInHand += sale.totalAmount;
-              } else if (sale.paymentMethod === 'Card' || sale.paymentMethod === 'Online Payment') {
+              } else if (sale.paymentMethod === 'Card' || sale.paymentMethod === 'Online' || sale.paymentMethod === 'Online Payment' || sale.paymentMethod === 'Fonepay') {
                   cashAtBank += sale.totalAmount;
               }
           }
@@ -279,11 +279,11 @@ const DashboardPage: React.FC = () => {
       if (sale.partialPayments && sale.partialPayments.length > 0) {
         sale.partialPayments.forEach(p => {
           if (p.method === 'Cash') cash[d] += p.amount;
-          if (p.method === 'Card' || p.method === 'Online Payment') bank[d] += p.amount;
+          if (p.method === 'Card' || p.method === 'Online' || p.method === 'Online Payment' || p.method === 'Fonepay') bank[d] += p.amount;
         });
       } else if (sale.paymentMethod) {
         if (sale.paymentMethod === 'Cash') cash[d] += sale.totalAmount;
-        if (sale.paymentMethod === 'Card' || sale.paymentMethod === 'Online Payment') bank[d] += sale.totalAmount;
+        if (sale.paymentMethod === 'Card' || sale.paymentMethod === 'Online' || sale.paymentMethod === 'Online Payment' || sale.paymentMethod === 'Fonepay') bank[d] += sale.totalAmount;
       }
     });
 

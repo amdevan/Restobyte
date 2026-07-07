@@ -835,10 +835,15 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
 
     const outletAppDataReadyRef = useRef<Record<string, boolean>>({});
     const outletAppDataSerializedRef = useRef<Record<string, string>>({});
+    const outletAppDataMutationVersionRef = useRef<Record<string, number>>({});
     const userAppDataReadyRef = useRef<Record<string, boolean>>({});
     const userAppDataSerializedRef = useRef<Record<string, string>>({});
     const globalAppDataReadyRef = useRef<Record<string, boolean>>({});
     const globalAppDataSerializedRef = useRef<Record<string, string>>({});
+    const purchasesRef = useRef<Purchase[]>(initialPurchases);
+    const expenseCategoriesRef = useRef<ExpenseCategory[]>(initialExpenseCategories);
+    const expensesRef = useRef<Expense[]>(initialExpenses);
+    const wasteRecordsRef = useRef<WasteRecord[]>(initialWasteRecords);
 
     const fetchOutletAppData = useCallback(async (key: string, outletId: string) => {
         if (!isAuthenticated) return null;
@@ -1003,48 +1008,97 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
     }, [isAuthenticated, logout, user?.isSuperAdmin]);
 
     useEffect(() => {
+        purchasesRef.current = purchases;
+    }, [purchases]);
+
+    useEffect(() => {
+        expenseCategoriesRef.current = expenseCategories;
+    }, [expenseCategories]);
+
+    useEffect(() => {
+        expensesRef.current = expenses;
+    }, [expenses]);
+
+    useEffect(() => {
+        wasteRecordsRef.current = wasteRecords;
+    }, [wasteRecords]);
+
+    const markOutletAppDataMutated = useCallback((key: string, outletId: string) => {
+        const scopeKey = `${outletId}:${key}`;
+        outletAppDataMutationVersionRef.current[scopeKey] = (outletAppDataMutationVersionRef.current[scopeKey] || 0) + 1;
+        return scopeKey;
+    }, []);
+
+    const persistOutletCollectionImmediately = useCallback((key: string, outletId: string, data: unknown) => {
+        const scopeKey = `${outletId}:${key}`;
+        outletAppDataReadyRef.current[scopeKey] = true;
+        outletAppDataSerializedRef.current[scopeKey] = JSON.stringify(data);
+        void persistOutletAppData(key, outletId, data);
+    }, [persistOutletAppData]);
+
+    const resolveOutletDataId = useCallback((preferredOutletId?: string | null) => {
+        if (typeof preferredOutletId === 'string' && preferredOutletId.trim().length > 0) {
+            return preferredOutletId.trim();
+        }
+
+        if (selectedDataOutletId) return selectedDataOutletId;
+        if (activeOutletIds.length > 0) return activeOutletIds[0];
+        if (user?.outletId) return String(user.outletId);
+        return undefined;
+    }, [activeOutletIds, selectedDataOutletId, user?.outletId]);
+
+    useEffect(() => {
         if (!isAuthenticated || !selectedDataOutletId) return;
 
         let cancelled = false;
-        const configs: Array<{ key: string; fallback: unknown; setValue: (value: any) => void }> = [
-            { key: 'reservations', fallback: [] as Reservation[], setValue: (value) => setReservations(value) },
-            { key: 'customerPayments', fallback: [] as CustomerPayment[], setValue: (value) => setCustomerPayments(value) },
-            { key: 'preMadeFoodItems', fallback: [] as PreMadeFoodItem[], setValue: (value) => setPreMadeFoodItems(value) },
-            { key: 'stockItems', fallback: initialStockItems, setValue: (value) => setStockItems(value) },
-            { key: 'stockEntries', fallback: [] as StockEntry[], setValue: (value) => setStockEntries(value) },
-            { key: 'stockAdjustments', fallback: [] as StockAdjustment[], setValue: (value) => setStockAdjustments(value) },
-            { key: 'suppliers', fallback: [] as Supplier[], setValue: (value) => setSuppliers(value) },
-            { key: 'areasFloors', fallback: initialAreasFloors, setValue: (value) => setAreasFloors(value) },
-            { key: 'kitchens', fallback: initialKitchens, setValue: (value) => setKitchens(value) },
-            { key: 'printers', fallback: initialPrinters, setValue: (value) => setPrinters(value) },
-            { key: 'counters', fallback: initialCounters, setValue: (value) => setCounters(value) },
-            { key: 'waiters', fallback: initialWaiters, setValue: (value) => setWaiters(value) },
-            { key: 'denominations', fallback: initialDenominations, setValue: (value) => setDenominations(value) },
-            { key: 'purchases', fallback: initialPurchases, setValue: (value) => setPurchases(value) },
-            { key: 'expenseCategories', fallback: initialExpenseCategories, setValue: (value) => setExpenseCategories(value) },
-            { key: 'expenses', fallback: initialExpenses, setValue: (value) => setExpenses(value) },
-            { key: 'wasteRecords', fallback: initialWasteRecords, setValue: (value) => setWasteRecords(value) },
-            { key: 'employees', fallback: initialEmployees, setValue: (value) => setEmployees(value) },
-            { key: 'attendanceRecords', fallback: initialAttendanceRecords, setValue: (value) => setAttendanceRecords(value) },
-            { key: 'payrollRecords', fallback: initialPayrollRecords, setValue: (value) => setPayrollRecords(value) },
-            { key: 'paymentMethods', fallback: initialPaymentMethods, setValue: (value) => setPaymentMethods(value) },
-            { key: 'deliveryPartners', fallback: initialDeliveryPartners, setValue: (value) => setDeliveryPartners(value) },
-            { key: 'isSelfOrderEnabled', fallback: false, setValue: (value) => setSelfOrderStatus(Boolean(value)) },
-            { key: 'isReservationOrderEnabled', fallback: false, setValue: (value) => setReservationOrderStatus(Boolean(value)) },
-            { key: 'reservationOrderReceivingUserIds', fallback: [] as string[], setValue: (value) => setReservationOrderReceivingUserIds(Array.isArray(value) ? value : []) },
-            { key: 'reservationSettings', fallback: { enabled: true, availability: [] } as ReservationSettings, setValue: (value) => setReservationSettings(value) },
-            { key: 'websiteSettings', fallback: { orderEnabled: true, orderReceivingUserIds: [], whiteLabel: { appName: 'RestoByte', primaryColor: '#0ea5e9' }, homePageContent: { bannerSection: { title: 'Welcome', subtitle: '' }, serviceSection: { services: [] }, exploreMenuSection: { title: 'Explore', subtitle: '', buttonText: 'View Menu' }, gallery: [], socialMedia: [] }, availableOnlineFoodIds: [], aboutUsContent: { title: '', content: '' }, contactUsContent: { address: '', phone: '', email: '' }, contactMessages: [], commonMenuPage: { title: 'Our Menu' }, socialLogin: { google: false, facebook: false }, emailSettings: { mailer: 'log' }, paymentSettings: { paypalEnabled: false, stripeEnabled: false, fonepayEnabled: false } } as WebsiteSettings, setValue: (value) => setWebsiteSettings(value) },
-            { key: 'applicationSettings', fallback: initialApplicationSettings, setValue: (value) => setApplicationSettings(value) },
-            { key: 'soundSettings', fallback: { soundsEnabled: true } as SoundSettings, setValue: (value) => setSoundSettings(value) },
-            { key: 'addonGroups', fallback: initialAddonGroups, setValue: (value) => setAddonGroups(value) },
+        const configs: Array<{ key: string; fallback: unknown; getValue: () => unknown; setValue: (value: any) => void }> = [
+            { key: 'reservations', fallback: [] as Reservation[], getValue: () => reservations, setValue: (value) => setReservations(value) },
+            { key: 'customerPayments', fallback: [] as CustomerPayment[], getValue: () => customerPayments, setValue: (value) => setCustomerPayments(value) },
+            { key: 'preMadeFoodItems', fallback: [] as PreMadeFoodItem[], getValue: () => preMadeFoodItems, setValue: (value) => setPreMadeFoodItems(value) },
+            { key: 'stockItems', fallback: initialStockItems, getValue: () => stockItems, setValue: (value) => setStockItems(value) },
+            { key: 'stockEntries', fallback: [] as StockEntry[], getValue: () => stockEntries, setValue: (value) => setStockEntries(value) },
+            { key: 'stockAdjustments', fallback: [] as StockAdjustment[], getValue: () => stockAdjustments, setValue: (value) => setStockAdjustments(value) },
+            { key: 'suppliers', fallback: [] as Supplier[], getValue: () => suppliers, setValue: (value) => setSuppliers(value) },
+            { key: 'areasFloors', fallback: initialAreasFloors, getValue: () => areasFloors, setValue: (value) => setAreasFloors(value) },
+            { key: 'kitchens', fallback: initialKitchens, getValue: () => kitchens, setValue: (value) => setKitchens(value) },
+            { key: 'printers', fallback: initialPrinters, getValue: () => printers, setValue: (value) => setPrinters(value) },
+            { key: 'counters', fallback: initialCounters, getValue: () => counters, setValue: (value) => setCounters(value) },
+            { key: 'waiters', fallback: initialWaiters, getValue: () => waiters, setValue: (value) => setWaiters(value) },
+            { key: 'denominations', fallback: initialDenominations, getValue: () => denominations, setValue: (value) => setDenominations(value) },
+            { key: 'purchases', fallback: initialPurchases, getValue: () => purchasesRef.current, setValue: (value) => setPurchases(value) },
+            { key: 'expenseCategories', fallback: initialExpenseCategories, getValue: () => expenseCategoriesRef.current, setValue: (value) => setExpenseCategories(value) },
+            { key: 'expenses', fallback: initialExpenses, getValue: () => expensesRef.current, setValue: (value) => setExpenses(value) },
+            { key: 'wasteRecords', fallback: initialWasteRecords, getValue: () => wasteRecordsRef.current, setValue: (value) => setWasteRecords(value) },
+            { key: 'employees', fallback: initialEmployees, getValue: () => employees, setValue: (value) => setEmployees(value) },
+            { key: 'attendanceRecords', fallback: initialAttendanceRecords, getValue: () => attendanceRecords, setValue: (value) => setAttendanceRecords(value) },
+            { key: 'payrollRecords', fallback: initialPayrollRecords, getValue: () => payrollRecords, setValue: (value) => setPayrollRecords(value) },
+            { key: 'paymentMethods', fallback: initialPaymentMethods, getValue: () => paymentMethods, setValue: (value) => setPaymentMethods(value) },
+            { key: 'deliveryPartners', fallback: initialDeliveryPartners, getValue: () => deliveryPartners, setValue: (value) => setDeliveryPartners(value) },
+            { key: 'isSelfOrderEnabled', fallback: false, getValue: () => isSelfOrderEnabled, setValue: (value) => setSelfOrderStatus(Boolean(value)) },
+            { key: 'isReservationOrderEnabled', fallback: false, getValue: () => isReservationOrderEnabled, setValue: (value) => setReservationOrderStatus(Boolean(value)) },
+            { key: 'reservationOrderReceivingUserIds', fallback: [] as string[], getValue: () => reservationOrderReceivingUserIds, setValue: (value) => setReservationOrderReceivingUserIds(Array.isArray(value) ? value : []) },
+            { key: 'reservationSettings', fallback: { enabled: true, availability: [] } as ReservationSettings, getValue: () => reservationSettings, setValue: (value) => setReservationSettings(value) },
+            { key: 'websiteSettings', fallback: { orderEnabled: true, orderReceivingUserIds: [], whiteLabel: { appName: 'RestoByte', primaryColor: '#0ea5e9' }, homePageContent: { bannerSection: { title: 'Welcome', subtitle: '' }, serviceSection: { services: [] }, exploreMenuSection: { title: 'Explore', subtitle: '', buttonText: 'View Menu' }, gallery: [], socialMedia: [] }, availableOnlineFoodIds: [], aboutUsContent: { title: '', content: '' }, contactUsContent: { address: '', phone: '', email: '' }, contactMessages: [], commonMenuPage: { title: 'Our Menu' }, socialLogin: { google: false, facebook: false }, emailSettings: { mailer: 'log' }, paymentSettings: { paypalEnabled: false, stripeEnabled: false, fonepayEnabled: false } } as WebsiteSettings, getValue: () => websiteSettings, setValue: (value) => setWebsiteSettings(value) },
+            { key: 'applicationSettings', fallback: initialApplicationSettings, getValue: () => applicationSettings, setValue: (value) => setApplicationSettings(value) },
+            { key: 'soundSettings', fallback: { soundsEnabled: true } as SoundSettings, getValue: () => soundSettings, setValue: (value) => setSoundSettings(value) },
+            { key: 'addonGroups', fallback: initialAddonGroups, getValue: () => addonGroups, setValue: (value) => setAddonGroups(value) },
         ];
 
-        void Promise.all(configs.map(async ({ key, fallback, setValue }) => {
+        void Promise.all(configs.map(async ({ key, fallback, getValue, setValue }) => {
             const scopeKey = `${selectedDataOutletId}:${key}`;
             outletAppDataReadyRef.current[scopeKey] = false;
+            const mutationVersionAtLoadStart = outletAppDataMutationVersionRef.current[scopeKey] || 0;
 
             const loaded = await fetchOutletAppData(key, selectedDataOutletId);
             if (cancelled) return;
+
+            const mutationVersionAfterLoad = outletAppDataMutationVersionRef.current[scopeKey] || 0;
+            if (mutationVersionAfterLoad !== mutationVersionAtLoadStart) {
+                const currentValue = getValue();
+                outletAppDataSerializedRef.current[scopeKey] = JSON.stringify(currentValue);
+                outletAppDataReadyRef.current[scopeKey] = true;
+                return;
+            }
 
             const nextValue = loaded ?? fallback;
             outletAppDataSerializedRef.current[scopeKey] = JSON.stringify(nextValue);
@@ -2738,37 +2792,119 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
 
         purchases,
         addPurchase: (purchaseData) => {
-            const newPurchase = { ...purchaseData, id: `pur-${Date.now()}`, date: new Date().toISOString() };
-            setPurchases(prev => [...prev, newPurchase]);
+            const outletId = resolveOutletDataId(purchaseData.outletId);
+            const newPurchase = {
+                ...purchaseData,
+                id: `pur-${Date.now()}`,
+                date: new Date().toISOString(),
+                outletId: outletId || purchaseData.outletId,
+            };
+            const nextPurchases = [...purchasesRef.current, newPurchase];
+            purchasesRef.current = nextPurchases;
+            setPurchases(nextPurchases);
+            if (outletId) {
+                markOutletAppDataMutated('purchases', outletId);
+                persistOutletCollectionImmediately('purchases', outletId, nextPurchases);
+            }
             return newPurchase;
         },
         recordSupplierPayment: (purchaseId: string, amountPaid: number, paymentDate: string, paymentMethod: string, reference?: string, notes?: string) => {
-            setPurchases(prev => prev.map(p => p.id === purchaseId ? { ...p, paidAmount: (p.paidAmount || 0) + amountPaid } : p));
+            const existingPurchase = purchasesRef.current.find((purchase) => purchase.id === purchaseId);
+            const outletId = resolveOutletDataId(existingPurchase?.outletId);
+            const nextPurchases = purchasesRef.current.map((purchase) => purchase.id === purchaseId ? {
+                ...purchase,
+                paidAmount: (purchase.paidAmount || 0) + amountPaid,
+            } : purchase);
+            purchasesRef.current = nextPurchases;
+            setPurchases(nextPurchases);
+            if (outletId) {
+                markOutletAppDataMutated('purchases', outletId);
+                persistOutletCollectionImmediately('purchases', outletId, nextPurchases);
+            }
         },
 
         expenseCategories,
         addExpenseCategory: (categoryData) => {
             const newCat = { ...categoryData, id: `exp-cat-${Date.now()}` };
-            setExpenseCategories(prev => [...prev, newCat]);
+            expenseCategoriesRef.current = [...expenseCategoriesRef.current, newCat];
+            setExpenseCategories(expenseCategoriesRef.current);
+            if (selectedDataOutletId) {
+                markOutletAppDataMutated('expenseCategories', selectedDataOutletId);
+                persistOutletCollectionImmediately('expenseCategories', selectedDataOutletId, expenseCategoriesRef.current);
+            }
             return newCat;
         },
-        updateExpenseCategory: (category) => setExpenseCategories(prev => prev.map(c => c.id === category.id ? category : c)),
-        deleteExpenseCategory: (categoryId) => setExpenseCategories(prev => prev.filter(c => c.id !== categoryId)),
+        updateExpenseCategory: (category) => {
+            const nextCategories = expenseCategoriesRef.current.map(c => c.id === category.id ? category : c);
+            expenseCategoriesRef.current = nextCategories;
+            setExpenseCategories(nextCategories);
+            if (selectedDataOutletId) {
+                markOutletAppDataMutated('expenseCategories', selectedDataOutletId);
+                persistOutletCollectionImmediately('expenseCategories', selectedDataOutletId, nextCategories);
+            }
+        },
+        deleteExpenseCategory: (categoryId) => {
+            const nextCategories = expenseCategoriesRef.current.filter(c => c.id !== categoryId);
+            expenseCategoriesRef.current = nextCategories;
+            setExpenseCategories(nextCategories);
+            if (selectedDataOutletId) {
+                markOutletAppDataMutated('expenseCategories', selectedDataOutletId);
+                persistOutletCollectionImmediately('expenseCategories', selectedDataOutletId, nextCategories);
+            }
+        },
 
         expenses,
         addExpense: (expenseData) => {
             const categoryName = expenseCategories.find(c => c.id === expenseData.categoryId)?.name || 'Unknown';
-            const newExpense = { ...expenseData, id: `exp-${Date.now()}`, categoryName, outletId: activeOutletIds[0] || 'unknown' };
-            setExpenses(prev => [...prev, newExpense]);
+            const outletId = resolveOutletDataId(expenseData.outletId);
+            const newExpense = { ...expenseData, id: `exp-${Date.now()}`, categoryName, outletId: outletId || 'unknown' };
+            const nextExpenses = [...expensesRef.current, newExpense];
+            expensesRef.current = nextExpenses;
+            setExpenses(nextExpenses);
+            if (outletId) {
+                markOutletAppDataMutated('expenses', outletId);
+                persistOutletCollectionImmediately('expenses', outletId, nextExpenses);
+            }
             return newExpense;
         },
-        updateExpense: (expense) => setExpenses(prev => prev.map(e => e.id === expense.id ? expense : e)),
-        deleteExpense: (expenseId) => setExpenses(prev => prev.filter(e => e.id !== expenseId)),
+        updateExpense: (expense) => {
+            const outletId = resolveOutletDataId(expense.outletId);
+            const nextExpenses = expensesRef.current.map(e => e.id === expense.id ? expense : e);
+            expensesRef.current = nextExpenses;
+            setExpenses(nextExpenses);
+            if (outletId) {
+                markOutletAppDataMutated('expenses', outletId);
+                persistOutletCollectionImmediately('expenses', outletId, nextExpenses);
+            }
+        },
+        deleteExpense: (expenseId) => {
+            const existingExpense = expensesRef.current.find((expense) => expense.id === expenseId);
+            const outletId = resolveOutletDataId(existingExpense?.outletId);
+            const nextExpenses = expensesRef.current.filter(e => e.id !== expenseId);
+            expensesRef.current = nextExpenses;
+            setExpenses(nextExpenses);
+            if (outletId) {
+                markOutletAppDataMutated('expenses', outletId);
+                persistOutletCollectionImmediately('expenses', outletId, nextExpenses);
+            }
+        },
         
         wasteRecords,
         addWasteRecord: (recordData) => {
-            const newRecord = { ...recordData, id: `waste-${Date.now()}`, date: new Date().toISOString() };
-            setWasteRecords(prev => [...prev, newRecord]);
+            const outletId = resolveOutletDataId(recordData.outletId);
+            const newRecord = {
+                ...recordData,
+                id: `waste-${Date.now()}`,
+                date: new Date().toISOString(),
+                outletId: outletId || recordData.outletId,
+            };
+            const nextWasteRecords = [...wasteRecordsRef.current, newRecord];
+            wasteRecordsRef.current = nextWasteRecords;
+            setWasteRecords(nextWasteRecords);
+            if (outletId) {
+                markOutletAppDataMutated('wasteRecords', outletId);
+                persistOutletCollectionImmediately('wasteRecords', outletId, nextWasteRecords);
+            }
             return newRecord;
         },
 

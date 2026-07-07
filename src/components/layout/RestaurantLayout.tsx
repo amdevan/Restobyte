@@ -9,7 +9,7 @@ import {
   FiHome, FiBarChart2, FiTool, FiCommand, FiSettings, FiGlobe, FiBookmark,
   FiBox, FiAnchor, FiDatabase, FiShoppingCart, FiCornerUpLeft, FiArrowDownCircle,
   FiCornerLeftDown, FiArrowLeftCircle, FiTrash2, FiUsers, FiClock, FiFileText, FiMessageSquare,
-  FiCoffee, FiGrid, FiCalendar, FiDollarSign, FiChevronDown, FiChevronRight, FiTag,
+  FiCoffee, FiGrid, FiCalendar, FiDollarSign, FiChevronDown, FiChevronRight, FiChevronLeft, FiTag,
   FiMapPin, FiLayout, FiPrinter, FiMonitor, FiCreditCard, FiArchive, FiTrendingDown, FiAlertTriangle, FiClipboard,
   FiUploadCloud as ActualFiUploadCloud, FiKey as ActualFiKey, FiTruck, FiList, FiPlusCircle, FiActivity, FiTv,
   FiVolume2

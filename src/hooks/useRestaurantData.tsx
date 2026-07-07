@@ -844,6 +844,8 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
     const expenseCategoriesRef = useRef<ExpenseCategory[]>(initialExpenseCategories);
     const expensesRef = useRef<Expense[]>(initialExpenses);
     const wasteRecordsRef = useRef<WasteRecord[]>(initialWasteRecords);
+    const employeesRef = useRef<Employee[]>(initialEmployees);
+    const deliveryPartnersRef = useRef<DeliveryPartner[]>(initialDeliveryPartners);
 
     const fetchOutletAppData = useCallback(async (key: string, outletId: string) => {
         if (!isAuthenticated) return null;
@@ -1069,11 +1071,11 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             { key: 'expenseCategories', fallback: initialExpenseCategories, getValue: () => expenseCategoriesRef.current, setValue: (value) => setExpenseCategories(value) },
             { key: 'expenses', fallback: initialExpenses, getValue: () => expensesRef.current, setValue: (value) => setExpenses(value) },
             { key: 'wasteRecords', fallback: initialWasteRecords, getValue: () => wasteRecordsRef.current, setValue: (value) => setWasteRecords(value) },
-            { key: 'employees', fallback: initialEmployees, getValue: () => employees, setValue: (value) => setEmployees(value) },
+            { key: 'employees', fallback: initialEmployees, getValue: () => employeesRef.current, setValue: (value) => { employeesRef.current = value; setEmployees(value); } },
             { key: 'attendanceRecords', fallback: initialAttendanceRecords, getValue: () => attendanceRecords, setValue: (value) => setAttendanceRecords(value) },
             { key: 'payrollRecords', fallback: initialPayrollRecords, getValue: () => payrollRecords, setValue: (value) => setPayrollRecords(value) },
             { key: 'paymentMethods', fallback: initialPaymentMethods, getValue: () => paymentMethods, setValue: (value) => setPaymentMethods(value) },
-            { key: 'deliveryPartners', fallback: initialDeliveryPartners, getValue: () => deliveryPartners, setValue: (value) => setDeliveryPartners(value) },
+            { key: 'deliveryPartners', fallback: initialDeliveryPartners, getValue: () => deliveryPartnersRef.current, setValue: (value) => { deliveryPartnersRef.current = value; setDeliveryPartners(value); } },
             { key: 'isSelfOrderEnabled', fallback: false, getValue: () => isSelfOrderEnabled, setValue: (value) => setSelfOrderStatus(Boolean(value)) },
             { key: 'isReservationOrderEnabled', fallback: false, getValue: () => isReservationOrderEnabled, setValue: (value) => setReservationOrderStatus(Boolean(value)) },
             { key: 'reservationOrderReceivingUserIds', fallback: [] as string[], getValue: () => reservationOrderReceivingUserIds, setValue: (value) => setReservationOrderReceivingUserIds(Array.isArray(value) ? value : []) },
@@ -2914,12 +2916,38 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
 
         employees,
         addEmployee: (employeeData) => {
-            const newEmployee = { ...employeeData, id: `emp-${Date.now()}` };
-            setEmployees(prev => [...prev, newEmployee]);
+            const outletId = resolveOutletDataId(employeeData.outletId);
+            const newEmployee = { ...employeeData, id: `emp-${Date.now()}`, outletId: outletId || 'unknown' };
+            const nextEmployees = [...employeesRef.current, newEmployee];
+            employeesRef.current = nextEmployees;
+            setEmployees(nextEmployees);
+            if (outletId) {
+                markOutletAppDataMutated('employees', outletId);
+                persistOutletCollectionImmediately('employees', outletId, nextEmployees);
+            }
             return newEmployee;
         },
-        updateEmployee: (employee) => setEmployees(prev => prev.map(e => e.id === employee.id ? employee : e)),
-        deleteEmployee: (employeeId) => setEmployees(prev => prev.filter(e => e.id !== employeeId)),
+        updateEmployee: (employee) => {
+            const outletId = resolveOutletDataId(employee.outletId);
+            const nextEmployees = employeesRef.current.map(e => e.id === employee.id ? employee : e);
+            employeesRef.current = nextEmployees;
+            setEmployees(nextEmployees);
+            if (outletId) {
+                markOutletAppDataMutated('employees', outletId);
+                persistOutletCollectionImmediately('employees', outletId, nextEmployees);
+            }
+        },
+        deleteEmployee: (employeeId) => {
+            const existingEmployee = employeesRef.current.find((emp) => emp.id === employeeId);
+            const outletId = resolveOutletDataId(existingEmployee?.outletId);
+            const nextEmployees = employeesRef.current.filter(e => e.id !== employeeId);
+            employeesRef.current = nextEmployees;
+            setEmployees(nextEmployees);
+            if (outletId) {
+                markOutletAppDataMutated('employees', outletId);
+                persistOutletCollectionImmediately('employees', outletId, nextEmployees);
+            }
+        },
         
         attendanceRecords,
         markOrUpdateAttendance: (records) => {
@@ -2956,9 +2984,39 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         updatePaymentMethod: (method) => setPaymentMethods(prev => prev.map(p => p.id === method.id ? method : p)),
 
         deliveryPartners,
-        addDeliveryPartner: (partnerData) => setDeliveryPartners(prev => [...prev, { ...partnerData, id: `dp-${Date.now()}` }]),
-        updateDeliveryPartner: (partner) => setDeliveryPartners(prev => prev.map(p => p.id === partner.id ? partner : p)),
-        deleteDeliveryPartner: (partnerId) => setDeliveryPartners(prev => prev.filter(p => p.id !== partnerId)),
+        addDeliveryPartner: (partnerData) => {
+            const outletId = resolveOutletDataId(partnerData.outletId);
+            const newPartner = { ...partnerData, id: `dp-${Date.now()}`, outletId: outletId || 'unknown' };
+            const nextPartners = [...deliveryPartnersRef.current, newPartner];
+            deliveryPartnersRef.current = nextPartners;
+            setDeliveryPartners(nextPartners);
+            if (outletId) {
+                markOutletAppDataMutated('deliveryPartners', outletId);
+                persistOutletCollectionImmediately('deliveryPartners', outletId, nextPartners);
+            }
+            return newPartner;
+        },
+        updateDeliveryPartner: (partner) => {
+            const outletId = resolveOutletDataId(partner.outletId);
+            const nextPartners = deliveryPartnersRef.current.map(p => p.id === partner.id ? partner : p);
+            deliveryPartnersRef.current = nextPartners;
+            setDeliveryPartners(nextPartners);
+            if (outletId) {
+                markOutletAppDataMutated('deliveryPartners', outletId);
+                persistOutletCollectionImmediately('deliveryPartners', outletId, nextPartners);
+            }
+        },
+        deleteDeliveryPartner: (partnerId) => {
+            const existingPartner = deliveryPartnersRef.current.find((p) => p.id === partnerId);
+            const outletId = resolveOutletDataId(existingPartner?.outletId);
+            const nextPartners = deliveryPartnersRef.current.filter(p => p.id !== partnerId);
+            deliveryPartnersRef.current = nextPartners;
+            setDeliveryPartners(nextPartners);
+            if (outletId) {
+                markOutletAppDataMutated('deliveryPartners', outletId);
+                persistOutletCollectionImmediately('deliveryPartners', outletId, nextPartners);
+            }
+        },
 
         isSelfOrderEnabled, setSelfOrderStatus,
         isReservationOrderEnabled, setReservationOrderStatus,

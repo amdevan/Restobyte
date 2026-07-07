@@ -167,6 +167,7 @@ const RestaurantLayout: React.FC<{ children: React.ReactNode }> = ({ children })
   const currentPath = location.pathname;
   const [openMenuKey, setOpenMenuKey] = useState<string | null>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   const { getSingleActiveOutlet, hasPlanFeature } = useRestaurantData();
   const singleActiveOutlet = getSingleActiveOutlet();
@@ -423,9 +424,41 @@ const RestaurantLayout: React.FC<{ children: React.ReactNode }> = ({ children })
     ? [saleCustomerSection, ...sidebarSectionsWithoutSettings]
     : sidebarSectionsWithoutSettings;
 
+  // Close sidebar when navigating on mobile
+  useEffect(() => {
+    setIsMobileSidebarOpen(false);
+  }, [currentPath]);
+
   return (
     <div className="flex h-screen bg-gray-100">
-      <aside className={`${isSidebarCollapsed ? 'w-20' : 'w-64'} bg-[#0b0f14] text-white p-4 space-y-2 shadow-2xl flex flex-col overflow-y-auto custom-scrollbar transition-all duration-300 border-r border-white/5`}>
+      {/* Mobile Sidebar Overlay */}
+      {isMobileSidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
+          onClick={() => setIsMobileSidebarOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <aside
+        className={`
+          fixed md:relative z-50 md:z-0
+          ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0
+          ${isSidebarCollapsed ? 'w-20' : 'w-64'}
+          bg-[#0b0f14] text-white p-4 space-y-2 shadow-2xl flex flex-col overflow-y-auto custom-scrollbar transition-all duration-300 border-r border-white/5 h-full
+        `}
+      >
+        {/* Mobile Close Button */}
+        <div className="md:hidden flex justify-end mb-2">
+          <button
+            type="button"
+            onClick={() => setIsMobileSidebarOpen(false)}
+            className="p-2 rounded-full hover:bg-white/10 text-white"
+          >
+            <FiChevronLeft size={24} />
+          </button>
+        </div>
+
         <div className="text-xl font-bold text-left text-white py-4 border-b border-white/10 mb-2 px-2 flex items-center">
           {isSidebarCollapsed ? (
             <img src="/logo.png" alt="RestoByte" className="h-8 w-auto" />
@@ -434,7 +467,17 @@ const RestaurantLayout: React.FC<{ children: React.ReactNode }> = ({ children })
           )}
         </div>
         <nav className="flex-grow space-y-1">
-          <NavLink to="/app/dashboard" icon={<FiBarChart2 />} label="Dashboard" currentPath={currentPath} isCollapsed={isSidebarCollapsed} onCollapsedNavigate={() => setIsSidebarCollapsed(false)} />
+          <NavLink
+            to="/app/dashboard"
+            icon={<FiBarChart2 />}
+            label="Dashboard"
+            currentPath={currentPath}
+            isCollapsed={isSidebarCollapsed}
+            onCollapsedNavigate={() => {
+              setIsSidebarCollapsed(false);
+              setIsMobileSidebarOpen(false);
+            }}
+          />
 
           {sidebarSectionsOrdered.map(section => (
             <CollapsibleSidebarSection
@@ -448,15 +491,58 @@ const RestaurantLayout: React.FC<{ children: React.ReactNode }> = ({ children })
               onClick={() => handleMenuClick(section.key)}
               currentPath={currentPath}
               isCollapsed={isSidebarCollapsed}
-              onCollapsedNavigate={() => setIsSidebarCollapsed(false)}
+              onCollapsedNavigate={() => {
+                setIsSidebarCollapsed(false);
+                setIsMobileSidebarOpen(false);
+              }}
             />
           ))}
 
           <div className="pt-4 border-t border-white/10">
-            <NavLink to="/app/report" icon={<FiFileText />} label="Reports" currentPath={currentPath} isCollapsed={isSidebarCollapsed} onCollapsedNavigate={() => setIsSidebarCollapsed(false)} />
-            <NavLink to="/app/send-sms" icon={<FiMessageSquare />} label="Send SMS" currentPath={currentPath} isCollapsed={isSidebarCollapsed} onCollapsedNavigate={() => setIsSidebarCollapsed(false)} />
-            <NavLink to="/app/subscription" icon={<FiCreditCard />} label="Subscription" currentPath={currentPath} isCollapsed={isSidebarCollapsed} onCollapsedNavigate={() => setIsSidebarCollapsed(false)} />
-            <NavLink to="/app/outlet-setting" icon={<FiTool />} label="Outlet Setting" currentPath={currentPath} isCollapsed={isSidebarCollapsed} onCollapsedNavigate={() => setIsSidebarCollapsed(false)} />
+            <NavLink
+              to="/app/report"
+              icon={<FiFileText />}
+              label="Reports"
+              currentPath={currentPath}
+              isCollapsed={isSidebarCollapsed}
+              onCollapsedNavigate={() => {
+                setIsSidebarCollapsed(false);
+                setIsMobileSidebarOpen(false);
+              }}
+            />
+            <NavLink
+              to="/app/send-sms"
+              icon={<FiMessageSquare />}
+              label="Send SMS"
+              currentPath={currentPath}
+              isCollapsed={isSidebarCollapsed}
+              onCollapsedNavigate={() => {
+                setIsSidebarCollapsed(false);
+                setIsMobileSidebarOpen(false);
+              }}
+            />
+            <NavLink
+              to="/app/subscription"
+              icon={<FiCreditCard />}
+              label="Subscription"
+              currentPath={currentPath}
+              isCollapsed={isSidebarCollapsed}
+              onCollapsedNavigate={() => {
+                setIsSidebarCollapsed(false);
+                setIsMobileSidebarOpen(false);
+              }}
+            />
+            <NavLink
+              to="/app/outlet-setting"
+              icon={<FiTool />}
+              label="Outlet Setting"
+              currentPath={currentPath}
+              isCollapsed={isSidebarCollapsed}
+              onCollapsedNavigate={() => {
+                setIsSidebarCollapsed(false);
+                setIsMobileSidebarOpen(false);
+              }}
+            />
             {settingsSection && (
               <CollapsibleSidebarSection
                 name="settings"
@@ -468,15 +554,29 @@ const RestaurantLayout: React.FC<{ children: React.ReactNode }> = ({ children })
                 onClick={() => handleMenuClick('settings')}
                 currentPath={currentPath}
                 isCollapsed={isSidebarCollapsed}
-                onCollapsedNavigate={() => setIsSidebarCollapsed(false)}
+                onCollapsedNavigate={() => {
+                  setIsSidebarCollapsed(false);
+                  setIsMobileSidebarOpen(false);
+                }}
               />
             )}
           </div>
         </nav>
       </aside>
+
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header title={currentPageLabel} onToggleSidebar={() => setIsSidebarCollapsed(v => !v)} isSidebarCollapsed={isSidebarCollapsed} />
-        <main className="flex-1 overflow-y-auto custom-scrollbar p-6">
+        <Header
+          title={currentPageLabel}
+          onToggleSidebar={() => {
+            if (window.innerWidth < 768) {
+              setIsMobileSidebarOpen(v => !v);
+            } else {
+              setIsSidebarCollapsed(v => !v);
+            }
+          }}
+          isSidebarCollapsed={isSidebarCollapsed || isMobileSidebarOpen}
+        />
+        <main className="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-6">
           {children}
         </main>
         <Footer />

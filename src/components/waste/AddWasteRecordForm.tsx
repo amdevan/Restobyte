@@ -10,10 +10,12 @@ import { FiPlus, FiTrash2, FiSave, FiXCircle, FiCalendar, FiUser, FiInfo, FiEdit
 interface AddWasteRecordFormProps {
   onClose: () => void;
   onSubmit: (data: {
+    date: string;
     reason: string;
     responsiblePerson?: string;
     notes?: string;
     items: WasteItem[];
+    totalEstimatedLoss: number;
   }) => void;
 }
 
@@ -108,10 +110,12 @@ const AddWasteRecordForm: React.FC<AddWasteRecordFormProps> = ({ onClose, onSubm
     }
 
     onSubmit({
+      date,
       reason: finalReason,
       responsiblePerson: responsiblePerson.trim() || undefined,
       notes: overallNotes.trim() || undefined,
       items: processedItems,
+      totalEstimatedLoss,
     });
     onClose();
   };

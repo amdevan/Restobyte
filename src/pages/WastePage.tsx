@@ -12,6 +12,11 @@ import ViewWasteRecordDetailsModal from '@/components/waste/ViewWasteRecordDetai
 import Money from '@/components/common/Money';
 import { FiSearch, FiCalendar, FiFilter, FiXCircle, FiEye, FiPlusCircle, FiTrash2, FiArchive } from 'react-icons/fi';
 
+const getWasteRecordEstimatedLoss = (record: WasteRecord) => {
+  if (typeof record.totalEstimatedLoss === 'number') return record.totalEstimatedLoss;
+  return record.items.reduce((sum, item) => sum + (Number(item.quantityWasted) || 0) * (Number(item.costAtTimeOfWaste) || 0), 0);
+};
+
 const WastePage: React.FC = () => {
   const { wasteRecords, addWasteRecord, stockItems, getSingleActiveOutlet } = useRestaurantData();
   const outlet = getSingleActiveOutlet();
@@ -75,7 +80,7 @@ const WastePage: React.FC = () => {
     setIsDetailsModalOpen(false);
   };
   
-  const handleAddWasteSubmit = (data: { reason: string; responsiblePerson?: string; notes?: string; items: WasteItem[]; }) => {
+  const handleAddWasteSubmit = (data: { date: string; reason: string; responsiblePerson?: string; notes?: string; items: WasteItem[]; totalEstimatedLoss: number; }) => {
     if (!outlet) {
       alert('An active outlet must be selected to record waste.');
       return;
@@ -84,7 +89,7 @@ const WastePage: React.FC = () => {
   };
   
   const totalEstimatedLossValue = useMemo(() => {
-    return filteredWasteRecords.reduce((sum, record) => sum + (record.totalEstimatedLoss || 0), 0);
+    return filteredWasteRecords.reduce((sum, record) => sum + getWasteRecordEstimatedLoss(record), 0);
   }, [filteredWasteRecords]);
 
   return (
@@ -196,7 +201,7 @@ const WastePage: React.FC = () => {
                     </td>
                     <td className="py-3 px-4 text-sm text-gray-600">{record.responsiblePerson || '-'}</td>
                     <td className="py-3 px-4 text-sm text-red-600 font-semibold text-right">
-                      {record.totalEstimatedLoss !== undefined ? <Money amount={record.totalEstimatedLoss} /> : '-'}
+                      <Money amount={getWasteRecordEstimatedLoss(record)} />
                     </td>
                     <td className="py-3 px-4 text-center">
                       <Button onClick={() => handleOpenDetailsModal(record)} variant="outline" size="sm" leftIcon={<FiEye />}>

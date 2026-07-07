@@ -21,8 +21,15 @@ const DetailItem: React.FC<{ label: string; value?: React.ReactNode; icon?: Reac
   </div>
 );
 
+const getWasteRecordEstimatedLoss = (wasteRecord: WasteRecord) => {
+  if (typeof wasteRecord.totalEstimatedLoss === 'number') return wasteRecord.totalEstimatedLoss;
+  return wasteRecord.items.reduce((sum, item) => sum + (Number(item.quantityWasted) || 0) * (Number(item.costAtTimeOfWaste) || 0), 0);
+};
+
 const ViewWasteRecordDetailsModal: React.FC<ViewWasteRecordDetailsModalProps> = ({ wasteRecord, onClose }) => {
   if (!wasteRecord) return null;
+
+  const totalEstimatedLoss = getWasteRecordEstimatedLoss(wasteRecord);
 
   return (
     <div className="text-sm text-gray-700 max-h-[80vh] flex flex-col">
@@ -74,11 +81,11 @@ const ViewWasteRecordDetailsModal: React.FC<ViewWasteRecordDetailsModalProps> = 
           </div>
         </div>
 
-        {wasteRecord.totalEstimatedLoss !== undefined && (
+        {totalEstimatedLoss > 0 && (
           <div className="mt-4 pt-3 border-t text-right">
             <DetailItem 
                 label="Total Estimated Loss" 
-                value={<Money amount={wasteRecord.totalEstimatedLoss} />} 
+                value={<Money amount={totalEstimatedLoss} />} 
                 className="flex justify-between items-center text-lg font-bold text-red-600" 
             />
           </div>

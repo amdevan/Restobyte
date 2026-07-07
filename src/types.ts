@@ -1036,7 +1036,7 @@ export interface RestaurantDataContextType {
     deleteExpense: (expenseId: string) => void;
 
     wasteRecords: WasteRecord[];
-    addWasteRecord: (recordData: Omit<WasteRecord, 'id' | 'date'>) => WasteRecord;
+    addWasteRecord: (recordData: Omit<WasteRecord, 'id'>) => WasteRecord;
 
     employees: Employee[];
     addEmployee: (employeeData: Omit<Employee, 'id'>) => Employee;

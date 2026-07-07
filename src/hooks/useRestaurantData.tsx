@@ -2892,10 +2892,14 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         wasteRecords,
         addWasteRecord: (recordData) => {
             const outletId = resolveOutletDataId(recordData.outletId);
+            const totalEstimatedLoss = typeof recordData.totalEstimatedLoss === 'number'
+                ? recordData.totalEstimatedLoss
+                : recordData.items.reduce((sum, item) => sum + (Number(item.quantityWasted) || 0) * (Number(item.costAtTimeOfWaste) || 0), 0);
             const newRecord = {
                 ...recordData,
                 id: `waste-${Date.now()}`,
-                date: new Date().toISOString(),
+                date: recordData.date || new Date().toISOString(),
+                totalEstimatedLoss,
                 outletId: outletId || recordData.outletId,
             };
             const nextWasteRecords = [...wasteRecordsRef.current, newRecord];

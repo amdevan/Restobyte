@@ -1,14 +1,14 @@
 
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import * as ReactRouterDom from 'react-router-dom';
 import { useRestaurantData } from '@/hooks/useRestaurantData';
-import { PurchaseItem as PurchaseItemType, Supplier } from '@/types';
+import { PurchaseItem as PurchaseItemType } from '@/types';
 import Input from '@/components/common/Input';
 import Button from '@/components/common/Button';
 import Card from '@/components/common/Card';
 import Money from '@/components/common/Money';
-import { FiPlus, FiTrash2, FiSave, FiArrowLeft, FiShoppingCart, FiBox } from 'react-icons/fi';
+import { FiPlus, FiTrash2, FiSave, FiArrowLeft, FiShoppingCart } from 'react-icons/fi';
 
 interface PurchaseLine {
   id: string; // Temporary client-side ID for the line
@@ -23,7 +23,7 @@ interface PurchaseLine {
 const UNITS = ["kg", "g", "ltr", "ml", "pcs", "pack", "dozen", "bottle", "can", "box", "unit"]; // Same as AddStockEntry
 
 const AddPurchasePage: React.FC = () => {
-  const { suppliers, addPurchase, findOrCreateStockItem, addSupplier: contextAddSupplier, getSingleActiveOutlet } = useRestaurantData();
+  const { suppliers, addPurchase, addSupplier: contextAddSupplier, getSingleActiveOutlet } = useRestaurantData();
   const navigate = ReactRouterDom.useNavigate();
   const outlet = getSingleActiveOutlet();
 
@@ -176,7 +176,7 @@ const AddPurchasePage: React.FC = () => {
     setPurchaseLines([{ id: Date.now().toString(), itemName: '', itemCategory: '', itemUnit: UNITS[0], itemLowStockThreshold: '0', quantityPurchased: '', costPerUnit: '' }]);
     setTaxAmount('');
     setDiscountAmount('');
-    navigate('/purchase'); // Navigate to purchase list page
+    navigate('/app/purchase'); // Navigate to purchase list page
   };
 
   return (
@@ -386,7 +386,7 @@ const AddPurchasePage: React.FC = () => {
               <Button type="submit" variant="primary" leftIcon={<FiSave size={18}/>} disabled={isSubmitDisabled()}>
                 Save Purchase Order
               </Button>
-              <Button type="button" variant="secondary" onClick={() => navigate('/purchase')} leftIcon={<FiArrowLeft size={18}/>}>
+              <Button type="button" variant="secondary" onClick={() => navigate('/app/purchase')} leftIcon={<FiArrowLeft size={18}/>}>
                 Cancel & Back to List
               </Button>
             </div>

@@ -10,7 +10,7 @@ import Button from '@/components/common/Button';
 import Modal from '@/components/common/Modal';
 import ViewPurchaseDetailsModal from '@/components/purchase/ViewPurchaseDetailsModal';
 import Money from '@/components/common/Money';
-import { FiSearch, FiCalendar, FiFilter, FiXCircle, FiEye, FiPlusCircle, FiArchive, FiShoppingCart } from 'react-icons/fi';
+import { FiSearch, FiCalendar, FiXCircle, FiEye, FiPlusCircle, FiArchive, FiShoppingCart } from 'react-icons/fi';
 
 const PurchasePage: React.FC = () => {
   const { purchases, suppliers } = useRestaurantData();
@@ -76,7 +76,7 @@ const PurchasePage: React.FC = () => {
         <h1 className="text-2xl sm:text-3xl font-semibold text-gray-800 flex items-center">
             <FiShoppingCart className="mr-3 text-sky-600"/> Purchase Orders
         </h1>
-        <Button onClick={() => navigate('/purchase/add')} leftIcon={<FiPlusCircle />} variant="primary">
+        <Button onClick={() => navigate('/app/purchase/add')} leftIcon={<FiPlusCircle />} variant="primary">
             Add New Purchase
         </Button>
       </div>

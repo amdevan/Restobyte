@@ -8,7 +8,7 @@ import { Plan } from '@/types';
 import Modal from '@/components/common/Modal';
 import PlanForm from '@/components/saas/PlanForm';
 
-const PlanCard: React.FC<{ plan: Plan; isCurrent: boolean; currentPrice: number; onEdit?: (plan: Plan) => void; onDelete?: (plan: Plan) => void; canManage?: boolean; }> = ({ plan, isCurrent, currentPrice, onEdit, onDelete, canManage = false }) => {
+const PlanCard: React.FC<{ plan: Plan; isCurrent: boolean; currentPrice: number; onSelect?: (plan: Plan) => void; onEdit?: (plan: Plan) => void; onDelete?: (plan: Plan) => void; canManage?: boolean; }> = ({ plan, isCurrent, currentPrice, onSelect, onEdit, onDelete, canManage = false }) => {
     const isUpgrade = plan.price > currentPrice;
     const isDowngrade = plan.price < currentPrice;
     const maxFeaturesToShow = 4;
@@ -26,6 +26,7 @@ const PlanCard: React.FC<{ plan: Plan; isCurrent: boolean; currentPrice: number;
                     size="sm"
                     className="w-full mt-6"
                     rightIcon={<FiArrowUpRight />}
+                    onClick={() => onSelect?.(plan)}
                 >
                     Upgrade
                 </Button>
@@ -38,13 +39,19 @@ const PlanCard: React.FC<{ plan: Plan; isCurrent: boolean; currentPrice: number;
                     size="sm"
                     className="w-full mt-6 bg-white/70"
                     rightIcon={<FiArrowDownRight />}
+                    onClick={() => onSelect?.(plan)}
                 >
                     Downgrade
                 </Button>
             );
         }
         return (
-            <Button variant="outline" size="sm" className="w-full mt-6 bg-white/70">
+            <Button 
+                variant="outline" 
+                size="sm" 
+                className="w-full mt-6 bg-white/70"
+                onClick={() => onSelect?.(plan)}
+            >
                 Choose Plan
             </Button>
         );
@@ -119,11 +126,12 @@ const PlanCard: React.FC<{ plan: Plan; isCurrent: boolean; currentPrice: number;
 
 
 const SubscriptionPage: React.FC = () => {
-    const { getSingleActiveOutlet, plans, addPlan, updatePlan, deletePlan } = useRestaurantData();
+    const { getSingleActiveOutlet, plans, addPlan, updatePlan, deletePlan, selectPlan } = useRestaurantData();
     const { user } = useAuth();
     const outlet = getSingleActiveOutlet();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
 
     if (!outlet) {
         return <FeatureDisabledPage type="selectOutlet" featureName="Subscription Details" />;
@@ -149,6 +157,23 @@ const SubscriptionPage: React.FC = () => {
             await deletePlan(plan.id);
         } catch {
             alert('Failed to delete plan');
+        }
+    };
+
+    const handleSelectPlan = async (plan: Plan) => {
+        if (isLoading) return;
+        const confirmMessage = plan.price > (currentPlanDetails?.price || 0)
+            ? `Are you sure you want to upgrade to "${plan.name}"?`
+            : `Are you sure you want to downgrade to "${plan.name}"?`;
+        if (!window.confirm(confirmMessage)) return;
+        
+        setIsLoading(true);
+        try {
+            await selectPlan(plan.name);
+        } catch (error) {
+            alert(error instanceof Error ? error.message : 'Failed to update plan');
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -212,6 +237,7 @@ const SubscriptionPage: React.FC = () => {
                         plan={plan}
                         isCurrent={plan.name === outlet.plan}
                         currentPrice={currentPlanDetails?.price || 0}
+                        onSelect={handleSelectPlan}
                         canManage={canManagePlans}
                         onEdit={handleOpenModal}
                         onDelete={handleDeletePlan}

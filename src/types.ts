@@ -1105,6 +1105,7 @@ export interface RestaurantDataContextType {
     addPlan: (planData: Omit<Plan, 'id'>) => Promise<void>;
     updatePlan: (updatedPlan: Plan) => Promise<void>;
     deletePlan: (planId: string) => Promise<void>;
+    selectPlan: (planName: string) => Promise<void>;
     tenantEntitlements?: TenantEntitlements | null;
     hasPlanFeature: (featureKey: PlanFeatureKey) => boolean;
 

@@ -1,5 +1,5 @@
 import express from 'express';
-import { createTenant, listTenants, updateTenant, deleteTenant, getTenantDetails, getMyTenantCurrency, getMyTenantEntitlements, sendInvoiceReminder } from '../controllers/tenantController.js';
+import { createTenant, listTenants, updateTenant, deleteTenant, getTenantDetails, getMyTenantCurrency, getMyTenantEntitlements, updateMyTenantPlan, sendInvoiceReminder } from '../controllers/tenantController.js';
 import { authenticate } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
@@ -10,6 +10,7 @@ router.get('/:id/details', getTenantDetails);
 router.post('/:id/invoices/:invoiceId/remind', authenticate, sendInvoiceReminder);
 router.get('/me-currency', authenticate, getMyTenantCurrency);
 router.get('/me-entitlements', authenticate, getMyTenantEntitlements);
+router.put('/me-plan', authenticate, updateMyTenantPlan);
 router.put('/:id', updateTenant);
 router.delete('/:id', deleteTenant);
 

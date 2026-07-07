@@ -471,36 +471,106 @@ export const getMyTenantCurrency = async (req: Request, res: Response): Promise<
   }
 };
 
-export const getMyTenantEntitlements = async (req: Request, res: Response): Promise<void> => {
-  const auth = req as AuthRequest;
-  const tenantId = auth.user?.tenantId;
-  if (!tenantId) {
-    res.status(403).json({ message: 'Unauthorized' });
-    return;
-  }
-
-  try {
-    const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
-    if (!tenant) {
-      res.status(404).json({ message: 'Tenant not found' });
-      return;
+export const updateMyTenantPlan = async (req: Request, res: Response): Promise<void> => {
+    const auth = req as AuthRequest;
+    const tenantId = auth.user?.tenantId;
+    if (!tenantId) {
+        res.status(403).json({ message: 'Unauthorized' });
+        return;
     }
 
-    const plan = await prisma.planDefinition.findUnique({ where: { name: tenant.plan } });
-    const normalized = resolvePlanConfig(plan || { name: tenant.plan });
-    res.json({
-      planName: tenant.plan,
-      subscriptionStatus: tenant.subscriptionStatus,
-      trialDays: (tenant as any).trialDays ?? normalized.trialDays,
-      trialEndsAt: (tenant as any).trialEndsAt ?? null,
-      featureKeys: normalized.featureKeys,
-      features: normalized.features,
-      limits: normalized.limits,
-      currencyCode: (tenant as any).currencyCode ?? 'NPR',
-      countryCode: (tenant as any).countryCode ?? null,
-    });
-  } catch (error) {
-    console.error('getMyTenantEntitlements error:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
+    try {
+        const { planName } = req.body;
+        if (!planName || typeof planName !== 'string') {
+            res.status(400).json({ message: 'planName is required' });
+            return;
+        }
+
+        // Verify plan exists and is active
+        const selectedPlan = await prisma.planDefinition.findUnique({
+            where: { name: planName },
+        });
+
+        if (!selectedPlan || !selectedPlan.isActive) {
+            res.status(400).json({ message: 'Invalid or inactive plan' });
+            return;
+        }
+
+        // Update tenant plan
+        const now = new Date();
+        const trialEndsAt = selectedPlan.trialDays > 0
+            ? new Date(now.getTime() + selectedPlan.trialDays * 24 * 60 * 60 * 1000)
+            : null;
+
+        const updatedTenant = await prisma.tenant.update({
+            where: { id: tenantId },
+            data: {
+                plan: planName,
+                subscriptionStatus: selectedPlan.trialDays > 0 ? 'trialing' : 'active',
+                trialDays: selectedPlan.trialDays,
+                trialEndsAt,
+            },
+        });
+
+        // Also update all outlets for this tenant
+        await prisma.outlet.updateMany({
+            where: { tenantId },
+            data: {
+                plan: planName,
+                subscriptionStatus: selectedPlan.trialDays > 0 ? 'trialing' : 'active',
+                planExpiryDate: trialEndsAt,
+            },
+        });
+
+        // Return updated entitlements
+        const normalized = resolvePlanConfig(selectedPlan);
+        res.json({
+            planName: updatedTenant.plan,
+            subscriptionStatus: updatedTenant.subscriptionStatus,
+            trialDays: (updatedTenant as any).trialDays ?? normalized.trialDays,
+            trialEndsAt: (updatedTenant as any).trialEndsAt ?? null,
+            featureKeys: normalized.featureKeys,
+            features: normalized.features,
+            limits: normalized.limits,
+            currencyCode: (updatedTenant as any).currencyCode ?? 'NPR',
+            countryCode: (updatedTenant as any).countryCode ?? null,
+        });
+    } catch (error) {
+        console.error('updateMyTenantPlan error:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
+export const getMyTenantEntitlements = async (req: Request, res: Response): Promise<void> => {
+    const auth = req as AuthRequest;
+    const tenantId = auth.user?.tenantId;
+    if (!tenantId) {
+        res.status(403).json({ message: 'Unauthorized' });
+        return;
+    }
+
+    try {
+        const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
+        if (!tenant) {
+            res.status(404).json({ message: 'Tenant not found' });
+            return;
+        }
+
+        const plan = await prisma.planDefinition.findUnique({ where: { name: tenant.plan } });
+        const normalized = resolvePlanConfig(plan || { name: tenant.plan });
+        res.json({
+            planName: tenant.plan,
+            subscriptionStatus: tenant.subscriptionStatus,
+            trialDays: (tenant as any).trialDays ?? normalized.trialDays,
+            trialEndsAt: (tenant as any).trialEndsAt ?? null,
+            featureKeys: normalized.featureKeys,
+            features: normalized.features,
+            limits: normalized.limits,
+            currencyCode: (tenant as any).currencyCode ?? 'NPR',
+            countryCode: (tenant as any).countryCode ?? null,
+        });
+    } catch (error) {
+        console.error('getMyTenantEntitlements error:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
 };

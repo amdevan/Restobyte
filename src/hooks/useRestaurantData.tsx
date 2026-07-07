@@ -3495,6 +3495,89 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             if (!res.ok && res.status !== 204) throw new Error('Failed to delete plan');
             await fetchPlans();
         },
+        selectPlan: async (planName) => {
+            const token = localStorage.getItem('authToken');
+            if (!token) {
+                throw new Error('Unauthorized');
+            }
+
+            const res = await fetch(`${API_BASE_URL}/tenants/me-plan`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ planName }),
+            });
+
+            if (res.status === 401) {
+                logout();
+                throw new Error('Unauthorized');
+            }
+
+            if (!res.ok) {
+                const err = await res.json().catch(() => null);
+                throw new Error(err?.message || 'Failed to update plan');
+            }
+
+            const updatedEntitlements = await res.json();
+            setTenantEntitlements({
+                planName: String(updatedEntitlements.planName || ''),
+                subscriptionStatus: (updatedEntitlements.subscriptionStatus === 'inactive' ? 'inactive' : updatedEntitlements.subscriptionStatus === 'active' ? 'active' : 'trialing'),
+                trialDays: Number(updatedEntitlements.trialDays) || 0,
+                trialEndsAt: typeof updatedEntitlements.trialEndsAt === 'string' ? updatedEntitlements.trialEndsAt : null,
+                featureKeys: updatedEntitlements.featureKeys.map((v: any) => String(v) as PlanFeatureKey),
+                features: Array.isArray(updatedEntitlements.features) ? updatedEntitlements.features.map((v: any) => String(v)).filter(Boolean) : [],
+                limits: typeof updatedEntitlements.limits === 'object' && updatedEntitlements.limits ? { maxTables: Number((updatedEntitlements.limits as any).maxTables) || 0 } : undefined,
+                currencyCode: typeof updatedEntitlements.currencyCode === 'string' ? updatedEntitlements.currencyCode : null,
+                countryCode: typeof updatedEntitlements.countryCode === 'string' ? updatedEntitlements.countryCode : null,
+            });
+
+            // Refresh outlets to get updated plan info
+            const outletRes = await fetch(`${API_BASE_URL}/outlets`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (outletRes.ok) {
+                const data = await outletRes.json().catch(() => null);
+                if (Array.isArray(data)) {
+                    const normalized: Outlet[] = data.map((o: any) => {
+                        const outletType = o?.outletType === 'CloudKitchen' ? 'CloudKitchen' : 'Restaurant';
+                        const remoteTaxes = Array.isArray(o?.taxes) ? o.taxes : [];
+                        const taxes: Tax[] = remoteTaxes
+                            .map((t: any) => ({
+                                id: typeof t?.id === 'string' ? t.id : `tax-${Math.random().toString(16).slice(2)}`,
+                                name: typeof t?.name === 'string' ? t.name : '',
+                                rate: typeof t?.rate === 'number' ? t.rate : Number(t?.rate),
+                            }))
+                            .filter((t: any) => typeof t.name === 'string' && t.name.trim() && Number.isFinite(t.rate) && t.rate >= 0);
+
+                        return {
+                            id: String(o.id),
+                            name: String(o.name),
+                            restaurantName: typeof o?.restaurantName === 'string' && o.restaurantName.trim() ? o.restaurantName : String(o.name),
+                            outletType,
+                            address: typeof o.address === 'string' ? o.address : '',
+                            phone: typeof o.phone === 'string' ? o.phone : '',
+                            email: typeof o.email === 'string' ? o.email : undefined,
+                            logoUrl: typeof o.logoUrl === 'string' ? o.logoUrl : undefined,
+                            taxes,
+                            whatsappNumber: typeof o.whatsappNumber === 'string' ? o.whatsappNumber : undefined,
+                            whatsappOrderingEnabled: Boolean(o.whatsappOrderingEnabled),
+                            whatsappDefaultMessage: typeof o.whatsappDefaultMessage === 'string' ? o.whatsappDefaultMessage : undefined,
+                            fonepayIsEnabled: Boolean(o.fonepayIsEnabled),
+                            fonepayMerchantCode: typeof o.fonepayMerchantCode === 'string' ? o.fonepayMerchantCode : undefined,
+                            fonepayTerminalId: typeof o.fonepayTerminalId === 'string' ? o.fonepayTerminalId : undefined,
+                            fonepayCurrency: typeof o.fonepayCurrency === 'string' ? o.fonepayCurrency : undefined,
+                            plan: typeof o.plan === 'string' ? o.plan : undefined,
+                            subscriptionStatus: typeof o.subscriptionStatus === 'string' ? o.subscriptionStatus : undefined,
+                            registrationDate: typeof o.createdAt === 'string' ? o.createdAt : undefined,
+                            planExpiryDate: typeof o.planExpiryDate === 'string' ? o.planExpiryDate : undefined,
+                        };
+                    });
+                    setOutlets(normalized);
+                }
+            }
+        },
         tenantEntitlements,
         hasPlanFeature: (featureKey) => {
             if (user?.isSuperAdmin) return true;

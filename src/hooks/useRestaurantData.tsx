@@ -2810,12 +2810,42 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             }
             return newPurchase;
         },
+        updatePurchase: (purchase) => {
+            const outletId = resolveOutletDataId(purchase.outletId);
+            const nextPurchases = purchasesRef.current.map(p => p.id === purchase.id ? purchase : p);
+            purchasesRef.current = nextPurchases;
+            setPurchases(nextPurchases);
+            if (outletId) {
+                markOutletAppDataMutated('purchases', outletId);
+                persistOutletCollectionImmediately('purchases', outletId, nextPurchases);
+            }
+        },
+        deletePurchase: (purchaseId) => {
+            const existingPurchase = purchasesRef.current.find((purchase) => purchase.id === purchaseId);
+            const outletId = resolveOutletDataId(existingPurchase?.outletId);
+            const nextPurchases = purchasesRef.current.filter(p => p.id !== purchaseId);
+            purchasesRef.current = nextPurchases;
+            setPurchases(nextPurchases);
+            if (outletId) {
+                markOutletAppDataMutated('purchases', outletId);
+                persistOutletCollectionImmediately('purchases', outletId, nextPurchases);
+            }
+        },
         recordSupplierPayment: (purchaseId: string, amountPaid: number, paymentDate: string, paymentMethod: string, reference?: string, notes?: string) => {
             const existingPurchase = purchasesRef.current.find((purchase) => purchase.id === purchaseId);
             const outletId = resolveOutletDataId(existingPurchase?.outletId);
+            const newPayment: any = {
+                id: `payment-${Date.now()}`,
+                amountPaid,
+                paymentDate,
+                paymentMethod,
+                reference,
+                notes,
+            };
             const nextPurchases = purchasesRef.current.map((purchase) => purchase.id === purchaseId ? {
                 ...purchase,
                 paidAmount: (purchase.paidAmount || 0) + amountPaid,
+                payments: [...(purchase.payments || []), newPayment],
             } : purchase);
             purchasesRef.current = nextPurchases;
             setPurchases(nextPurchases);

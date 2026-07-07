@@ -255,6 +255,15 @@ export interface PurchaseItem {
   subTotal: number; // quantityPurchased * costPerUnit
 }
 
+export interface SupplierPayment {
+  id: string;
+  amountPaid: number;
+  paymentDate: string;
+  paymentMethod: string;
+  reference?: string;
+  notes?: string;
+}
+
 export interface Purchase {
   id: string; // Unique ID for the purchase
   purchaseNumber: string; // Auto-generated or user-input
@@ -268,6 +277,7 @@ export interface Purchase {
   discountAmount?: number; // Optional
   grandTotalAmount: number;
   paidAmount?: number; // Amount paid for this purchase, defaults to 0
+  payments?: SupplierPayment[]; // Payment history
   notes?: string;
   stockEntryId?: string; // ID of the StockEntry created from this purchase
   outletId: string;
@@ -1023,6 +1033,8 @@ export interface RestaurantDataContextType {
 
     purchases: Purchase[];
     addPurchase: (purchaseData: Omit<Purchase, 'id' | 'date' | 'stockEntryId'>) => Purchase;
+    updatePurchase: (purchase: Purchase) => void;
+    deletePurchase: (purchaseId: string) => void;
     recordSupplierPayment: (purchaseId: string, amountPaid: number, paymentDate: string, paymentMethod: string, reference?: string, notes?: string) => void;
 
     expenseCategories: ExpenseCategory[];

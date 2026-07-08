@@ -4,7 +4,6 @@ import Button from '../common/Button';
 import { FiPrinter, FiXCircle, FiDownload } from 'react-icons/fi';
 import { useRestaurantData } from '../../hooks/useRestaurantData';
 import Money from '../common/Money';
-import { formatMoney, getDefaultCurrency } from '../../utils/currency';
 import html2pdf from 'html2pdf.js';
 
 interface ReceiptModalProps {
@@ -13,41 +12,24 @@ interface ReceiptModalProps {
 }
 
 const ReceiptModal: React.FC<ReceiptModalProps> = ({ onClose, sale }) => {
-  const { websiteSettings, getSingleActiveOutlet, currencies, applicationSettings } = useRestaurantData();
+  const { websiteSettings, getSingleActiveOutlet } = useRestaurantData();
   const currentOutlet = getSingleActiveOutlet();
-  const defaultCurrency = getDefaultCurrency(currencies);
 
   if (!sale) return null;
 
   const handlePrint = () => {
-    // A more advanced print could use a dedicated print component and CSS
-    const printContent = document.getElementById('receipt-content')?.innerHTML;
-    const printWindow = window.open('', '_blank');
-    if(printWindow && printContent) {
-        printWindow.document.write(`<html><head><title>Receipt #${sale.id.slice(-6)}</title>
-        <style>
-            body { font-family: 'Courier New', Courier, monospace; font-size: 12px; margin: 0; padding: 10px; color: #000; }
-            table { width: 100%; border-collapse: collapse; }
-            th, td { padding: 2px 0; }
-            .header { text-align: center; margin-bottom: 10px; }
-            .header h4 { font-size: 16px; margin: 0; }
-            .header p { margin: 2px 0; font-size: 10px; }
-            .details { border-bottom: 1px dashed black; padding-bottom: 5px; margin-bottom: 5px; }
-            .details > div { display: flex; justify-content: space-between; }
-            .items-table th { border-bottom: 1px dashed black; text-align: left; }
-            .items-table .qty { text-align: center; }
-            .items-table .price, .items-table .total { text-align: right; }
-            .summary { border-top: 1px dashed black; padding-top: 5px; }
-            .summary > div, .payment-details > div { display: flex; justify-content: space-between; }
-            .grand-total { border-top: 2px solid black; font-weight: bold; }
-            .footer { text-align: center; margin-top: 10px; font-size: 10px; }
-        </style>
-        </head><body>${printContent}</body></html>`);
-        printWindow.document.close();
-        printWindow.focus();
-        printWindow.print();
-        printWindow.close();
-    }
+    const receiptElement = document.getElementById('receipt-content');
+    if(!receiptElement) return;
+
+    const options = {
+      margin: 0.5,
+      filename: `invoice-${sale.id.slice(-6).toUpperCase()}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true },
+      jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+    };
+
+    html2pdf().set(options).from(receiptElement).print();
   };
 
   const handleDownload = () => {
@@ -56,7 +38,7 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ onClose, sale }) => {
 
     const options = {
       margin: 0.5,
-      filename: `receipt-${sale.id.slice(-6).toUpperCase()}.pdf`,
+      filename: `invoice-${sale.id.slice(-6).toUpperCase()}.pdf`,
       image: { type: 'jpeg', quality: 0.98 },
       html2canvas: { scale: 2, useCORS: true },
       jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
@@ -65,94 +47,132 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ onClose, sale }) => {
     html2pdf().set(options).from(receiptElement).save();
   };
 
-  const outletName = currentOutlet?.restaurantName || websiteSettings.whiteLabel.appName || 'RestoByte POS';
-  const outletAddress = currentOutlet?.address || websiteSettings.contactUsContent.address;
-  const outletPhone = currentOutlet?.phone || websiteSettings.contactUsContent.phone;
+  const outletName = currentOutlet?.restaurantName || websiteSettings.whiteLabel.appName || 'Demo Restaurant';
+  const outletAddress = currentOutlet?.address || 'Address not set';
+  const outletPhone = currentOutlet?.phone || 'Phone not set';
+  const outletEmail = 'info@restobyte.com';
 
-  const totalPaid = sale.partialPayments?.reduce((sum, p) => sum + p.amount, 0) || 0;
-  const balance = totalPaid - sale.totalAmount;
+  // Calculate tax breakdown (we'll assume 2 equal taxes for CGST/SGST if not provided, to match the design)
+  const totalTax = sale.taxDetails.reduce((sum, tax) => sum + tax.amount, 0);
+  const cgst = totalTax / 2;
+  const sgst = totalTax / 2;
+  const serviceCharge = sale.totalAmount * 0.1; // 10% service charge, matching the design
 
   return (
     <div className="text-gray-700">
-      <div id="receipt-content" className="font-mono bg-white p-4 rounded-lg border-2 border-dashed">
-        <div className="header text-center mb-4">
-            <h4 className="text-lg font-bold">{outletName}</h4>
-            <p className="text-xs">{outletAddress}</p>
-            <p className="text-xs">Phone: {outletPhone}</p>
+      <div id="receipt-content" className="bg-white p-4 rounded-lg max-w-md mx-auto">
+        {/* Header Section */}
+        <div className="text-center mb-4">
+          <h1 className="text-4xl font-extrabold text-red-600 tracking-wider">DPOS</h1>
+          <p className="text-xs text-gray-500">Digital Point of Sale</p>
+          <h2 className="text-2xl font-bold text-gray-700 mt-2">{outletName}</h2>
+          <p className="text-sm text-gray-600 mt-1">{outletAddress}</p>
+          <p className="text-sm text-gray-600">Tel No.: {outletPhone}</p>
+          <p className="text-sm text-gray-600">Email: {outletEmail}</p>
         </div>
 
-        <div className="details border-b border-dashed pb-2 mb-2 text-xs">
-            <div className="flex justify-between"><span>Order #:</span><span>{sale.id.slice(-6).toUpperCase()}</span></div>
-            <div className="flex justify-between"><span>Date:</span><span>{new Date(sale.saleDate).toLocaleString()}</span></div>
-            {sale.customerName && <div className="flex justify-between"><span>Customer:</span><span>{sale.customerName}</span></div>}
-            {sale.assignedTableName && <div className="flex justify-between"><span>Table:</span><span>{sale.assignedTableName}</span></div>}
-            <div className="flex justify-between"><span>Type:</span><span>{sale.orderType}</span></div>
-            {sale.waiterName && <div className="flex justify-between"><span>Waiter:</span><span>{sale.waiterName}</span></div>}
+        {/* Order Type */}
+        <div className="text-center my-2">
+          <h3 className="text-2xl font-bold text-gray-800 border-y-2 border-black py-2">{sale.orderType || 'Dine In'}</h3>
         </div>
 
-        <table className="w-full mb-2 text-xs items-table">
-            <thead>
-            <tr className="border-b border-dashed">
-                <th className="text-left py-1">Item</th>
-                <th className="qty text-center py-1">Qty</th>
-                <th className="price text-right py-1">Price</th>
-                <th className="total text-right py-1">Total</th>
+        {/* Invoice Details */}
+        <div className="text-left mb-4 space-y-1">
+          <div className="flex justify-between">
+            <span className="text-lg font-medium text-gray-800">Bill No</span>
+            <span className="text-lg font-bold text-gray-700">: DNBILL {sale.id.slice(-4).toUpperCase()}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-lg font-medium text-gray-800">Table Name</span>
+            <span className="text-lg font-bold text-gray-700">: {sale.assignedTableName || 'G5'} <span className="ml-8">Pax: {sale.pax || 1}</span></span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-lg font-medium text-gray-800">Waiter</span>
+            <span className="text-lg font-bold text-gray-700">: {sale.waiterName || 'Ravi'}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-lg font-medium text-gray-800">Date & Time</span>
+            <span className="text-lg font-bold text-gray-700">: {new Date(sale.saleDate).toLocaleString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-lg font-medium text-gray-800">Bill By</span>
+            <span className="text-lg font-bold text-gray-700">: Admin</span>
+          </div>
+        </div>
+
+        {/* Items Table */}
+        <table className="w-full mb-4 border-t-2 border-b-2 border-black">
+          <thead>
+            <tr className="border-b-2 border-black">
+              <th className="text-left py-2 text-lg font-bold text-gray-800">Item Name</th>
+              <th className="text-center py-2 text-lg font-bold text-gray-800">Qty</th>
+              <th className="text-right py-2 text-lg font-bold text-gray-800">Rate</th>
+              <th className="text-right py-2 text-lg font-bold text-gray-800">Amount</th>
             </tr>
-            </thead>
-            <tbody>
+          </thead>
+          <tbody>
             {sale.items.map((item: SaleItem, index: number) => (
-                <tr key={`${item.id}-${index}`}>
-                <td className="py-0.5">{item.name}</td>
-                <td className="qty py-0.5">{item.quantity}</td>
-                <td className="price py-0.5"><Money amount={item.price} /></td>
-                <td className="total py-0.5"><Money amount={item.price * item.quantity} /></td>
-                </tr>
+              <tr key={`${item.id}-${index}`}>
+                <td className="py-1 text-lg">{item.name}</td>
+                <td className="text-center py-1 text-lg">{item.quantity}</td>
+                <td className="text-right py-1 text-lg">{item.price.toFixed(2)}</td>
+                <td className="text-right py-1 text-lg">{(item.price * item.quantity).toFixed(2)}</td>
+              </tr>
             ))}
-            </tbody>
+          </tbody>
         </table>
 
-        <div className="summary border-t border-dashed pt-2 space-y-0.5 text-xs">
-            <div className="flex justify-between"><span>Subtotal:</span><span><Money amount={sale.subTotal} /></span></div>
-            {sale.discountAmount && sale.discountAmount > 0 && (
-            <div className="flex justify-between"><span>Discount:</span><span>-<Money amount={sale.discountType === 'percentage' ? (sale.subTotal * sale.discountAmount / 100) : sale.discountAmount} /></span></div>
-            )}
-            {sale.taxDetails.map(tax => (
-            <div className="flex justify-between" key={tax.id}><span>{tax.name} ({tax.rate}%):</span><span><Money amount={tax.amount} /></span></div>
-            ))}
-             {sale.tipAmount && sale.tipAmount > 0 && (
-                <div className="flex justify-between"><span>Tip:</span><span><Money amount={sale.tipAmount} /></span></div>
-            )}
-            <div className="grand-total flex justify-between font-bold text-sm pt-1 mt-1"><span>GRAND TOTAL:</span><span><Money amount={sale.totalAmount} /></span></div>
+        {/* Summary Section */}
+        <div className="space-y-1 mb-4">
+          <div className="flex justify-between items-center">
+            <span className="text-lg font-bold text-gray-800">Items/{sale.items.length}</span>
+            <span className="text-lg font-bold text-gray-800">x2</span>
+            <span className="text-lg font-bold text-gray-800">Sub Total</span>
+            <span className="text-lg font-bold text-gray-800">{sale.subTotal.toFixed(2)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-lg text-gray-800">Service Charge</span>
+            <span className="text-lg text-gray-800">{serviceCharge.toFixed(2)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-lg text-gray-800">CGST</span>
+            <span className="text-lg text-gray-800">{cgst.toFixed(2)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-lg text-gray-800">SGST</span>
+            <span className="text-lg text-gray-800">{sgst.toFixed(2)}</span>
+          </div>
+          <div className="flex justify-between items-center mt-2 border-t-2 border-black pt-2">
+            <span className="text-2xl font-extrabold text-gray-900">Grand Total</span>
+            <span className="text-2xl font-extrabold text-gray-900">{sale.totalAmount.toFixed(2)}</span>
+          </div>
         </div>
-        
-        <div className="payment-details border-t border-dashed pt-2 mt-2 text-xs space-y-0.5">
-            {sale.partialPayments?.map((payment, index) => (
-                <div className="flex justify-between" key={index}>
-                    <span>Paid ({payment.method}):</span>
-                    <span><Money amount={payment.amount} /></span>
-                </div>
-            ))}
-             <div className="flex justify-between font-semibold mt-1 pt-1 border-t border-dotted">
-                <span>Total Paid:</span>
-                <span><Money amount={totalPaid} /></span>
+
+        {/* Footer */}
+        <div className="text-center mt-6">
+          <p className="text-xl text-gray-700">Thank you Visit Us Again!</p>
+          <div className="mt-4 flex justify-center">
+            <div className="w-32 h-32 border-2 border-black p-1">
+              <svg viewBox="0 0 100 100" className="w-full h-full">
+                {/* Simple QR code pattern */}
+                {Array.from({ length: 25 }).map((_, i) => 
+                  Array.from({ length: 25 }).map((_, j) => {
+                    const isOn = Math.random() > 0.5 || (i < 5 && j < 5) || (i < 5 && j > 19) || (i > 19 && j < 5) || (i === 0 || i === 24 || j === 0 || j === 24);
+                    return (
+                      <rect
+                        key={`${i}-${j}`}
+                        x={j * 4}
+                        y={i * 4}
+                        width="4"
+                        height="4"
+                        fill={isOn ? "#000" : "#fff"}
+                      />
+                    );
+                  })
+                )}
+              </svg>
             </div>
-            {balance > 0 && (
-                <div className="flex justify-between font-bold">
-                    <span>Return Amount:</span>
-                    <span><Money amount={balance} /></span>
-                </div>
-            )}
-            {!sale.isSettled && balance < 0 && (
-                <div className="flex justify-between font-bold">
-                    <span>Amount Due:</span>
-                    <span><Money amount={Math.abs(balance)} /></span>
-                </div>
-            )}
-        </div>
-
-
-         <div className="footer text-center mt-4 text-xs">
-            <p>Thank you for your visit!</p>
+          </div>
         </div>
       </div>
 

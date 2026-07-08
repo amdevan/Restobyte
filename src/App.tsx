@@ -399,7 +399,6 @@ const AppContent: React.FC = () => {
             <Route path="/products" element={<SaaSProductsShopPage />} />
             <Route path="/privacy-policy" element={<DynamicSaaSPage />} />
             <Route path="/terms-of-service" element={<DynamicSaaSPage />} />
-            <Route path="/:slug" element={<DynamicSaaSPage />} />
             
             {/* Public Restaurant Website Routes */}
             <Route path="/public" element={<Outlet />}>
@@ -466,6 +465,9 @@ const AppContent: React.FC = () => {
                     : <Navigate to="/login" replace />
                 } 
             />
+            
+            {/* Dynamic Slug Page - last to catch all */}
+            <Route path="/:slug" element={<DynamicSaaSPage />} />
         </Routes>
     </React.Suspense>
   );

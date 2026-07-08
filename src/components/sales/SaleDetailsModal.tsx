@@ -88,12 +88,17 @@ const SaleDetailsModal: React.FC<SaleDetailsModalProps> = ({ isOpen, onClose, sa
       <div id="sale-details-content" className="bg-white p-4 rounded-lg max-w-md mx-auto">
         {/* Header Section */}
         <div className="text-center mb-4">
-          <h1 className="text-4xl font-extrabold text-red-600 tracking-wider">DPOS</h1>
-          <p className="text-xs text-gray-500">Digital Point of Sale</p>
-          <h2 className="text-2xl font-bold text-gray-700 mt-2">{outletName}</h2>
+          {(currentOutlet?.logoUrl || websiteSettings.whiteLabel.logoUrl) && (
+            <img 
+              src={currentOutlet?.logoUrl || websiteSettings.whiteLabel.logoUrl} 
+              alt={outletName} 
+              className="max-h-20 mx-auto mb-2"
+            />
+          )}
+          <h2 className="text-2xl font-bold text-gray-700">{outletName}</h2>
           <p className="text-sm text-gray-600 mt-1">{outletAddress}</p>
           <p className="text-sm text-gray-600">Tel No.: {outletPhone}</p>
-          <p className="text-sm text-gray-600">Email: {outletEmail}</p>
+          {outletEmail && <p className="text-sm text-gray-600">Email: {outletEmail}</p>}
         </div>
 
         {/* Customer Section */}
@@ -215,6 +220,7 @@ const SaleDetailsModal: React.FC<SaleDetailsModalProps> = ({ isOpen, onClose, sa
               </svg>
             </div>
           </div>
+          <p className="text-xs text-gray-500 mt-4">Powered by Restobyte Software</p>
         </div>
       </div>
 

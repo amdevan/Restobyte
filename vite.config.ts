@@ -23,8 +23,12 @@ export default defineConfig(({ mode }) => {
         'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
         'process.env.APP_VERSION': JSON.stringify(packageJson.version)
       },
+      server: {
+        historyApiFallback: true,
+      },
       preview: {
         allowedHosts,
+        historyApiFallback: true,
       },
       resolve: {
         alias: {

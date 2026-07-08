@@ -4,7 +4,7 @@
 
 import React from 'react';
 // FIX: Refactored to use named imports for react-router-dom for consistency.
-import { HashRouter, Routes, Route, Navigate, useLocation, Outlet, useNavigationType } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, Outlet, useNavigationType, useNavigate } from 'react-router-dom';
 
 import { RestaurantDataProvider, useRestaurantData } from './hooks/useRestaurantData';
 import { AuthProvider, useAuth } from './hooks/useAuth';
@@ -174,6 +174,15 @@ const AuthAwareLanding: React.FC = () => {
         return <Navigate to={user?.isSuperAdmin ? "/saas/dashboard" : "/app/dashboard"} replace />;
     }
     return <LandingPage />;
+}
+
+const AuthSwitchWrapper: React.FC<{ mode: 'login' | 'register' }> = ({ mode }) => {
+    const navigate = useNavigate();
+    return mode === 'login' ? (
+        <LoginPage onSwitchToRegister={() => navigate('/register')} />
+    ) : (
+        <RegisterPage onSwitchToLogin={() => navigate('/login')} />
+    );
 }
 
 const RestaurantPanelRoutes = () => {
@@ -426,8 +435,8 @@ const AppContent: React.FC = () => {
             </Route>
             
             {/* Auth Routes */}
-            <Route path="/login" element={isAuthenticated ? <Navigate to={user?.isSuperAdmin ? "/saas/dashboard" : "/app/dashboard"} replace /> : <LoginPage onSwitchToRegister={() => { window.location.hash = '/register'; }} />} />
-            <Route path="/register" element={isAuthenticated ? <Navigate to={user?.isSuperAdmin ? "/saas/dashboard" : "/app/dashboard"} replace /> : <RegisterPage onSwitchToLogin={() => { window.location.hash = '/login'; }} />} />
+            <Route path="/login" element={isAuthenticated ? <Navigate to={user?.isSuperAdmin ? "/saas/dashboard" : "/app/dashboard"} replace /> : <AuthSwitchWrapper mode="login" />} />
+            <Route path="/register" element={isAuthenticated ? <Navigate to={user?.isSuperAdmin ? "/saas/dashboard" : "/app/dashboard"} replace /> : <AuthSwitchWrapper mode="register" />} />
 
             <Route
                 path="/saas/login"
@@ -517,14 +526,14 @@ const ScrollPositionManager: React.FC = () => {
 
 const App: React.FC = () => {
   return (
-    <HashRouter>
+    <BrowserRouter>
       <ScrollPositionManager />
       <AuthProvider>
         <RestaurantDataProvider>
           <AppContent />
         </RestaurantDataProvider>
       </AuthProvider>
-    </HashRouter>
+    </BrowserRouter>
   );
 };
 

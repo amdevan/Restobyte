@@ -250,7 +250,7 @@ const PublicInvoicePage: React.FC = () => {
             <div className="mt-4 flex justify-center">
               <div className="border-2 border-black p-1 inline-block">
                 <QRCodeSVG 
-                  value={`${window.location.origin}/#/invoice/${sale.id}`} 
+                  value={`${window.location.origin}/invoice/${sale.id}`} 
                   size={128}
                   level="H"
                 />

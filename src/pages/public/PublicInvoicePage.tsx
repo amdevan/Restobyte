@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import Spinner from '../../components/common/Spinner';
 import { API_BASE_URL } from '../../config';
 import html2pdf from 'html2pdf.js';
+import { QRCodeSVG } from 'qrcode.react';
 
 // Helper function to map backend order to frontend sale type
 const mapBackendOrderToSale = (order: any) => {
@@ -138,7 +139,7 @@ const PublicInvoicePage: React.FC = () => {
 
           {/* Order Type */}
           <div className="text-center mb-4">
-            <h3 className="text-2xl font-bold text-gray-800 border-y-2 border-black py-2">{sale.orderType}</h3>
+            <h3 className="text-2xl font-bold text-gray-800 border-y-2 border-black py-2">{sale.orderType || 'Invoice'}</h3>
           </div>
 
           {/* Invoice Details */}
@@ -221,6 +222,15 @@ const PublicInvoicePage: React.FC = () => {
           {/* Footer */}
           <div className="text-center mt-6">
             <p className="text-xl text-gray-700">Thank you Visit Us Again!</p>
+            <div className="mt-4 flex justify-center">
+              <div className="border-2 border-black p-1 inline-block">
+                <QRCodeSVG 
+                  value={`${window.location.origin}${window.location.pathname}#/invoice/${sale.id}`} 
+                  size={128}
+                  level="H"
+                />
+              </div>
+            </div>
             <p className="text-xs text-gray-500 mt-4">Powered by Restobyte Software</p>
           </div>
         </div>

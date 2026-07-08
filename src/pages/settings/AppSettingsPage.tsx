@@ -10,20 +10,26 @@ const AppSettingsPage: React.FC = () => {
     const { applicationSettings, updateApplicationSettings, customers } = useRestaurantData();
     const [localSettings, setLocalSettings] = useState<ApplicationSettings>(applicationSettings);
     const [showSavedMessage, setShowSavedMessage] = useState(false);
-    const [activeTab, setActiveTab] = useState<'general' | 'print' | 'pos'>('general');
+    const [activeTab, setActiveTab] = useState<'general' | 'print' | 'pos' | 'invoice'>('general');
 
     useEffect(() => {
         setLocalSettings(applicationSettings);
     }, [applicationSettings]);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-        const { name, value } = e.target;
-        // Handle number inputs specifically
-        const numericFields = ['decimalPlaces', 'kotCharactersPerLine'];
-        if (numericFields.includes(name)) {
-            setLocalSettings(prev => ({ ...prev, [name]: Number(value) }));
+        const { name, value, type } = e.target;
+        
+        if (type === 'checkbox') {
+            const checked = (e.target as HTMLInputElement).checked;
+            setLocalSettings(prev => ({ ...prev, [name]: checked }));
         } else {
-            setLocalSettings(prev => ({ ...prev, [name]: value }));
+            // Handle number inputs specifically
+            const numericFields = ['decimalPlaces', 'kotCharactersPerLine'];
+            if (numericFields.includes(name)) {
+                setLocalSettings(prev => ({ ...prev, [name]: Number(value) }));
+            } else {
+                setLocalSettings(prev => ({ ...prev, [name]: value }));
+            }
         }
     };
 
@@ -56,6 +62,7 @@ const AppSettingsPage: React.FC = () => {
             <div className="flex gap-2">
               <button onClick={() => setActiveTab('general')} className={`px-4 py-2 rounded border ${activeTab==='general'?'bg-sky-50 border-sky-300 text-sky-700':'bg-white border-gray-300 text-gray-700'}`}>General</button>
               <button onClick={() => setActiveTab('print')} className={`px-4 py-2 rounded border ${activeTab==='print'?'bg-sky-50 border-sky-300 text-sky-700':'bg-white border-gray-300 text-gray-700'}`}>Print</button>
+              <button onClick={() => setActiveTab('invoice')} className={`px-4 py-2 rounded border ${activeTab==='invoice'?'bg-sky-50 border-sky-300 text-sky-700':'bg-white border-gray-300 text-gray-700'}`}>Invoice</button>
               <button onClick={() => setActiveTab('pos')} className={`px-4 py-2 rounded border ${activeTab==='pos'?'bg-sky-50 border-sky-300 text-sky-700':'bg-white border-gray-300 text-gray-700'}`}>POS</button>
               {JSON.stringify(localSettings) !== JSON.stringify(applicationSettings) && (
                 <div className="ml-auto flex items-center gap-2">
@@ -101,6 +108,63 @@ const AppSettingsPage: React.FC = () => {
                      <Input label="KOT Characters Per Line" name="kotCharactersPerLine" type="number" value={localSettings.kotCharactersPerLine} onChange={handleInputChange} min="20" max="80" containerClassName="mb-0"/>
                 </div>
                 <p className="text-xs text-gray-500 p-4 pt-0">Set the number of characters per line for Kitchen Order Ticket (KOT) printers to ensure proper formatting.</p>
+            </Card>
+            )}
+
+            {activeTab === 'invoice' && (
+            <Card title="Invoice Customization" icon={<FiPrinter />}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
+                     <Input label="Invoice Title" name="invoiceTitle" type="text" value={localSettings.invoiceTitle || ''} onChange={handleInputChange} containerClassName="mb-0"/>
+                     <Input label="Footer Text" name="invoiceFooterText" type="text" value={localSettings.invoiceFooterText || ''} onChange={handleInputChange} containerClassName="mb-0"/>
+                     
+                     <div className="flex items-center gap-2">
+                        <input 
+                            type="checkbox" 
+                            id="invoiceShowLogo" 
+                            name="invoiceShowLogo" 
+                            checked={localSettings.invoiceShowLogo} 
+                            onChange={handleInputChange} 
+                            className="w-4 h-4 text-sky-600 rounded border-gray-300 focus:ring-sky-500"
+                        />
+                        <label htmlFor="invoiceShowLogo" className="text-sm font-medium text-gray-700">Show Logo</label>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        <input 
+                            type="checkbox" 
+                            id="invoiceShowQrCode" 
+                            name="invoiceShowQrCode" 
+                            checked={localSettings.invoiceShowQrCode} 
+                            onChange={handleInputChange} 
+                            className="w-4 h-4 text-sky-600 rounded border-gray-300 focus:ring-sky-500"
+                        />
+                        <label htmlFor="invoiceShowQrCode" className="text-sm font-medium text-gray-700">Show QR Code</label>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        <input 
+                            type="checkbox" 
+                            id="invoiceShowCustomerDetails" 
+                            name="invoiceShowCustomerDetails" 
+                            checked={localSettings.invoiceShowCustomerDetails} 
+                            onChange={handleInputChange} 
+                            className="w-4 h-4 text-sky-600 rounded border-gray-300 focus:ring-sky-500"
+                        />
+                        <label htmlFor="invoiceShowCustomerDetails" className="text-sm font-medium text-gray-700">Show Customer Details</label>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        <input 
+                            type="checkbox" 
+                            id="invoiceShowTaxBreakdown" 
+                            name="invoiceShowTaxBreakdown" 
+                            checked={localSettings.invoiceShowTaxBreakdown} 
+                            onChange={handleInputChange} 
+                            className="w-4 h-4 text-sky-600 rounded border-gray-300 focus:ring-sky-500"
+                        />
+                        <label htmlFor="invoiceShowTaxBreakdown" className="text-sm font-medium text-gray-700">Show Tax Breakdown</label>
+                    </div>
+                </div>
             </Card>
             )}
             

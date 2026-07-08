@@ -247,6 +247,12 @@ const initialApplicationSettings: ApplicationSettings = {
     defaultWalkInCustomerId: 'cust-walkin',
     defaultOrderType: 'Dine In',
     autoClearHistoryDays: 0, // 0 = NEVER auto-clear history - keep everything forever
+    invoiceTitle: 'Invoice',
+    invoiceFooterText: 'Thank you Visit Us Again!',
+    invoiceShowLogo: true,
+    invoiceShowQrCode: true,
+    invoiceShowCustomerDetails: true,
+    invoiceShowTaxBreakdown: true,
 };
 
 const initialOutlets: Outlet[] = [

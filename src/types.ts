@@ -614,6 +614,12 @@ export interface ApplicationSettings {
   defaultWalkInCustomerId: string;
   defaultOrderType: 'Dine In' | 'Delivery' | 'Pickup' | 'WhatsApp';
   autoClearHistoryDays?: number; // 0 = never auto-clear, number of days to keep history
+  invoiceTitle?: string;
+  invoiceFooterText?: string;
+  invoiceShowLogo?: boolean;
+  invoiceShowQrCode?: boolean;
+  invoiceShowCustomerDetails?: boolean;
+  invoiceShowTaxBreakdown?: boolean;
 }
 
 export interface Tax {

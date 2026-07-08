@@ -13,7 +13,7 @@ interface SaleDetailsModalProps {
 }
 
 const SaleDetailsModal: React.FC<SaleDetailsModalProps> = ({ isOpen, onClose, sale }) => {
-  const { websiteSettings, getSingleActiveOutlet, customers } = useRestaurantData();
+  const { websiteSettings, getSingleActiveOutlet, customers, applicationSettings } = useRestaurantData();
   const currentOutlet = getSingleActiveOutlet();
 
   if (!isOpen || !sale) return null;
@@ -89,13 +89,13 @@ const SaleDetailsModal: React.FC<SaleDetailsModalProps> = ({ isOpen, onClose, sa
       <div id="sale-details-content" className="bg-white p-4 rounded-lg max-w-md mx-auto">
         {/* Header Section */}
         <div className="text-center mb-4">
-          {(currentOutlet?.logoUrl || websiteSettings.whiteLabel.logoUrl) && (
-            <img 
-              src={currentOutlet?.logoUrl || websiteSettings.whiteLabel.logoUrl} 
-              alt={outletName} 
-              className="max-h-20 mx-auto mb-2"
-            />
-          )}
+            {(applicationSettings.invoiceShowLogo && (currentOutlet?.logoUrl || websiteSettings.whiteLabel.logoUrl)) && (
+                <img 
+                    src={currentOutlet?.logoUrl || websiteSettings.whiteLabel.logoUrl} 
+                    alt={outletName} 
+                    className="max-h-20 mx-auto mb-2"
+                />
+            )}
           <h2 className="text-2xl font-bold text-gray-700">{outletName}</h2>
           <p className="text-sm text-gray-600 mt-1">{outletAddress}</p>
           <p className="text-sm text-gray-600">Tel No.: {outletPhone}</p>
@@ -103,7 +103,7 @@ const SaleDetailsModal: React.FC<SaleDetailsModalProps> = ({ isOpen, onClose, sa
         </div>
 
         {/* Customer Section */}
-        {customer && (
+        {applicationSettings.invoiceShowCustomerDetails && customer && (
           <div className="border-t-2 border-b-2 border-gray-300 py-3 mb-4">
             <h4 className="text-lg font-bold text-gray-800 mb-2">Customer Details</h4>
             <p className="text-sm text-gray-700"><strong>Name:</strong> {customer.name}</p>
@@ -117,7 +117,7 @@ const SaleDetailsModal: React.FC<SaleDetailsModalProps> = ({ isOpen, onClose, sa
 
         {/* Order Type */}
         <div className="text-center my-2">
-          <h3 className="text-2xl font-bold text-gray-800 border-y-2 border-black py-2">{sale.orderType || 'Dine In'}</h3>
+          <h3 className="text-2xl font-bold text-gray-800 border-y-2 border-black py-2">{applicationSettings.invoiceTitle || sale.orderType || 'Invoice'}</h3>
         </div>
 
         {/* Invoice Details */}
@@ -177,7 +177,7 @@ const SaleDetailsModal: React.FC<SaleDetailsModalProps> = ({ isOpen, onClose, sa
             <span className="text-lg font-bold text-gray-800">Sub Total</span>
             <span className="text-lg font-bold text-gray-800">{sale.subTotal.toFixed(2)}</span>
           </div>
-          {taxRows}
+          {applicationSettings.invoiceShowTaxBreakdown && taxRows}
           {sale.discountAmount && sale.discountAmount > 0 && (
             <div className="flex justify-between">
               <span className="text-lg text-gray-800">Discount {sale.discountType === 'percentage' ? `(${sale.discountAmount}%)` : ''}</span>
@@ -198,16 +198,18 @@ const SaleDetailsModal: React.FC<SaleDetailsModalProps> = ({ isOpen, onClose, sa
 
         {/* Footer */}
           <div className="text-center mt-6">
-            <p className="text-xl text-gray-700">Thank you Visit Us Again!</p>
-            <div className="mt-4 flex justify-center">
-              <div className="border-2 border-black p-1 inline-block">
-                <QRCodeSVG 
-                  value={`${window.location.origin}${window.location.pathname}#/invoice/${sale.id}`} 
-                  size={128}
-                  level="H"
-                />
-              </div>
-            </div>
+            <p className="text-xl text-gray-700">{applicationSettings.invoiceFooterText || 'Thank you Visit Us Again!'}</p>
+            {applicationSettings.invoiceShowQrCode && (
+                <div className="mt-4 flex justify-center">
+                  <div className="border-2 border-black p-1 inline-block">
+                    <QRCodeSVG 
+                      value={`${window.location.origin}${window.location.pathname}#/invoice/${sale.id}`} 
+                      size={128}
+                      level="H"
+                    />
+                  </div>
+                </div>
+            )}
             <p className="text-xs text-gray-500 mt-4">Powered by Restobyte Software</p>
           </div>
       </div>

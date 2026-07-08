@@ -259,6 +259,12 @@ const initialApplicationSettings: ApplicationSettings = {
     invoiceShowCustomerCompany: true,
     invoiceShowCustomerVatPan: true,
     invoiceShowTaxBreakdown: true,
+    invoiceShowPaymentDetails: true,
+    invoiceShowPaymentMethod: true,
+    invoiceShowPaymentDate: true,
+    invoiceShowPaymentReference: true,
+    invoiceShowReturnInformation: true,
+    invoiceReturnPolicyText: 'Items can be returned within 7 days with receipt.',
 };
 
 const initialOutlets: Outlet[] = [

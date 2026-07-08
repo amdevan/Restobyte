@@ -235,6 +235,81 @@ const AppSettingsPage: React.FC = () => {
                         />
                         <label htmlFor="invoiceShowTaxBreakdown" className="text-sm font-medium text-gray-700">Show Tax Breakdown</label>
                     </div>
+
+                    <div className="flex items-center gap-2">
+                        <input 
+                            type="checkbox" 
+                            id="invoiceShowPaymentDetails" 
+                            name="invoiceShowPaymentDetails" 
+                            checked={localSettings.invoiceShowPaymentDetails} 
+                            onChange={handleInputChange} 
+                            className="w-4 h-4 text-sky-600 rounded border-gray-300 focus:ring-sky-500"
+                        />
+                        <label htmlFor="invoiceShowPaymentDetails" className="text-sm font-medium text-gray-700">Show Payment Details</label>
+                    </div>
+
+                    {localSettings.invoiceShowPaymentDetails && (
+                        <div className="col-span-1 md:col-span-2 ml-6 space-y-2 border-l-2 border-gray-200 pl-4">
+                            <div className="flex items-center gap-2">
+                                <input 
+                                    type="checkbox" 
+                                    id="invoiceShowPaymentMethod" 
+                                    name="invoiceShowPaymentMethod" 
+                                    checked={localSettings.invoiceShowPaymentMethod} 
+                                    onChange={handleInputChange} 
+                                    className="w-4 h-4 text-sky-600 rounded border-gray-300 focus:ring-sky-500"
+                                />
+                                <label htmlFor="invoiceShowPaymentMethod" className="text-sm font-medium text-gray-700">Show Payment Method</label>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <input 
+                                    type="checkbox" 
+                                    id="invoiceShowPaymentDate" 
+                                    name="invoiceShowPaymentDate" 
+                                    checked={localSettings.invoiceShowPaymentDate} 
+                                    onChange={handleInputChange} 
+                                    className="w-4 h-4 text-sky-600 rounded border-gray-300 focus:ring-sky-500"
+                                />
+                                <label htmlFor="invoiceShowPaymentDate" className="text-sm font-medium text-gray-700">Show Payment Date</label>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <input 
+                                    type="checkbox" 
+                                    id="invoiceShowPaymentReference" 
+                                    name="invoiceShowPaymentReference" 
+                                    checked={localSettings.invoiceShowPaymentReference} 
+                                    onChange={handleInputChange} 
+                                    className="w-4 h-4 text-sky-600 rounded border-gray-300 focus:ring-sky-500"
+                                />
+                                <label htmlFor="invoiceShowPaymentReference" className="text-sm font-medium text-gray-700">Show Payment Reference</label>
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="flex items-center gap-2">
+                        <input 
+                            type="checkbox" 
+                            id="invoiceShowReturnInformation" 
+                            name="invoiceShowReturnInformation" 
+                            checked={localSettings.invoiceShowReturnInformation} 
+                            onChange={handleInputChange} 
+                            className="w-4 h-4 text-sky-600 rounded border-gray-300 focus:ring-sky-500"
+                        />
+                        <label htmlFor="invoiceShowReturnInformation" className="text-sm font-medium text-gray-700">Show Return Information</label>
+                    </div>
+
+                    {localSettings.invoiceShowReturnInformation && (
+                        <div className="col-span-1 md:col-span-2">
+                            <Input 
+                                label="Return Policy Text" 
+                                name="invoiceReturnPolicyText" 
+                                type="text" 
+                                value={localSettings.invoiceReturnPolicyText || ''} 
+                                onChange={handleInputChange} 
+                                containerClassName="mb-0"
+                            />
+                        </div>
+                    )}
                 </div>
             </Card>
             )}

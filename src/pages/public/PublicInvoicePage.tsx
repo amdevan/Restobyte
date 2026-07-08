@@ -31,6 +31,9 @@ const mapBackendOrderToSale = (order: any) => {
     discountType: saleData.discountType,
     discountAmount: saleData.discountAmount,
     tipAmount: saleData.tipAmount,
+    paymentMethod: saleData.paymentMethod,
+    paymentDate: saleData.paymentDate,
+    paymentReference: saleData.paymentReference,
   };
 };
 
@@ -217,6 +220,20 @@ const PublicInvoicePage: React.FC = () => {
               <span className="text-2xl font-extrabold text-gray-900">Grand Total</span>
               <span className="text-2xl font-extrabold text-gray-900">{sale.totalAmount.toFixed(2)}</span>
             </div>
+          </div>
+
+          {/* Payment Details Section */}
+          <div className="border-t-2 border-b-2 border-gray-300 py-3 mb-4">
+            <h4 className="text-lg font-bold text-gray-800 mb-2">Payment Details</h4>
+            {sale.paymentMethod && <p className="text-sm text-gray-700"><strong>Payment Method:</strong> {sale.paymentMethod}</p>}
+            <p className="text-sm text-gray-700"><strong>Payment Date:</strong> {new Date(sale.paymentDate || sale.saleDate).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' })}</p>
+            {sale.paymentReference && <p className="text-sm text-gray-700"><strong>Reference:</strong> {sale.paymentReference}</p>}
+          </div>
+
+          {/* Return Information Section */}
+          <div className="py-3 mb-4">
+            <h4 className="text-lg font-bold text-gray-800 mb-2">Return Policy</h4>
+            <p className="text-sm text-gray-700">Items can be returned within 7 days with receipt.</p>
           </div>
 
           {/* Footer */}

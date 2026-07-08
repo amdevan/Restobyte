@@ -156,6 +156,8 @@ export interface Sale {
   orderNotes?: string;
   paymentMethod?: string; // e.g., "Cash", "Card", "Online", "Split"
   partialPayments?: PartialPayment[]; // For split payments
+  paymentDate?: string; // ISO string for payment date
+  paymentReference?: string; // Reference number for payment
   isSettled?: boolean; // True if payment complete, false if due (e.g., 'Other' payment method)
   isClosed?: boolean; // True if order is finalized (table can be freed) even if payment is due
 
@@ -626,6 +628,12 @@ export interface ApplicationSettings {
   invoiceShowCustomerCompany?: boolean;
   invoiceShowCustomerVatPan?: boolean;
   invoiceShowTaxBreakdown?: boolean;
+  invoiceShowPaymentDetails?: boolean;
+  invoiceShowPaymentMethod?: boolean;
+  invoiceShowPaymentDate?: boolean;
+  invoiceShowPaymentReference?: boolean;
+  invoiceShowReturnInformation?: boolean;
+  invoiceReturnPolicyText?: string;
 }
 
 export interface Tax {

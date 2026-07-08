@@ -106,12 +106,12 @@ const SaleDetailsModal: React.FC<SaleDetailsModalProps> = ({ isOpen, onClose, sa
         {applicationSettings.invoiceShowCustomerDetails && customer && (
           <div className="border-t-2 border-b-2 border-gray-300 py-3 mb-4">
             <h4 className="text-lg font-bold text-gray-800 mb-2">Customer Details</h4>
-            <p className="text-sm text-gray-700"><strong>Name:</strong> {customer.name}</p>
-            {customer.phone && <p className="text-sm text-gray-700"><strong>Phone:</strong> {customer.phone}</p>}
-            {customer.email && <p className="text-sm text-gray-700"><strong>Email:</strong> {customer.email}</p>}
-            {customer.address && <p className="text-sm text-gray-700"><strong>Address:</strong> {customer.address}</p>}
-            {customer.companyName && <p className="text-sm text-gray-700"><strong>Company:</strong> {customer.companyName}</p>}
-            {customer.vatPan && <p className="text-sm text-gray-700"><strong>VAT/PAN:</strong> {customer.vatPan}</p>}
+            {applicationSettings.invoiceShowCustomerName && <p className="text-sm text-gray-700"><strong>Name:</strong> {customer.name}</p>}
+            {applicationSettings.invoiceShowCustomerPhone && customer.phone && <p className="text-sm text-gray-700"><strong>Phone:</strong> {customer.phone}</p>}
+            {applicationSettings.invoiceShowCustomerEmail && customer.email && <p className="text-sm text-gray-700"><strong>Email:</strong> {customer.email}</p>}
+            {applicationSettings.invoiceShowCustomerAddress && customer.address && <p className="text-sm text-gray-700"><strong>Address:</strong> {customer.address}</p>}
+            {applicationSettings.invoiceShowCustomerCompany && customer.companyName && <p className="text-sm text-gray-700"><strong>Company:</strong> {customer.companyName}</p>}
+            {applicationSettings.invoiceShowCustomerVatPan && customer.vatPan && <p className="text-sm text-gray-700"><strong>VAT/PAN:</strong> {customer.vatPan}</p>}
           </div>
         )}
 

@@ -619,6 +619,12 @@ export interface ApplicationSettings {
   invoiceShowLogo?: boolean;
   invoiceShowQrCode?: boolean;
   invoiceShowCustomerDetails?: boolean;
+  invoiceShowCustomerName?: boolean;
+  invoiceShowCustomerPhone?: boolean;
+  invoiceShowCustomerEmail?: boolean;
+  invoiceShowCustomerAddress?: boolean;
+  invoiceShowCustomerCompany?: boolean;
+  invoiceShowCustomerVatPan?: boolean;
   invoiceShowTaxBreakdown?: boolean;
 }
 

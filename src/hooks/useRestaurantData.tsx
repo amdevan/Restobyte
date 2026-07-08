@@ -252,6 +252,12 @@ const initialApplicationSettings: ApplicationSettings = {
     invoiceShowLogo: true,
     invoiceShowQrCode: true,
     invoiceShowCustomerDetails: true,
+    invoiceShowCustomerName: true,
+    invoiceShowCustomerPhone: true,
+    invoiceShowCustomerEmail: true,
+    invoiceShowCustomerAddress: true,
+    invoiceShowCustomerCompany: true,
+    invoiceShowCustomerVatPan: true,
     invoiceShowTaxBreakdown: true,
 };
 

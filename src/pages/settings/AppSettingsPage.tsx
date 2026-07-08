@@ -153,6 +153,77 @@ const AppSettingsPage: React.FC = () => {
                         <label htmlFor="invoiceShowCustomerDetails" className="text-sm font-medium text-gray-700">Show Customer Details</label>
                     </div>
 
+                    {localSettings.invoiceShowCustomerDetails && (
+                        <div className="col-span-1 md:col-span-2 ml-6 space-y-2 border-l-2 border-gray-200 pl-4">
+                            <div className="flex items-center gap-2">
+                                <input 
+                                    type="checkbox" 
+                                    id="invoiceShowCustomerName" 
+                                    name="invoiceShowCustomerName" 
+                                    checked={localSettings.invoiceShowCustomerName} 
+                                    onChange={handleInputChange} 
+                                    className="w-4 h-4 text-sky-600 rounded border-gray-300 focus:ring-sky-500"
+                                />
+                                <label htmlFor="invoiceShowCustomerName" className="text-sm font-medium text-gray-700">Show Customer Name</label>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <input 
+                                    type="checkbox" 
+                                    id="invoiceShowCustomerPhone" 
+                                    name="invoiceShowCustomerPhone" 
+                                    checked={localSettings.invoiceShowCustomerPhone} 
+                                    onChange={handleInputChange} 
+                                    className="w-4 h-4 text-sky-600 rounded border-gray-300 focus:ring-sky-500"
+                                />
+                                <label htmlFor="invoiceShowCustomerPhone" className="text-sm font-medium text-gray-700">Show Customer Phone</label>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <input 
+                                    type="checkbox" 
+                                    id="invoiceShowCustomerEmail" 
+                                    name="invoiceShowCustomerEmail" 
+                                    checked={localSettings.invoiceShowCustomerEmail} 
+                                    onChange={handleInputChange} 
+                                    className="w-4 h-4 text-sky-600 rounded border-gray-300 focus:ring-sky-500"
+                                />
+                                <label htmlFor="invoiceShowCustomerEmail" className="text-sm font-medium text-gray-700">Show Customer Email</label>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <input 
+                                    type="checkbox" 
+                                    id="invoiceShowCustomerAddress" 
+                                    name="invoiceShowCustomerAddress" 
+                                    checked={localSettings.invoiceShowCustomerAddress} 
+                                    onChange={handleInputChange} 
+                                    className="w-4 h-4 text-sky-600 rounded border-gray-300 focus:ring-sky-500"
+                                />
+                                <label htmlFor="invoiceShowCustomerAddress" className="text-sm font-medium text-gray-700">Show Customer Address</label>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <input 
+                                    type="checkbox" 
+                                    id="invoiceShowCustomerCompany" 
+                                    name="invoiceShowCustomerCompany" 
+                                    checked={localSettings.invoiceShowCustomerCompany} 
+                                    onChange={handleInputChange} 
+                                    className="w-4 h-4 text-sky-600 rounded border-gray-300 focus:ring-sky-500"
+                                />
+                                <label htmlFor="invoiceShowCustomerCompany" className="text-sm font-medium text-gray-700">Show Customer Company</label>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <input 
+                                    type="checkbox" 
+                                    id="invoiceShowCustomerVatPan" 
+                                    name="invoiceShowCustomerVatPan" 
+                                    checked={localSettings.invoiceShowCustomerVatPan} 
+                                    onChange={handleInputChange} 
+                                    className="w-4 h-4 text-sky-600 rounded border-gray-300 focus:ring-sky-500"
+                                />
+                                <label htmlFor="invoiceShowCustomerVatPan" className="text-sm font-medium text-gray-700">Show Customer VAT/PAN</label>
+                            </div>
+                        </div>
+                    )}
+
                     <div className="flex items-center gap-2">
                         <input 
                             type="checkbox" 

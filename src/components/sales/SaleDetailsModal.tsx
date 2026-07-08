@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sale } from '../../types';
+import { Sale, Customer } from '../../types';
 import Button from '../common/Button';
 import { FiXCircle, FiPrinter, FiDownload } from 'react-icons/fi';
 import html2pdf from 'html2pdf.js';
@@ -12,10 +12,12 @@ interface SaleDetailsModalProps {
 }
 
 const SaleDetailsModal: React.FC<SaleDetailsModalProps> = ({ isOpen, onClose, sale }) => {
-  const { websiteSettings, getSingleActiveOutlet } = useRestaurantData();
+  const { websiteSettings, getSingleActiveOutlet, customers } = useRestaurantData();
   const currentOutlet = getSingleActiveOutlet();
 
   if (!isOpen || !sale) return null;
+
+  const customer: Customer | undefined = sale.customerId ? customers.find(c => c.id === sale.customerId) : undefined;
 
   const handlePrintReceipt = () => {
     const contentElement = document.getElementById('sale-details-content');
@@ -48,15 +50,38 @@ const SaleDetailsModal: React.FC<SaleDetailsModalProps> = ({ isOpen, onClose, sa
   };
 
   const outletName = currentOutlet?.restaurantName || websiteSettings.whiteLabel.appName || 'Demo Restaurant';
-  const outletAddress = currentOutlet?.address || 'Address not set';
-  const outletPhone = currentOutlet?.phone || 'Phone not set';
-  const outletEmail = 'info@restobyte.com';
+  const outletAddress = currentOutlet?.address || websiteSettings.contactUsContent.address || 'Address not set';
+  const outletPhone = currentOutlet?.phone || websiteSettings.contactUsContent.phone || 'Phone not set';
+  const outletEmail = websiteSettings.contactUsContent.email || 'info@restobyte.com';
 
-  // Calculate tax breakdown (we'll assume 2 equal taxes for CGST/SGST if not provided, to match the design)
-  const totalTax = sale.taxDetails.reduce((sum, tax) => sum + tax.amount, 0);
-  const cgst = totalTax / 2;
-  const sgst = totalTax / 2;
-  const serviceCharge = sale.totalAmount * 0.1; // 10% service charge, matching the design
+  // Calculate tax breakdown from real tax details
+  let totalTax = 0;
+  const taxRows: JSX.Element[] = [];
+  sale.taxDetails.forEach(tax => {
+    totalTax += tax.amount;
+    if (tax.name.toLowerCase().includes('cgst')) {
+      taxRows.push(
+        <div key={tax.id} className="flex justify-between">
+          <span className="text-lg text-gray-800">{tax.name} ({tax.rate}%)</span>
+          <span className="text-lg text-gray-800">{tax.amount.toFixed(2)}</span>
+        </div>
+      );
+    } else if (tax.name.toLowerCase().includes('sgst')) {
+      taxRows.push(
+        <div key={tax.id} className="flex justify-between">
+          <span className="text-lg text-gray-800">{tax.name} ({tax.rate}%)</span>
+          <span className="text-lg text-gray-800">{tax.amount.toFixed(2)}</span>
+        </div>
+      );
+    } else {
+      taxRows.push(
+        <div key={tax.id} className="flex justify-between">
+          <span className="text-lg text-gray-800">{tax.name} ({tax.rate}%)</span>
+          <span className="text-lg text-gray-800">{tax.amount.toFixed(2)}</span>
+        </div>
+      );
+    }
+  });
 
   return (
     <div className="text-gray-700">
@@ -71,6 +96,19 @@ const SaleDetailsModal: React.FC<SaleDetailsModalProps> = ({ isOpen, onClose, sa
           <p className="text-sm text-gray-600">Email: {outletEmail}</p>
         </div>
 
+        {/* Customer Section */}
+        {customer && (
+          <div className="border-t-2 border-b-2 border-gray-300 py-3 mb-4">
+            <h4 className="text-lg font-bold text-gray-800 mb-2">Customer Details</h4>
+            <p className="text-sm text-gray-700"><strong>Name:</strong> {customer.name}</p>
+            {customer.phone && <p className="text-sm text-gray-700"><strong>Phone:</strong> {customer.phone}</p>}
+            {customer.email && <p className="text-sm text-gray-700"><strong>Email:</strong> {customer.email}</p>}
+            {customer.address && <p className="text-sm text-gray-700"><strong>Address:</strong> {customer.address}</p>}
+            {customer.companyName && <p className="text-sm text-gray-700"><strong>Company:</strong> {customer.companyName}</p>}
+            {customer.vatPan && <p className="text-sm text-gray-700"><strong>VAT/PAN:</strong> {customer.vatPan}</p>}
+          </div>
+        )}
+
         {/* Order Type */}
         <div className="text-center my-2">
           <h3 className="text-2xl font-bold text-gray-800 border-y-2 border-black py-2">{sale.orderType || 'Dine In'}</h3>
@@ -82,14 +120,18 @@ const SaleDetailsModal: React.FC<SaleDetailsModalProps> = ({ isOpen, onClose, sa
             <span className="text-lg font-medium text-gray-800">Bill No</span>
             <span className="text-lg font-bold text-gray-700">: DNBILL {sale.id.slice(-4).toUpperCase()}</span>
           </div>
-          <div className="flex justify-between">
-            <span className="text-lg font-medium text-gray-800">Table Name</span>
-            <span className="text-lg font-bold text-gray-700">: {sale.assignedTableName || 'G5'} <span className="ml-8">Pax: {sale.pax || 1}</span></span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-lg font-medium text-gray-800">Waiter</span>
-            <span className="text-lg font-bold text-gray-700">: {sale.waiterName || 'Ravi'}</span>
-          </div>
+          {sale.assignedTableName && (
+            <div className="flex justify-between">
+              <span className="text-lg font-medium text-gray-800">Table Name</span>
+              <span className="text-lg font-bold text-gray-700">: {sale.assignedTableName} <span className="ml-8">Pax: {sale.pax || 1}</span></span>
+            </div>
+          )}
+          {sale.waiterName && (
+            <div className="flex justify-between">
+              <span className="text-lg font-medium text-gray-800">Waiter</span>
+              <span className="text-lg font-bold text-gray-700">: {sale.waiterName}</span>
+            </div>
+          )}
           <div className="flex justify-between">
             <span className="text-lg font-medium text-gray-800">Date & Time</span>
             <span className="text-lg font-bold text-gray-700">: {new Date(sale.saleDate).toLocaleString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
@@ -126,22 +168,22 @@ const SaleDetailsModal: React.FC<SaleDetailsModalProps> = ({ isOpen, onClose, sa
         <div className="space-y-1 mb-4">
           <div className="flex justify-between items-center">
             <span className="text-lg font-bold text-gray-800">Items/{sale.items.length}</span>
-            <span className="text-lg font-bold text-gray-800">x2</span>
             <span className="text-lg font-bold text-gray-800">Sub Total</span>
             <span className="text-lg font-bold text-gray-800">{sale.subTotal.toFixed(2)}</span>
           </div>
-          <div className="flex justify-between">
-            <span className="text-lg text-gray-800">Service Charge</span>
-            <span className="text-lg text-gray-800">{serviceCharge.toFixed(2)}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-lg text-gray-800">CGST</span>
-            <span className="text-lg text-gray-800">{cgst.toFixed(2)}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-lg text-gray-800">SGST</span>
-            <span className="text-lg text-gray-800">{sgst.toFixed(2)}</span>
-          </div>
+          {taxRows}
+          {sale.discountAmount && sale.discountAmount > 0 && (
+            <div className="flex justify-between">
+              <span className="text-lg text-gray-800">Discount {sale.discountType === 'percentage' ? `(${sale.discountAmount}%)` : ''}</span>
+              <span className="text-lg text-gray-800">-{(sale.discountType === 'percentage' ? (sale.subTotal * sale.discountAmount / 100) : sale.discountAmount).toFixed(2)}</span>
+            </div>
+          )}
+          {sale.tipAmount && sale.tipAmount > 0 && (
+            <div className="flex justify-between">
+              <span className="text-lg text-gray-800">Tip</span>
+              <span className="text-lg text-gray-800">{sale.tipAmount.toFixed(2)}</span>
+            </div>
+          )}
           <div className="flex justify-between items-center mt-2 border-t-2 border-black pt-2">
             <span className="text-2xl font-extrabold text-gray-900">Grand Total</span>
             <span className="text-2xl font-extrabold text-gray-900">{sale.totalAmount.toFixed(2)}</span>

@@ -25,22 +25,28 @@ const ReceivePaymentModal: React.FC<ReceivePaymentModalProps> = ({ customer, onC
     };
   }, [applicationSettings?.currencySymbolPosition, applicationSettings?.decimalPlaces]);
 
-  const [amount, setAmount] = useState('');
+  const [receivedAmount, setReceivedAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState(availablePaymentMethods[0] || 'Cash');
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const dueAmount = customer ? Number((customer as any).dueAmount) : 0;
+
+  // Calculate change/credit
+  const changeAmount = useMemo(() => {
+    const numericReceived = parseFloat(receivedAmount) || 0;
+    return Math.max(0, numericReceived - dueAmount);
+  }, [receivedAmount, dueAmount]);
 
   useEffect(() => {
-    const dueAmount = customer ? Number((customer as any).dueAmount) : 0;
     if (customer && Number.isFinite(dueAmount) && dueAmount > 0) {
-      // Pre-fill amount with current due, but allow editing
-      setAmount(String(dueAmount.toFixed(2)));
+      // Pre-fill received amount with current due, but allow editing
+      setReceivedAmount(String(dueAmount.toFixed(2)));
     } else {
-      setAmount('');
+      setReceivedAmount('');
     }
     setPaymentMethod(availablePaymentMethods[0] || 'Cash');
     setNotes('');
-  }, [customer, availablePaymentMethods]);
+  }, [customer, availablePaymentMethods, dueAmount]);
 
   if (!customer) return null;
 
@@ -48,22 +54,16 @@ const ReceivePaymentModal: React.FC<ReceivePaymentModalProps> = ({ customer, onC
     e.preventDefault();
     if (isSubmitting) return;
 
-    const numericAmount = parseFloat(amount);
+    const numericAmount = parseFloat(receivedAmount);
     if (isNaN(numericAmount) || numericAmount <= 0) {
       alert('Please enter a valid positive amount.');
       return;
     }
-    const dueAmount = Number((customer as any).dueAmount) || 0;
-    if (numericAmount > dueAmount) {
-        const entered = defaultCurrency ? formatMoney(numericAmount, defaultCurrency, moneySettings) : numericAmount.toFixed(moneySettings.decimalPlaces);
-        const due = defaultCurrency ? formatMoney(dueAmount, defaultCurrency, moneySettings) : dueAmount.toFixed(moneySettings.decimalPlaces);
-        if (!window.confirm(`The amount entered (${entered}) is greater than the due amount (${due}). Do you want to proceed? This might result in a credit for the customer.`)) {
-            return;
-        }
-    }
+    // The actual amount to credit (for overpayment) is handled by backend, we just pass received amount
+    const amountToProcess = Math.min(numericAmount, dueAmount + changeAmount); // Pass full received amount
     try {
       setIsSubmitting(true);
-      await onReceivePayment(customer.id, numericAmount, paymentMethod, notes);
+      await onReceivePayment(customer.id, amountToProcess, paymentMethod, notes);
       onClose();
     } finally {
       setIsSubmitting(false);
@@ -75,21 +75,32 @@ const ReceivePaymentModal: React.FC<ReceivePaymentModalProps> = ({ customer, onC
       <h3 className="text-lg font-medium text-gray-800">
         Receive Payment from: <span className="text-sky-600">{customer.name}</span>
       </h3>
-      <p className="text-sm text-gray-600">
-        Current Due Amount: <span className="font-semibold"><Money amount={Number((customer as any).dueAmount) || 0} /></span>
-      </p>
+      <div className="bg-gray-50 p-4 rounded-lg space-y-2">
+        <p className="text-sm text-gray-600">
+          Current Due Amount: <span className="font-semibold"><Money amount={dueAmount || 0} /></span>
+        </p>
+      </div>
       
       <Input
-        label="Amount Received *"
+        label="Received Amount *"
         type="number"
-        id="paymentAmount"
-        value={amount}
-        onChange={(e) => setAmount(e.target.value)}
+        id="paymentReceivedAmount"
+        value={receivedAmount}
+        onChange={(e) => setReceivedAmount(e.target.value)}
         min="0.01"
         step="0.01"
         required
         autoFocus
       />
+
+      <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+        <label htmlFor="paymentChangeAmount" className="block text-sm font-medium text-blue-800 mb-1">
+          {changeAmount > 0 ? 'Change to Return' : 'Remaining Due'}
+        </label>
+        <div className="text-2xl font-bold text-blue-900">
+          <Money amount={changeAmount > 0 ? changeAmount : dueAmount - (parseFloat(receivedAmount) || 0)} />
+        </div>
+      </div>
 
       <div>
         <label htmlFor="paymentMethodModal" className="block text-sm font-medium text-gray-700 mb-1">Payment Method *</label>

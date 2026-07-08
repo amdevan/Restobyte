@@ -25,17 +25,23 @@ const RecordSupplierPaymentModal: React.FC<RecordSupplierPaymentModalProps> = ({
     };
   }, [applicationSettings?.currencySymbolPosition, applicationSettings?.decimalPlaces]);
 
-  const [amountPaid, setAmountPaid] = useState('');
+  const [receivedAmount, setReceivedAmount] = useState('');
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
   const [paymentMethod, setPaymentMethod] = useState(paymentMethodOptions[0]);
   const [reference, setReference] = useState('');
   const [notes, setNotes] = useState('');
 
   const dueAmount = purchase ? purchase.grandTotalAmount - (purchase.paidAmount || 0) : 0;
+  
+  // Calculate change
+  const changeAmount = useMemo(() => {
+    const numericReceived = parseFloat(receivedAmount) || 0;
+    return Math.max(0, numericReceived - dueAmount);
+  }, [receivedAmount, dueAmount]);
 
   useEffect(() => {
     if (purchase) {
-      setAmountPaid(dueAmount > 0 ? dueAmount.toFixed(2) : ''); // Pre-fill with due amount if positive
+      setReceivedAmount(dueAmount > 0 ? dueAmount.toFixed(2) : ''); // Pre-fill with due amount if positive
       setPaymentDate(new Date().toISOString().split('T')[0]);
       setPaymentMethod(paymentMethodOptions[0] || 'Cash');
       setReference('');
@@ -47,17 +53,10 @@ const RecordSupplierPaymentModal: React.FC<RecordSupplierPaymentModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const numericAmount = parseFloat(amountPaid);
+    const numericAmount = parseFloat(receivedAmount);
     if (isNaN(numericAmount) || numericAmount <= 0) {
       alert('Please enter a valid positive amount.');
       return;
-    }
-    if (numericAmount > dueAmount) {
-        const entered = defaultCurrency ? formatMoney(numericAmount, defaultCurrency, moneySettings) : numericAmount.toFixed(moneySettings.decimalPlaces);
-        const due = defaultCurrency ? formatMoney(dueAmount, defaultCurrency, moneySettings) : dueAmount.toFixed(moneySettings.decimalPlaces);
-        if (!window.confirm(`The amount entered (${entered}) is greater than the current due (${due}). Do you want to proceed? This might result in an overpayment.`)) {
-            return;
-        }
     }
     onRecordPayment(purchase.id, numericAmount, paymentDate, paymentMethod, reference, notes);
     onClose();
@@ -68,30 +67,42 @@ const RecordSupplierPaymentModal: React.FC<RecordSupplierPaymentModalProps> = ({
       <h3 className="text-lg font-medium text-gray-800">
         Record Payment for PO: <span className="text-sky-600">{purchase.purchaseNumber}</span>
       </h3>
-      <p className="text-sm text-gray-600">
-        Supplier: <span className="font-semibold">{purchase.supplierName || 'N/A'}</span>
-      </p>
-      <p className="text-sm text-gray-600">
-        Total PO Amount: <span className="font-semibold"><Money amount={purchase.grandTotalAmount} /></span>
-      </p>
-       <p className="text-sm text-gray-600">
-        Currently Paid: <span className="font-semibold"><Money amount={purchase.paidAmount || 0} /></span>
-      </p>
-      <p className="text-sm text-red-600">
-        Current Due Amount: <span className="font-semibold"><Money amount={dueAmount} /></span>
-      </p>
+      <div className="bg-gray-50 p-4 rounded-lg space-y-2">
+        <p className="text-sm text-gray-600">
+          Supplier: <span className="font-semibold">{purchase.supplierName || 'N/A'}</span>
+        </p>
+        <p className="text-sm text-gray-600">
+          Total PO Amount: <span className="font-semibold"><Money amount={purchase.grandTotalAmount} /></span>
+        </p>
+         <p className="text-sm text-gray-600">
+          Currently Paid: <span className="font-semibold"><Money amount={purchase.paidAmount || 0} /></span>
+        </p>
+        <p className="text-sm text-red-600">
+          Current Due Amount: <span className="font-semibold"><Money amount={dueAmount} /></span>
+        </p>
+      </div>
       
       <Input
-        label="Amount Being Paid *"
+        label="Received Amount *"
         type="number"
-        id="amountPaid"
-        value={amountPaid}
-        onChange={(e) => setAmountPaid(e.target.value)}
+        id="supplierPaymentReceivedAmount"
+        value={receivedAmount}
+        onChange={(e) => setReceivedAmount(e.target.value)}
         min="0.01"
         step="0.01"
         required
         autoFocus
       />
+
+      <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+        <label className="block text-sm font-medium text-blue-800 mb-1">
+          {changeAmount > 0 ? 'Change to Return' : 'Remaining Due'}
+        </label>
+        <div className="text-2xl font-bold text-blue-900">
+          <Money amount={changeAmount > 0 ? changeAmount : dueAmount - (parseFloat(receivedAmount) || 0)} />
+        </div>
+      </div>
+
       <Input
         label="Payment Date *"
         type="date"

@@ -181,6 +181,10 @@ const mapBackendOrderToSale = (order: any): Sale => {
         splitDetails: Array.isArray(rawSale?.splitDetails) ? rawSale.splitDetails : undefined,
         kdsStatus: rawSale?.kdsStatus,
         kdsReadyTimestamp: rawSale?.kdsReadyTimestamp,
+        paymentDate: rawSale?.paymentDate,
+        paymentReference: rawSale?.paymentReference,
+        receivedAmount: rawSale?.receivedAmount,
+        returnAmount: rawSale?.returnAmount,
     };
 };
 const initialAreasFloors: AreaFloor[] = [

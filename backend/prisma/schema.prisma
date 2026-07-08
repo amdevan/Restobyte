@@ -55,6 +55,7 @@ model Outlet {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   users     User[]
+  orders    Order[]
   // Categories, Tables, etc. could optionally be linked here too, 
   // but for now we keep the loosely coupled 'outletId' string in those models 
   // to avoid complex migration issues with existing data if any.
@@ -148,6 +149,7 @@ model Order {
   total      Float       @default(0)
   status     String      @default("PENDING") // PENDING, COMPLETED, CANCELLED
   outletId   String?
+  outlet     Outlet?     @relation(fields: [outletId], references: [id])
   saleData   Json?
 }
 

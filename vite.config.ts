@@ -24,6 +24,7 @@ export default defineConfig(({ mode }) => {
         'process.env.APP_VERSION': JSON.stringify(packageJson.version)
       },
       server: {
+        allowedHosts,
         historyApiFallback: true,
       },
       preview: {

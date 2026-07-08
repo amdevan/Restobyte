@@ -469,7 +469,9 @@ const handleSendKot = useCallback(async () => {
     payments: PartialPayment[],
     tip: number,
     isSettled: boolean,
-    splitDetails?: Split[]
+    splitDetails?: Split[],
+    receivedAmount: number,
+    returnAmount: number
   }) => {
     if (currentOrderItems.length === 0) {
       alert("Cannot finalize an empty order.");
@@ -510,6 +512,8 @@ const handleSendKot = useCallback(async () => {
             isClosed: true,
             tipAmount: paymentDetails.tip > 0 ? paymentDetails.tip : undefined,
             splitDetails: paymentDetails.splitDetails,
+            receivedAmount: paymentDetails.receivedAmount,
+            returnAmount: paymentDetails.returnAmount,
         };
         const savedSale = await updateSale(saleToProcess);
         if (!savedSale) return;
@@ -541,6 +545,8 @@ const handleSendKot = useCallback(async () => {
           tipAmount: paymentDetails.tip > 0 ? paymentDetails.tip : undefined,
           splitDetails: paymentDetails.splitDetails,
           outletId: singleActiveOutlet.id,
+          receivedAmount: paymentDetails.receivedAmount,
+          returnAmount: paymentDetails.returnAmount,
         });
         if (!savedSale) return;
         saleToProcess = savedSale;

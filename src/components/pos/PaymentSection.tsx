@@ -10,7 +10,7 @@ import FonepayQRModal from '@/components/payments/FonepayQRModal';
 
 interface PaymentSectionProps {
   grandTotal: number;
-  onFinalize: (payments: PartialPayment[], isSettled: boolean) => void;
+  onFinalize: (payments: PartialPayment[], isSettled: boolean, receivedAmount: number, returnAmount: number) => void;
   onAddTip: () => void;
 }
 
@@ -72,6 +72,7 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({ grandTotal, onFi
 
     const finalTotalPaidBase = finalPayments.reduce((sum, p) => sum + p.amount, 0);
     const epsilon = 0.001; // Small amount to account for floating-point precision errors
+    const calculatedReturnAmount = Math.max(0, finalTotalPaidBase - grandTotal);
 
     if (paymentMethod === 'Due' || finalTotalPaidBase < grandTotal - epsilon) {
        const paidFormatted = formatMoney(finalTotalPaidBase, selectedCurrency, applicationSettings);
@@ -79,9 +80,9 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({ grandTotal, onFi
        if(paymentMethod !== 'Due' && !window.confirm(`Amount paid (${paidFormatted}) is less than total (${totalFormatted}). Mark remaining as due?`)) {
           return;
       }
-      onFinalize(finalPayments, false); // false = not settled
+      onFinalize(finalPayments, false, finalTotalPaidBase, 0); // false = not settled
     } else {
-      onFinalize(finalPayments, true); // true = settled
+      onFinalize(finalPayments, true, finalTotalPaidBase, calculatedReturnAmount); // true = settled
     }
   };
 
@@ -102,8 +103,9 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({ grandTotal, onFi
     const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
     const epsilon = 0.001;
     const isSettled = totalPaid >= grandTotal - epsilon;
+    const calculatedReturnAmount = Math.max(0, totalPaid - grandTotal);
     setIsFonepayQROpen(false);
-    onFinalize(payments, isSettled);
+    onFinalize(payments, isSettled, totalPaid, calculatedReturnAmount);
   };
 
 

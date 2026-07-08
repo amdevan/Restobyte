@@ -118,8 +118,8 @@ const AccessDataPage: React.FC = () => {
             <Button onClick={() => navigate('/public/restaurant#menu')} leftIcon={<FiExternalLink />}>Preview Public Menu</Button>
             {outlet?.id && (
               <>
-                <Button onClick={() => navigate(`/public/restaurant/${outlet.id}`)} leftIcon={<FiExternalLink />}>Preview Current Outlet</Button>
-                <Button onClick={() => navigate(`/public/restaurant/${outlet.id}#menu`)} leftIcon={<FiExternalLink />}>Preview Outlet Menu</Button>
+                <Button onClick={() => navigate(`/website/${outlet.id}`)} leftIcon={<FiExternalLink />}>Preview Current Outlet</Button>
+                <Button onClick={() => navigate(`/website/${outlet.id}#menu`)} leftIcon={<FiExternalLink />}>Preview Outlet Menu</Button>
               </>
             )}
           </div>

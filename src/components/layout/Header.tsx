@@ -96,8 +96,8 @@ const Header: React.FC<HeaderProps> = ({ title, onToggleSidebar, isSidebarCollap
     const visibleActions = actions.filter(a => !(isCloudKitchen && a.cloudKitchenHidden) && !isAggregateView);
 
     const websiteHref = outlet?.id
-        ? `${window.location.origin}/#/website/${outlet.id}`
-        : `${window.location.origin}/#/public/restaurant`;
+        ? `${window.location.origin}/website/${outlet.id}`
+        : `${window.location.origin}/public/restaurant`;
 
   return (
     <header className="bg-white shadow-sm p-3 flex-shrink-0 grid grid-cols-3 items-center relative z-[1000] border-b">

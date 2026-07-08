@@ -2,6 +2,7 @@ import React from 'react';
 import { Sale } from '../../types';
 import Button from '../common/Button';
 import { FiXCircle, FiPrinter, FiDownload, FiUser, FiGrid, FiClock, FiTag, FiDollarSign, FiList, FiTruck } from 'react-icons/fi';
+import html2pdf from 'html2pdf.js';
 import { IconBaseProps } from 'react-icons'; // Import IconBaseProps
 import Money from '../common/Money';
 
@@ -29,33 +30,18 @@ const SaleDetailsModal: React.FC<SaleDetailsModalProps> = ({ isOpen, onClose, sa
   };
 
   const handleDownloadReceipt = () => {
-    const content = document.getElementById('sale-details-content')?.innerHTML;
-    if(!content) return;
+    const contentElement = document.getElementById('sale-details-content');
+    if(!contentElement) return;
 
-    const htmlContent = `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Receipt #${sale.id.slice(-6).toUpperCase()}</title>
-    <style>
-        body { font-family: system-ui, -apple-system, sans-serif; font-size: 14px; margin: 20px; color: #1f2937; }
-        .detail-row { display: flex; padding: 6px 0; }
-        .detail-row .label { font-weight: 500; color: #4b5563; width: 128px; }
-        h4 { color: #0369a1; font-size: 18px; margin-bottom: 8px; }
-        h5 { color: #0284c7; font-size: 16px; margin-top: 16px; padding-top: 12px; border-top: 1px solid #e5e7eb; }
-        .item { padding: 10px 0; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; }
-    </style>
-</head>
-<body>${content}</body>
-</html>`;
+    const options = {
+      margin: 0.5,
+      filename: `invoice-${sale.id.slice(-6).toUpperCase()}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true },
+      jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+    };
 
-    const blob = new Blob([htmlContent], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `receipt-${sale.id.slice(-6).toUpperCase()}.html`;
-    a.click();
-    URL.revokeObjectURL(url);
+    html2pdf().set(options).from(contentElement).save();
   };
 
   return (

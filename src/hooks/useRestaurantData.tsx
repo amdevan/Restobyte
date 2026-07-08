@@ -263,6 +263,8 @@ const initialApplicationSettings: ApplicationSettings = {
     invoiceShowPaymentMethod: true,
     invoiceShowPaymentDate: true,
     invoiceShowPaymentReference: true,
+    invoiceShowReceivedAmount: true,
+    invoiceShowReturnAmount: true,
     invoiceShowReturnInformation: true,
     invoiceReturnPolicyText: 'Items can be returned within 7 days with receipt.',
 };

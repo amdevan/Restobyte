@@ -158,6 +158,8 @@ export interface Sale {
   partialPayments?: PartialPayment[]; // For split payments
   paymentDate?: string; // ISO string for payment date
   paymentReference?: string; // Reference number for payment
+  receivedAmount?: number; // Amount received from customer
+  returnAmount?: number; // Change to be returned to customer
   isSettled?: boolean; // True if payment complete, false if due (e.g., 'Other' payment method)
   isClosed?: boolean; // True if order is finalized (table can be freed) even if payment is due
 
@@ -632,6 +634,8 @@ export interface ApplicationSettings {
   invoiceShowPaymentMethod?: boolean;
   invoiceShowPaymentDate?: boolean;
   invoiceShowPaymentReference?: boolean;
+  invoiceShowReceivedAmount?: boolean;
+  invoiceShowReturnAmount?: boolean;
   invoiceShowReturnInformation?: boolean;
   invoiceReturnPolicyText?: string;
 }

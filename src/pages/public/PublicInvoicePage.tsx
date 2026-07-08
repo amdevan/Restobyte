@@ -34,6 +34,8 @@ const mapBackendOrderToSale = (order: any) => {
     paymentMethod: saleData.paymentMethod,
     paymentDate: saleData.paymentDate,
     paymentReference: saleData.paymentReference,
+    receivedAmount: saleData.receivedAmount,
+    returnAmount: saleData.returnAmount,
   };
 };
 
@@ -228,6 +230,10 @@ const PublicInvoicePage: React.FC = () => {
             {sale.paymentMethod && <p className="text-sm text-gray-700"><strong>Payment Method:</strong> {sale.paymentMethod}</p>}
             <p className="text-sm text-gray-700"><strong>Payment Date:</strong> {new Date(sale.paymentDate || sale.saleDate).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' })}</p>
             {sale.paymentReference && <p className="text-sm text-gray-700"><strong>Reference:</strong> {sale.paymentReference}</p>}
+            <p className="text-sm text-gray-700"><strong>Received Amount:</strong> {(sale.receivedAmount || sale.totalAmount).toFixed(2)}</p>
+            <p className="text-sm text-gray-700">
+                <strong>Return/Change Amount:</strong> {(sale.returnAmount || (sale.receivedAmount || sale.totalAmount) - sale.totalAmount).toFixed(2)}
+            </p>
           </div>
 
           {/* Return Information Section */}

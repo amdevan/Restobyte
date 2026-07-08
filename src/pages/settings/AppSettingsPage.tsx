@@ -283,6 +283,28 @@ const AppSettingsPage: React.FC = () => {
                                 />
                                 <label htmlFor="invoiceShowPaymentReference" className="text-sm font-medium text-gray-700">Show Payment Reference</label>
                             </div>
+                            <div className="flex items-center gap-2">
+                                <input 
+                                    type="checkbox" 
+                                    id="invoiceShowReceivedAmount" 
+                                    name="invoiceShowReceivedAmount" 
+                                    checked={localSettings.invoiceShowReceivedAmount} 
+                                    onChange={handleInputChange} 
+                                    className="w-4 h-4 text-sky-600 rounded border-gray-300 focus:ring-sky-500"
+                                />
+                                <label htmlFor="invoiceShowReceivedAmount" className="text-sm font-medium text-gray-700">Show Received Amount</label>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <input 
+                                    type="checkbox" 
+                                    id="invoiceShowReturnAmount" 
+                                    name="invoiceShowReturnAmount" 
+                                    checked={localSettings.invoiceShowReturnAmount} 
+                                    onChange={handleInputChange} 
+                                    className="w-4 h-4 text-sky-600 rounded border-gray-300 focus:ring-sky-500"
+                                />
+                                <label htmlFor="invoiceShowReturnAmount" className="text-sm font-medium text-gray-700">Show Return/Change Amount</label>
+                            </div>
                         </div>
                     )}
 

@@ -202,6 +202,12 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ onClose, sale }) => {
             {applicationSettings.invoiceShowPaymentMethod && sale.paymentMethod && <p className="text-sm text-gray-700"><strong>Payment Method:</strong> {sale.paymentMethod}</p>}
             {applicationSettings.invoiceShowPaymentDate && (sale.paymentDate || sale.saleDate) && <p className="text-sm text-gray-700"><strong>Payment Date:</strong> {new Date(sale.paymentDate || sale.saleDate).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' })}</p>}
             {applicationSettings.invoiceShowPaymentReference && sale.paymentReference && <p className="text-sm text-gray-700"><strong>Reference:</strong> {sale.paymentReference}</p>}
+            {applicationSettings.invoiceShowReceivedAmount && <p className="text-sm text-gray-700"><strong>Received Amount:</strong> {(sale.receivedAmount || sale.totalAmount).toFixed(2)}</p>}
+            {applicationSettings.invoiceShowReturnAmount && (
+                <p className="text-sm text-gray-700">
+                    <strong>Return/Change Amount:</strong> {(sale.returnAmount || (sale.receivedAmount || sale.totalAmount) - sale.totalAmount).toFixed(2)}
+                </p>
+            )}
           </div>
         )}
 

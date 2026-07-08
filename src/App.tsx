@@ -17,6 +17,7 @@ import PublicLayout from '@/components/public/PublicLayout';
 import PublicHomePage from '@/pages/public/PublicHomePage';
 import PublicMenuPage from '@/pages/public/PublicMenuPage';
 import PublicAboutPage from '@/pages/public/PublicAboutPage';
+import PublicInvoicePage from '@/pages/public/PublicInvoicePage';
 const PublicContactPage = React.lazy(() => import('./pages/public/PublicContactPage'));
 const SaaSBlogsPage = React.lazy(() => import('./pages/public/SaaSBlogsPage'));
 const SaaSContactPage = React.lazy(() => import('./pages/public/SaaSContactPage'));
@@ -410,6 +411,9 @@ const AppContent: React.FC = () => {
               <Route path="about" element={<PublicAboutPage />} />
               <Route path="contact" element={<PublicContactPage />} />
             </Route>
+            
+            {/* Public Invoice Route */}
+            <Route path="/invoice/:id" element={<PublicInvoicePage />} />
             
             {/* Customer Panel Routes */}
             <Route path="/customer" element={isAuthenticated && user?.roleId === 'role-customer' ? <CustomerLayout /> : <Navigate to="/public/login" replace />}>

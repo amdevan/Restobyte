@@ -88,6 +88,20 @@ export const getOrder = async (req: Request, res: Response) => {
   res.json(order);
 };
 
+export const getPublicOrder = async (req: Request, res: Response) => {
+  const id = req.params.id as string;
+  const order = await prisma.order.findFirst({
+    where: { id },
+    include: { 
+      customer: true, 
+      items: { include: { menuItem: true } },
+      outlet: true
+    },
+  });
+  if (!order) return res.status(404).json({ error: 'Order not found' });
+  res.json(order);
+};
+
 export const createOrder = async (req: Request, res: Response) => {
   const user = (req as AuthRequest).user;
   if (!user) {

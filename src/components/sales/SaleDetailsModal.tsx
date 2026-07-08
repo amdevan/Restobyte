@@ -4,6 +4,7 @@ import Button from '../common/Button';
 import { FiXCircle, FiPrinter, FiDownload } from 'react-icons/fi';
 import html2pdf from 'html2pdf.js';
 import { useRestaurantData } from '../../hooks/useRestaurantData';
+import { QRCodeSVG } from 'qrcode.react';
 
 interface SaleDetailsModalProps {
   isOpen: boolean;
@@ -196,32 +197,19 @@ const SaleDetailsModal: React.FC<SaleDetailsModalProps> = ({ isOpen, onClose, sa
         </div>
 
         {/* Footer */}
-        <div className="text-center mt-6">
-          <p className="text-xl text-gray-700">Thank you Visit Us Again!</p>
-          <div className="mt-4 flex justify-center">
-            <div className="w-32 h-32 border-2 border-black p-1">
-              <svg viewBox="0 0 100 100" className="w-full h-full">
-                {/* Simple QR code pattern */}
-                {Array.from({ length: 25 }).map((_, i) => 
-                  Array.from({ length: 25 }).map((_, j) => {
-                    const isOn = Math.random() > 0.5 || (i < 5 && j < 5) || (i < 5 && j > 19) || (i > 19 && j < 5) || (i === 0 || i === 24 || j === 0 || j === 24);
-                    return (
-                      <rect
-                        key={`${i}-${j}`}
-                        x={j * 4}
-                        y={i * 4}
-                        width="4"
-                        height="4"
-                        fill={isOn ? "#000" : "#fff"}
-                      />
-                    );
-                  })
-                )}
-              </svg>
+          <div className="text-center mt-6">
+            <p className="text-xl text-gray-700">Thank you Visit Us Again!</p>
+            <div className="mt-4 flex justify-center">
+              <div className="border-2 border-black p-1 inline-block">
+                <QRCodeSVG 
+                  value={`${window.location.origin}${window.location.pathname}#/invoice/${sale.id}`} 
+                  size={128}
+                  level="H"
+                />
+              </div>
             </div>
+            <p className="text-xs text-gray-500 mt-4">Powered by Restobyte Software</p>
           </div>
-          <p className="text-xs text-gray-500 mt-4">Powered by Restobyte Software</p>
-        </div>
       </div>
 
       <div className="mt-6 flex justify-end space-x-3">

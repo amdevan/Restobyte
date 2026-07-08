@@ -205,10 +205,12 @@ const SaleDetailsModal: React.FC<SaleDetailsModalProps> = ({ isOpen, onClose, sa
             {applicationSettings.invoiceShowPaymentReference && sale.paymentReference && <p className="text-sm text-gray-700"><strong>Reference:</strong> {sale.paymentReference}</p>}
             {applicationSettings.invoiceShowReceivedAmount && <p className="text-sm text-gray-700"><strong>Received Amount:</strong> {(sale.receivedAmount || sale.totalAmount).toFixed(2)}</p>}
             {applicationSettings.invoiceShowReturnAmount && (
-                <p className="text-sm text-gray-700">
-                    <strong>Return/Change Amount:</strong> {(sale.returnAmount || (sale.receivedAmount || sale.totalAmount) - sale.totalAmount).toFixed(2)}
-                </p>
-            )}
+        (sale.returnAmount > 0 || (sale.receivedAmount && sale.receivedAmount > sale.totalAmount)) && (
+            <p className="text-sm text-gray-700">
+                <strong>Return/Change Amount:</strong> {(sale.returnAmount || (sale.receivedAmount || sale.totalAmount) - sale.totalAmount).toFixed(2)}
+            </p>
+        )
+    )}
           </div>
         )}
 

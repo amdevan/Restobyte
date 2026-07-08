@@ -1,7 +1,7 @@
 import React from 'react';
 import { Sale } from '../../types';
 import Button from '../common/Button';
-import { FiXCircle, FiPrinter, FiUser, FiGrid, FiClock, FiTag, FiDollarSign, FiList, FiTruck } from 'react-icons/fi';
+import { FiXCircle, FiPrinter, FiDownload, FiUser, FiGrid, FiClock, FiTag, FiDollarSign, FiList, FiTruck } from 'react-icons/fi';
 import { IconBaseProps } from 'react-icons'; // Import IconBaseProps
 import Money from '../common/Money';
 
@@ -28,9 +28,39 @@ const SaleDetailsModal: React.FC<SaleDetailsModalProps> = ({ isOpen, onClose, sa
     // This would typically use the ReceiptModal logic or a direct print CSS and window.print()
   };
 
+  const handleDownloadReceipt = () => {
+    const content = document.getElementById('sale-details-content')?.innerHTML;
+    if(!content) return;
+
+    const htmlContent = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Receipt #${sale.id.slice(-6).toUpperCase()}</title>
+    <style>
+        body { font-family: system-ui, -apple-system, sans-serif; font-size: 14px; margin: 20px; color: #1f2937; }
+        .detail-row { display: flex; padding: 6px 0; }
+        .detail-row .label { font-weight: 500; color: #4b5563; width: 128px; }
+        h4 { color: #0369a1; font-size: 18px; margin-bottom: 8px; }
+        h5 { color: #0284c7; font-size: 16px; margin-top: 16px; padding-top: 12px; border-top: 1px solid #e5e7eb; }
+        .item { padding: 10px 0; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; }
+    </style>
+</head>
+<body>${content}</body>
+</html>`;
+
+    const blob = new Blob([htmlContent], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `receipt-${sale.id.slice(-6).toUpperCase()}.html`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="text-sm text-gray-700 max-h-[75vh] flex flex-col">
-      <div className="space-y-3 pb-4 border-b mb-4 flex-grow overflow-y-auto custom-scrollbar pr-2">
+      <div id="sale-details-content" className="space-y-3 pb-4 border-b mb-4 flex-grow overflow-y-auto custom-scrollbar pr-2">
         <h4 className="text-lg font-semibold text-sky-700 mb-2">Order Summary - #{sale.id.slice(-6).toUpperCase()}</h4>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1">
@@ -84,6 +114,9 @@ const SaleDetailsModal: React.FC<SaleDetailsModalProps> = ({ isOpen, onClose, sa
       </div>
 
       <div className="mt-auto pt-4 border-t flex justify-end space-x-3">
+        <Button onClick={handleDownloadReceipt} variant="secondary" leftIcon={<FiDownload />}>
+          Download
+        </Button>
         <Button onClick={handlePrintReceipt} variant="secondary" leftIcon={<FiPrinter />}>
           Print Receipt
         </Button>

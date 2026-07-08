@@ -1,7 +1,7 @@
 import React from 'react';
 import { Sale, SaleItem } from '../../types';
 import Button from '../common/Button';
-import { FiPrinter, FiXCircle } from 'react-icons/fi';
+import { FiPrinter, FiXCircle, FiDownload } from 'react-icons/fi';
 import { useRestaurantData } from '../../hooks/useRestaurantData';
 import Money from '../common/Money';
 import { formatMoney, getDefaultCurrency } from '../../utils/currency';
@@ -47,6 +47,45 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ onClose, sale }) => {
         printWindow.print();
         printWindow.close();
     }
+  };
+
+  const handleDownload = () => {
+    const receiptContent = document.getElementById('receipt-content')?.innerHTML;
+    if(!receiptContent) return;
+
+    const htmlContent = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Receipt #${sale.id.slice(-6).toUpperCase()}</title>
+    <style>
+        body { font-family: 'Courier New', Courier, monospace; font-size: 12px; margin: 0; padding: 10px; color: #000; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 2px 0; }
+        .header { text-align: center; margin-bottom: 10px; }
+        .header h4 { font-size: 16px; margin: 0; }
+        .header p { margin: 2px 0; font-size: 10px; }
+        .details { border-bottom: 1px dashed black; padding-bottom: 5px; margin-bottom: 5px; }
+        .details > div { display: flex; justify-content: space-between; }
+        .items-table th { border-bottom: 1px dashed black; text-align: left; }
+        .items-table .qty { text-align: center; }
+        .items-table .price, .items-table .total { text-align: right; }
+        .summary { border-top: 1px dashed black; padding-top: 5px; }
+        .summary > div, .payment-details > div { display: flex; justify-content: space-between; }
+        .grand-total { border-top: 2px solid black; font-weight: bold; }
+        .footer { text-align: center; margin-top: 10px; font-size: 10px; }
+    </style>
+</head>
+<body>${receiptContent}</body>
+</html>`;
+
+    const blob = new Blob([htmlContent], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `receipt-${sale.id.slice(-6).toUpperCase()}.html`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const outletName = currentOutlet?.restaurantName || websiteSettings.whiteLabel.appName || 'RestoByte POS';
@@ -141,6 +180,7 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ onClose, sale }) => {
       </div>
 
       <div className="mt-6 flex justify-end space-x-3">
+        <Button onClick={handleDownload} variant="secondary" leftIcon={<FiDownload />}>Download</Button>
         <Button onClick={handlePrint} variant="secondary" leftIcon={<FiPrinter />}>Print</Button>
         <Button onClick={onClose} variant="primary" leftIcon={<FiXCircle />}>Close & New Order</Button>
       </div>

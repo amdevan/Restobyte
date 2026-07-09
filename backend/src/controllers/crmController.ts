@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import prisma from '../db/prisma.js';
 import { sendWelcomeEmail } from '../services/emailService.js';
 import bcrypt from 'bcryptjs';
+import { generateUniqueSlug } from '../utils/slug.js';
 
 export const listLeads = async (_req: Request, res: Response) => {
   const leads = await prisma.lead.findMany({ orderBy: { createdAt: 'desc' } });
@@ -47,17 +48,31 @@ export const convertLeadToTenant = async (req: Request, res: Response) => {
     res.status(404).json({ message: 'Lead not found' });
     return;
   }
-  const tenant = await prisma.tenant.create({
-    data: {
-      name: lead.company || lead.name,
-      phone: lead.phone || null,
-      address: null,
-      plan: 'Basic',
-      subscriptionStatus: 'trialing',
-      outlets: {
-        create: [{ name: lead.company || lead.name, address: '', phone: lead.phone || null }]
+  const outletName = lead.company || lead.name;
+
+  const tenant = await prisma.$transaction(async (tx) => {
+    const newTenant = await tx.tenant.create({
+      data: {
+        name: outletName,
+        phone: lead.phone || null,
+        address: null,
+        plan: 'Basic',
+        subscriptionStatus: 'trialing'
       }
-    }
+    });
+
+    const outletSlug = await generateUniqueSlug(outletName, newTenant.id);
+    await tx.outlet.create({
+      data: {
+        name: outletName,
+        slug: outletSlug,
+        address: '',
+        phone: lead.phone || null,
+        tenantId: newTenant.id
+      }
+    });
+
+    return newTenant;
   });
   const salt = await bcrypt.genSalt(10);
   const password = await bcrypt.hash('admin123', salt);

@@ -1,5 +1,6 @@
 import prisma from '../src/db/prisma.js';
 import bcrypt from 'bcryptjs';
+import { generateSlug, generateUniqueSlug } from '../src/utils/slug.js';
 
 async function run() {
   console.log('Seeding database...');
@@ -22,10 +23,12 @@ async function run() {
   console.log('Tenant ready:', tenant.id);
 
   // 2. Create Default Outlet
+  const outletSlug = await generateUniqueSlug('Main Outlet', tenant.id, 'outlet-1');
   const outlet = await prisma.outlet.upsert({
     where: { id: 'outlet-1' },
     update: {
       name: 'Main Outlet',
+      slug: outletSlug,
       tenantId: tenant.id,
       address: '123 Main St',
       phone: '555-0123'
@@ -33,6 +36,7 @@ async function run() {
     create: {
       id: 'outlet-1',
       name: 'Main Outlet',
+      slug: outletSlug,
       tenantId: tenant.id,
       address: '123 Main St',
       phone: '555-0123'

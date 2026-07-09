@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 import prisma from '../db/prisma.js';
 import type { AuthRequest } from '../middleware/authMiddleware.js';
+import { generateSlug, generateUniqueSlug } from '../utils/slug.js';
 
 function isAdmin(user: AuthRequest['user'] | undefined) {
   if (!user) return false;
@@ -17,36 +18,6 @@ function normalizeTaxes(input: any): any[] | null {
   }));
   if (normalized.some(t => !t.name || !Number.isFinite(t.rate) || t.rate < 0)) return null;
   return normalized;
-}
-
-function generateSlug(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-}
-
-async function generateUniqueSlug(name: string, tenantId: string, excludeId?: string): Promise<string> {
-  let baseSlug = generateSlug(name);
-  let slug = baseSlug;
-  let counter = 1;
-
-  while (true) {
-    const existing = await prisma.outlet.findFirst({
-      where: {
-        slug,
-        tenantId,
-        ...(excludeId ? { id: { not: excludeId } } : {}),
-      },
-    });
-
-    if (!existing) break;
-
-    slug = `${baseSlug}-${counter}`;
-    counter++;
-  }
-
-  return slug;
 }
 
 export const listOutlets = async (req: Request, res: Response) => {

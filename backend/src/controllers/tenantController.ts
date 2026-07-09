@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 import { sendInvoiceReminderEmail, sendWelcomeEmail } from '../services/emailService.js';
 import type { AuthRequest } from '../middleware/authMiddleware.js';
 import { resolvePlanConfig } from '../utils/planConfig.js';
+import { generateUniqueSlug } from '../utils/slug.js';
 
 export const createTenant = async (req: Request, res: Response): Promise<void> => {
   const { restaurantName, fullName, mobile, address, username, password, countryCode, currencyCode, adminEmail, plan: requestedPlan } = req.body;
@@ -44,9 +45,11 @@ export const createTenant = async (req: Request, res: Response): Promise<void> =
       });
 
       // 2. Create Outlet
+      const outletSlug = await generateUniqueSlug(restaurantName, tenant.id);
       const outlet = await tx.outlet.create({
         data: {
           name: restaurantName,
+          slug: outletSlug,
           tenantId: tenant.id,
           address,
           phone: mobile,
@@ -255,12 +258,16 @@ export const updateTenant = async (req: Request, res: Response): Promise<void> =
     });
     
     // Update Outlet (assuming one outlet per tenant for now, or updating all)
-    // For simplicity, we update outlets with the same name if the tenant name changes
+    // For simplicity, we update outlets with the same name and regenerate slug if the tenant name changes
     if (name) {
-        await prisma.outlet.updateMany({
-            where: { tenantId: id },
-            data: { name }
-        });
+        const outlets = await prisma.outlet.findMany({ where: { tenantId: id } });
+        for (const outlet of outlets) {
+            const newSlug = await generateUniqueSlug(name, id, outlet.id);
+            await prisma.outlet.update({
+                where: { id: outlet.id },
+                data: { name, slug: newSlug }
+            });
+        }
     }
 
     // Update Admin User

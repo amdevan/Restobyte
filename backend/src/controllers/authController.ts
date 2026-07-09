@@ -55,14 +55,61 @@ const recordTenantLogin = async (req: Request, user: any, loginType = 'password'
   }
 };
 
+const normalizePermissions = (value: unknown) => (
+  Array.isArray(value) ? value.map((item) => String(item).trim()).filter(Boolean) : []
+);
+
+export const getMe = async (req: Request, res: Response): Promise<void> => {
+  const user = (req as AuthRequest).user;
+  if (!user) {
+    res.status(401).json({ message: 'Unauthorized' });
+    return;
+  }
+
+  const role = await prisma.role.findUnique({
+    where: { id: user.roleId || '' },
+  });
+
+  res.json({
+    id: user.id,
+    username: user.username,
+    email: (user as any).email,
+    phone: (user as any).phone,
+    isSuperAdmin: user.isSuperAdmin,
+    roleId: user.roleId,
+    roleName: role?.name,
+    permissions: normalizePermissions(role?.permissions),
+    outletId: user.outletId,
+    outletIds: Array.isArray((user as any).outletIds) ? (user as any).outletIds : (user.outletId ? [user.outletId] : []),
+    tenantId: user.tenantId,
+    isActive: user.isActive,
+  });
+};
+
 export const register = async (req: Request, res: Response): Promise<void> => {
-  const { username, password, roleId, outletId, outletIds, isSuperAdmin, name, mobile, address } = req.body;
+  const { username, email, phone, password, roleId, outletId, outletIds, isSuperAdmin, name, mobile, address } = req.body;
 
   try {
     const existingUser = await prisma.user.findUnique({ where: { username } });
     if (existingUser) {
       res.status(400).json({ message: 'User already exists' });
       return;
+    }
+
+    if (email) {
+      const existingEmail = await prisma.user.findUnique({ where: { email } });
+      if (existingEmail) {
+        res.status(400).json({ message: 'Email already exists' });
+        return;
+      }
+    }
+
+    if (phone) {
+      const existingPhone = await prisma.user.findUnique({ where: { phone } });
+      if (existingPhone) {
+        res.status(400).json({ message: 'Phone already exists' });
+        return;
+      }
     }
 
     const salt = await bcrypt.genSalt(10);
@@ -81,6 +128,8 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     const user = await prisma.user.create({
       data: {
         username,
+        email: email || null,
+        phone: phone || null,
         password: hashedPassword,
         roleId: resolvedRoleId,
         outletId: requestedOutletIds[0] || outletId,
@@ -94,8 +143,8 @@ export const register = async (req: Request, res: Response): Promise<void> => {
         await prisma.customer.create({
           data: {
             name: name || username,
-            email: username,
-            phone: mobile || null,
+            email: email || username,
+            phone: phone || mobile || null,
             address: address || null,
             userId: user.id,
             outletId
@@ -105,6 +154,8 @@ export const register = async (req: Request, res: Response): Promise<void> => {
         console.error('Failed to create customer profile linked to user', e);
       }
     }
+
+    const role = await prisma.role.findUnique({ where: { id: resolvedRoleId } });
 
     const token = jwt.sign(
       { userId: user.id, username: user.username, isSuperAdmin: user.isSuperAdmin },
@@ -117,8 +168,12 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       user: {
         id: user.id,
         username: user.username,
+        email: (user as any).email,
+        phone: (user as any).phone,
         isSuperAdmin: user.isSuperAdmin,
         roleId: user.roleId,
+        roleName: role?.name,
+        permissions: normalizePermissions(role?.permissions),
         outletId: user.outletId,
         outletIds: Array.isArray((user as any).outletIds) ? (user as any).outletIds : (user.outletId ? [user.outletId] : []),
         tenantId: user.tenantId,
@@ -148,6 +203,8 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    const role = await prisma.role.findUnique({ where: { id: user.roleId || '' } });
+
     const token = jwt.sign(
       { userId: user.id, username: user.username, isSuperAdmin: user.isSuperAdmin },
       JWT_SECRET,
@@ -161,8 +218,12 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       user: {
         id: user.id,
         username: user.username,
+        email: (user as any).email,
+        phone: (user as any).phone,
         isSuperAdmin: user.isSuperAdmin,
         roleId: user.roleId,
+        roleName: role?.name,
+        permissions: normalizePermissions(role?.permissions),
         outletId: user.outletId,
         outletIds: Array.isArray((user as any).outletIds) ? (user as any).outletIds : (user.outletId ? [user.outletId] : []),
         tenantId: user.tenantId,
@@ -195,12 +256,14 @@ export const impersonate = async (req: Request, res: Response): Promise<void> =>
     const adminUser = await prisma.user.findFirst({
       where: { tenantId, roleId: 'role-admin', isActive: true },
       orderBy: { createdAt: 'asc' }
-    });
+    } as any);
 
     if (!adminUser) {
       res.status(404).json({ message: 'Admin user not found for tenant' });
       return;
     }
+
+    const role = await prisma.role.findUnique({ where: { id: adminUser.roleId || '' } });
 
     const token = jwt.sign(
       { userId: adminUser.id, username: adminUser.username, isSuperAdmin: false },
@@ -215,8 +278,12 @@ export const impersonate = async (req: Request, res: Response): Promise<void> =>
       user: {
         id: adminUser.id,
         username: adminUser.username,
+        email: adminUser.email,
+        phone: adminUser.phone,
         isSuperAdmin: false,
         roleId: adminUser.roleId,
+        roleName: role?.name,
+        permissions: normalizePermissions(role?.permissions),
         outletId: adminUser.outletId,
         outletIds: Array.isArray((adminUser as any).outletIds) ? (adminUser as any).outletIds : (adminUser.outletId ? [adminUser.outletId] : []),
         isActive: adminUser.isActive

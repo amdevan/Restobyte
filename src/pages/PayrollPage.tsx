@@ -5,6 +5,7 @@ import Card from '@/components/common/Card';
 import Button from '@/components/common/Button';
 import Modal from '@/components/common/Modal';
 import PayslipModal from '@/components/payroll/PayslipModal';
+import Money from '@/components/common/Money';
 import { FiCalendar, FiDollarSign, FiUsers, FiFileText, FiCheckCircle, FiClock, FiXOctagon } from 'react-icons/fi';
 
 type DisplayPayrollRecord = Omit<PayrollRecord, 'id'> & { id?: string; status: 'Pending' | 'Paid' | 'NotGenerated'; paidDate?: string };
@@ -74,7 +75,7 @@ const PayrollPage: React.FC = () => {
   };
   
   const handleProcessPayment = (record: DisplayPayrollRecord) => {
-    if(window.confirm(`Process payment of Rs ${record.netSalary.toFixed(2)} for ${record.employeeName}?`)) {
+    if(window.confirm(`Process payment of ${record.netSalary.toFixed(2)} for ${record.employeeName}?`)) {
       const finalRecord: PayrollRecord = {
         ...record,
         id: `${record.employeeId}-${record.year}-${record.month}`,
@@ -130,9 +131,9 @@ const PayrollPage: React.FC = () => {
       {displayPayroll.length > 0 && (
         <Card title="Payroll Summary">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
-                <div className="p-3 bg-gray-100 rounded-lg"><p className="text-sm">Total Base Salary</p><p className="text-xl font-bold">${summary.totalBase.toFixed(2)}</p></div>
-                <div className="p-3 bg-amber-100 rounded-lg"><p className="text-sm">Total Deductions</p><p className="text-xl font-bold">${summary.totalDeductions.toFixed(2)}</p></div>
-                <div className="p-3 bg-green-100 rounded-lg"><p className="text-sm">Total Net Salary</p><p className="text-xl font-bold">${summary.totalNet.toFixed(2)}</p></div>
+                <div className="p-3 bg-gray-100 rounded-lg"><p className="text-sm">Total Base Salary</p><p className="text-xl font-bold"><Money amount={summary.totalBase} /></p></div>
+                <div className="p-3 bg-amber-100 rounded-lg"><p className="text-sm">Total Deductions</p><p className="text-xl font-bold"><Money amount={summary.totalDeductions} /></p></div>
+                <div className="p-3 bg-green-100 rounded-lg"><p className="text-sm">Total Net Salary</p><p className="text-xl font-bold"><Money amount={summary.totalNet} /></p></div>
             </div>
         </Card>
       )}
@@ -161,11 +162,11 @@ const PayrollPage: React.FC = () => {
               {displayPayroll.map(record => (
                 <tr key={record.employeeId}>
                   <td className="py-3 px-4 font-medium">{record.employeeName}</td>
-                  <td className="py-3 px-4 text-right">${record.baseSalary.toFixed(2)}</td>
+                  <td className="py-3 px-4 text-right"><Money amount={record.baseSalary} /></td>
                   <td className="py-3 px-4 text-center">{record.presentDays}</td>
                   <td className="py-3 px-4 text-center">{record.absentDays}</td>
-                  <td className="py-3 px-4 text-right text-red-600">${record.deductions.toFixed(2)}</td>
-                  <td className="py-3 px-4 text-right font-semibold text-green-700">${record.netSalary.toFixed(2)}</td>
+                  <td className="py-3 px-4 text-right text-red-600"><Money amount={record.deductions} /></td>
+                  <td className="py-3 px-4 text-right font-semibold text-green-700"><Money amount={record.netSalary} /></td>
                   <td className="py-3 px-4 text-center">
                       <span className={`px-2 py-1 text-xs font-semibold rounded-full ${record.status === 'Paid' ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'}`}>
                           {record.status}

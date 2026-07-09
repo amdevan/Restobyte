@@ -5,37 +5,35 @@ import { API_BASE_URL } from '../../config';
 import html2pdf from 'html2pdf.js';
 import { QRCodeSVG } from 'qrcode.react';
 
-// Helper function to map backend order to frontend sale type
-const mapBackendOrderToSale = (order: any) => {
-  const saleData = order?.saleData || {};
-  const items = order?.items || [];
+// Helper function to map backend invoice to frontend sale type
+const mapBackendInvoiceToSale = (invoice: any) => {
+  const items = invoice?.items || [];
   
   return {
-    id: order.id,
-    saleDate: order.createdAt || saleData.saleDate,
+    id: invoice.invoiceNumber,
+    saleDate: invoice.createdAt,
     items: items.map((item: any) => ({
       id: item.id,
-      name: item.menuItem?.name || saleData.items?.find((i: any) => i.id === item.menuItemId)?.name || 'Item',
+      name: item.name || 'Item',
       price: Number(item.unitPrice),
       quantity: Number(item.quantity),
     })),
-    subTotal: saleData.subTotal || items.reduce((sum: number, item: any) => sum + (Number(item.unitPrice) * Number(item.quantity)), 0),
-    taxDetails: saleData.taxDetails || [],
-    totalAmount: Number(order.total || saleData.totalAmount),
-    orderType: saleData.orderType || 'Dine In',
-    pax: saleData.pax,
-    waiterName: saleData.waiterName,
-    assignedTableName: saleData.assignedTableName,
-    customerId: order.customerId,
-    customerName: order.customer?.name || saleData.customerName,
-    discountType: saleData.discountType,
-    discountAmount: saleData.discountAmount,
-    tipAmount: saleData.tipAmount,
-    paymentMethod: saleData.paymentMethod,
-    paymentDate: saleData.paymentDate,
-    paymentReference: saleData.paymentReference,
-    receivedAmount: saleData.receivedAmount,
-    returnAmount: saleData.returnAmount,
+    subTotal: items.reduce((sum: number, item: any) => sum + (Number(item.unitPrice) * Number(item.quantity)), 0),
+    taxDetails: invoice.taxAmount ? [{ name: 'Tax', rate: 0, amount: invoice.taxAmount }] : [],
+    totalAmount: Number(invoice.totalAmount),
+    orderType: 'Invoice',
+    customerId: invoice.customerId,
+    customerName: invoice.customer?.name,
+    discountAmount: invoice.discountAmount,
+    tipAmount: 0,
+    paymentMethod: invoice.paymentMethod,
+    paymentDate: invoice.paidAt || invoice.createdAt,
+    paymentReference: '',
+    receivedAmount: invoice.paidAmount,
+    returnAmount: 0,
+    paidAmount: invoice.paidAmount,
+    dueAmount: invoice.dueAmount,
+    paymentStatus: invoice.paymentStatus,
   };
 };
 
@@ -46,10 +44,10 @@ const PublicInvoicePage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchOrder = async () => {
+    const fetchInvoice = async () => {
       try {
-        const res = await fetch(`${API_BASE_URL}/orders/public/${id}`);
-        if (!res.ok) throw new Error('Order not found');
+        const res = await fetch(`${API_BASE_URL}/invoices/public/${id}`);
+        if (!res.ok) throw new Error('Invoice not found');
         const data = await res.json();
         setOrder(data);
       } catch (err) {
@@ -58,7 +56,7 @@ const PublicInvoicePage: React.FC = () => {
         setLoading(false);
       }
     };
-    fetchOrder();
+    fetchInvoice();
   }, [id]);
 
   if (loading) return (
@@ -76,7 +74,7 @@ const PublicInvoicePage: React.FC = () => {
     </div>
   );
 
-  const sale = mapBackendOrderToSale(order);
+  const sale = mapBackendInvoiceToSale(order);
   const outlet = order?.outlet;
   const customer = order?.customer;
   const outletName = outlet?.restaurantName || outlet?.name || 'Restaurant';
@@ -150,8 +148,8 @@ const PublicInvoicePage: React.FC = () => {
           {/* Invoice Details */}
           <div className="text-left mb-4 space-y-1">
             <div className="flex justify-between">
-              <span className="text-lg font-medium text-gray-800">Bill No</span>
-              <span className="text-lg font-bold text-gray-700">: DNBILL {sale.id.slice(-4).toUpperCase()}</span>
+              <span className="text-lg font-medium text-gray-800">Invoice No</span>
+              <span className="text-lg font-bold text-gray-700">: {sale.id}</span>
             </div>
             {sale.assignedTableName && (
               <div className="flex justify-between">
@@ -227,15 +225,23 @@ const PublicInvoicePage: React.FC = () => {
           {/* Payment Details Section */}
           <div className="border-t-2 border-b-2 border-gray-300 py-3 mb-4">
             <h4 className="text-lg font-bold text-gray-800 mb-2">Payment Details</h4>
+            <p className="text-sm text-gray-700"><strong>Total Amount:</strong> {sale.totalAmount.toFixed(2)}</p>
+            <p className="text-sm text-gray-700"><strong>Paid Amount:</strong> {(sale.paidAmount || 0).toFixed(2)}</p>
+            {sale.dueAmount > 0 && (
+              <p className="text-sm text-red-600 font-medium"><strong>Due Amount:</strong> {sale.dueAmount.toFixed(2)}</p>
+            )}
+            <p className="text-sm">
+              <strong>Payment Status:</strong>
+              <span className={`font-bold ${
+                sale.paymentStatus === 'PAID' ? 'text-green-600' :
+                sale.paymentStatus === 'PARTIAL' ? 'text-yellow-600' : 'text-red-600'
+              }`}>
+                {sale.paymentStatus === 'PAID' ? 'Paid' :
+                sale.paymentStatus === 'PARTIAL' ? 'Partial Payment' : 'Due'}
+              </span>
+            </p>
             {sale.paymentMethod && <p className="text-sm text-gray-700"><strong>Payment Method:</strong> {sale.paymentMethod}</p>}
             <p className="text-sm text-gray-700"><strong>Payment Date:</strong> {new Date(sale.paymentDate || sale.saleDate).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' })}</p>
-            {sale.paymentReference && <p className="text-sm text-gray-700"><strong>Reference:</strong> {sale.paymentReference}</p>}
-            <p className="text-sm text-gray-700"><strong>Received Amount:</strong> {(sale.receivedAmount || sale.totalAmount).toFixed(2)}</p>
-            {(sale.returnAmount > 0 || (sale.receivedAmount && sale.receivedAmount > sale.totalAmount)) && (
-                <p className="text-sm text-gray-700">
-                    <strong>Return/Change Amount:</strong> {(sale.returnAmount || (sale.receivedAmount || sale.totalAmount) - sale.totalAmount).toFixed(2)}
-                </p>
-            )}
           </div>
 
           {/* Return Information Section */}
@@ -250,7 +256,7 @@ const PublicInvoicePage: React.FC = () => {
             <div className="mt-4 flex justify-center">
               <div className="border-2 border-black p-1 inline-block">
                 <QRCodeSVG 
-                  value={`${window.location.origin}/invoice/${sale.id}`} 
+                  value={`${window.location.origin}/invoice/${order.invoiceNumber}`} 
                   size={128}
                   level="H"
                 />

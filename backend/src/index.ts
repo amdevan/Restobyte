@@ -26,6 +26,7 @@ import saasWebsiteContentRoutes from './routes/saasWebsiteContentRoutes.js';
 import saasWebsiteContentAdminRoutes from './routes/saasWebsiteContentAdminRoutes.js';
 import planRoutes from './routes/planRoutes.js';
 import appDataRoutes from './routes/appDataRoutes.js';
+import invoiceRoutes from './routes/invoiceRoutes.js';
 import { DEFAULT_PLAN_DEFINITIONS } from './utils/planConfig.js';
 import { ensureSystemRoles } from './utils/roleUtils.js';
 import { backfillMissingInvoices } from './services/invoiceService.js';
@@ -69,6 +70,7 @@ app.use('/api/public', saasWebsiteContentRoutes);
 app.use('/api/saas', saasWebsiteContentAdminRoutes);
 app.use('/api/plans', planRoutes);
 app.use('/api/app-data', appDataRoutes);
+app.use('/api/invoices', invoiceRoutes);
 
 async function start() {
   try {
@@ -130,10 +132,11 @@ async function start() {
 
       const outlet = await prisma.outlet.upsert({
         where: { id: 'outlet-1' },
-        update: { tenantId: tenant.id },
+        update: { tenantId: tenant.id, slug: 'main-outlet' },
         create: {
           id: 'outlet-1',
           name: 'Main Outlet',
+          slug: 'main-outlet',
           tenantId: tenant.id,
           address: '123 Main St',
           phone: '555-0123',

@@ -71,6 +71,8 @@ export const getUsers = async (req: Request, res: Response) => {
     select: ({
       id: true,
       username: true,
+      email: true,
+      phone: true,
       roleId: true,
       outletId: true,
       outletIds: true,
@@ -93,7 +95,7 @@ export const createUser = async (req: Request, res: Response) => {
     return;
   }
 
-  const { username, password, roleId, outletId, outletIds, isActive, isSuperAdmin, tenantId: bodyTenantId } = req.body || {};
+  const { username, email, phone, password, roleId, outletId, outletIds, isActive, isSuperAdmin, tenantId: bodyTenantId } = req.body || {};
   const trimmedUsername = typeof username === 'string' ? username.trim() : '';
   const rawPassword = typeof password === 'string' ? password : '';
   const requestedOutletIds: string[] = Array.isArray(outletIds)
@@ -134,10 +136,26 @@ export const createUser = async (req: Request, res: Response) => {
     return;
   }
 
-  const existing = await prisma.user.findUnique({ where: { username: trimmedUsername } });
-  if (existing) {
-    res.status(400).json({ message: 'User already exists' });
+  const existingUsername = await prisma.user.findUnique({ where: { username: trimmedUsername } });
+  if (existingUsername) {
+    res.status(400).json({ message: 'Username already exists' });
     return;
+  }
+
+  if (email) {
+    const existingEmail = await prisma.user.findUnique({ where: { email } });
+    if (existingEmail) {
+      res.status(400).json({ message: 'Email already exists' });
+      return;
+    }
+  }
+
+  if (phone) {
+    const existingPhone = await prisma.user.findUnique({ where: { phone } });
+    if (existingPhone) {
+      res.status(400).json({ message: 'Phone already exists' });
+      return;
+    }
   }
 
   const salt = await bcrypt.genSalt(10);
@@ -146,6 +164,8 @@ export const createUser = async (req: Request, res: Response) => {
   const created = await prisma.user.create({
     data: {
       username: trimmedUsername,
+      email: typeof email === 'string' ? email : null,
+      phone: typeof phone === 'string' ? phone : null,
       password: hashedPassword,
       roleId: typeof roleId === 'string' ? roleId : null,
       outletId: targetOutletId,
@@ -157,6 +177,8 @@ export const createUser = async (req: Request, res: Response) => {
     select: {
       id: true,
       username: true,
+      email: true,
+      phone: true,
       roleId: true,
       outletId: true,
       outletIds: true,
@@ -193,7 +215,7 @@ export const updateUser = async (req: Request, res: Response) => {
     }
   }
 
-  const { username, password, roleId, outletId, outletIds, isActive, isSuperAdmin } = req.body || {};
+  const { username, email, phone, password, roleId, outletId, outletIds, isActive, isSuperAdmin } = req.body || {};
   const nextUsername = typeof username === 'string' ? username.trim() : undefined;
   const nextOutletId = typeof outletId === 'string' ? outletId : undefined;
   const nextOutletIds: string[] | undefined = Array.isArray(outletIds)
@@ -205,6 +227,26 @@ export const updateUser = async (req: Request, res: Response) => {
     if (taken) {
       res.status(400).json({ message: 'Username already exists' });
       return;
+    }
+  }
+
+  if (email !== undefined && email !== existing.email) {
+    if (email) {
+      const taken = await prisma.user.findUnique({ where: { email } });
+      if (taken) {
+        res.status(400).json({ message: 'Email already exists' });
+        return;
+      }
+    }
+  }
+
+  if (phone !== undefined && phone !== existing.phone) {
+    if (phone) {
+      const taken = await prisma.user.findUnique({ where: { phone } });
+      if (taken) {
+        res.status(400).json({ message: 'Phone already exists' });
+        return;
+      }
     }
   }
 
@@ -229,6 +271,8 @@ export const updateUser = async (req: Request, res: Response) => {
 
   const data: any = {
     ...(nextUsername ? { username: nextUsername } : {}),
+    ...(email !== undefined ? { email: email || null } : {}),
+    ...(phone !== undefined ? { phone: phone || null } : {}),
     ...(typeof roleId === 'string' ? { roleId } : {}),
     ...(typeof isActive === 'boolean' ? { isActive } : {}),
     ...(nextOutletId ? { outletId: nextOutletId } : {}),
@@ -251,6 +295,8 @@ export const updateUser = async (req: Request, res: Response) => {
     select: {
       id: true,
       username: true,
+      email: true,
+      phone: true,
       roleId: true,
       outletId: true,
       outletIds: true,

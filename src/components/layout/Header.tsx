@@ -95,8 +95,8 @@ const Header: React.FC<HeaderProps> = ({ title, onToggleSidebar, isSidebarCollap
     
     const visibleActions = actions.filter(a => !(isCloudKitchen && a.cloudKitchenHidden) && !isAggregateView);
 
-    const websiteHref = outlet?.id
-        ? `${window.location.origin}/website/${outlet.id}`
+    const websiteHref = outlet?.slug
+        ? `${window.location.origin}/website/${outlet.slug}`
         : `${window.location.origin}/public/restaurant`;
 
   return (

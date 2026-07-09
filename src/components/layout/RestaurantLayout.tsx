@@ -17,6 +17,7 @@ import {
 import Header from './Header';
 import Footer from './Footer';
 import { useRestaurantData } from '../../hooks/useRestaurantData';
+import { useAuth } from '../../hooks/useAuth';
 
 // Moved temporary icon definitions here
 const FiPercent: React.FC<{ className?: string, size?: string | number }> = ({ className, size }) => <span className={className} style={{ fontSize: size ? `${size}px` : undefined }}>%</span>;
@@ -69,6 +70,7 @@ interface SidebarLink {
   icon?: React.ReactElement<IconProps>;
   isCloudKitchenHidden?: boolean;
   featureKey?: string;
+  requiredPermissions?: string[];
 }
 
 interface SidebarSection {
@@ -80,6 +82,7 @@ interface SidebarSection {
   isOperational?: boolean;
   isCloudKitchenHidden?: boolean;
   featureKey?: string;
+  requiredPermissions?: string[];
 }
 
 interface CollapsibleSidebarSectionProps {
@@ -169,10 +172,20 @@ const RestaurantLayout: React.FC<{ children: React.ReactNode }> = ({ children })
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
+  const { user } = useAuth();
   const { getSingleActiveOutlet, hasPlanFeature } = useRestaurantData();
   const singleActiveOutlet = getSingleActiveOutlet();
   const isAggregateView = !singleActiveOutlet;
   const isCloudKitchen = singleActiveOutlet?.outletType === 'CloudKitchen';
+
+  const hasPermission = useCallback((requiredPermissions: string[] | undefined) => {
+    if (!user) return false;
+    if (user.isSuperAdmin || user.roleId === 'role-admin') return true;
+    if (!requiredPermissions || requiredPermissions.length === 0) return true;
+    const userPermissions = user.permissions || [];
+    if (userPermissions.includes('*')) return true;
+    return requiredPermissions.some(perm => userPermissions.includes(perm));
+  }, [user]);
 
   const sidebarSections: SidebarSection[] = useMemo(() => {
     const allSections: SidebarSection[] = [
@@ -183,8 +196,8 @@ const RestaurantLayout: React.FC<{ children: React.ReactNode }> = ({ children })
         matchPaths: ['/app/panel/'],
         isOperational: true,
         items: [
-          { path: "/app/panel/pos", label: "POS", icon: <FiShoppingCart />, featureKey: 'pos' },
-          { path: "/app/panel/kitchen-display", label: "Kitchen Display", icon: <FiMonitor />, featureKey: 'kds' },
+          { path: "/app/panel/pos", label: "POS", icon: <FiShoppingCart />, featureKey: 'pos', requiredPermissions: ['pos.create_order', 'pos.edit_order'] },
+          { path: "/app/panel/kitchen-display", label: "Kitchen Display", icon: <FiMonitor />, featureKey: 'kds', requiredPermissions: ['kitchen.display'] },
           { path: "/app/panel/customer-display", label: "Customer Display", icon: <FiTv />, featureKey: 'customerDisplay' },
           { path: "/app/mobile-scanner", label: "Mobile Scanner", icon: <FiLayout /> },
         ]
@@ -221,7 +234,7 @@ const RestaurantLayout: React.FC<{ children: React.ReactNode }> = ({ children })
         matchPaths: ['/app/item/', '/app/menu'],
         featureKey: 'menu',
         items: [
-          { path: "/app/item/list-food-menu-category", label: "Food Categories", icon: <FiClipboard />, featureKey: 'menu' },
+          { path: "/app/item/list-food-menu-category", label: "Food Categories", icon: <FiClipboard />, featureKey: 'menu', requiredPermissions: ['inventory.add_product', 'inventory.edit_product'] },
           { path: "/app/menu", label: "Food Menu", icon: <FiList />, featureKey: 'menu' },
           { path: "/app/item/list-pre-made-food", label: "Pre-Made Food", icon: <FiBox />, featureKey: 'menu' },
           { path: "/app/item/manage-addons", label: "Manage Add-ons", icon: <FiPlusCircle />, featureKey: 'menu' },
@@ -234,11 +247,11 @@ const RestaurantLayout: React.FC<{ children: React.ReactNode }> = ({ children })
         matchPaths: ['/app/stock/'],
         featureKey: 'inventory',
         items: [
-          { path: "/app/stock/levels", label: "View Stock Levels", icon: <FiDatabase />, featureKey: 'inventory' },
-          { path: "/app/stock/add-entry", label: "Add Stock Entry", icon: <FiArrowDownCircle />, featureKey: 'inventory' },
-          { path: "/app/stock/adjustments", label: "Stock Adjustments", icon: <FiTool />, featureKey: 'inventory' },
-          { path: "/app/stock/suppliers", label: "Manage Suppliers", icon: <FiUsers />, featureKey: 'inventory' },
-          { path: "/app/stock/low-stock-report", label: "Low Stock Report", icon: <FiAlertTriangle />, featureKey: 'inventory' },
+          { path: "/app/stock/levels", label: "View Stock Levels", icon: <FiDatabase />, featureKey: 'inventory', requiredPermissions: ['inventory.view_reports'] },
+          { path: "/app/stock/add-entry", label: "Add Stock Entry", icon: <FiArrowDownCircle />, featureKey: 'inventory', requiredPermissions: ['inventory.add_product'] },
+          { path: "/app/stock/adjustments", label: "Stock Adjustments", icon: <FiTool />, featureKey: 'inventory', requiredPermissions: ['inventory.stock_adjustment'] },
+          { path: "/app/stock/suppliers", label: "Manage Suppliers", icon: <FiUsers />, featureKey: 'inventory', requiredPermissions: ['inventory.add_product', 'inventory.edit_product'] },
+          { path: "/app/stock/low-stock-report", label: "Low Stock Report", icon: <FiAlertTriangle />, featureKey: 'inventory', requiredPermissions: ['inventory.view_reports'] },
         ]
       },
       {
@@ -248,9 +261,9 @@ const RestaurantLayout: React.FC<{ children: React.ReactNode }> = ({ children })
         matchPaths: ['/app/sale', '/app/customer', '/app/customer-due-receive'],
         featureKey: 'customers',
         items: [
-          { path: "/app/sale", label: "Sale History", icon: <FiActivity />, featureKey: 'customers' },
-          { path: "/app/customer", label: "Manage Customers", icon: <FiUsers />, featureKey: 'customers' },
-          { path: "/app/customer-due-receive", label: "Customer Due Receive", icon: <FiDollarSign />, featureKey: 'customers' },
+          { path: "/app/sale", label: "Sale History", icon: <FiActivity />, featureKey: 'customers', requiredPermissions: ['invoice.view'] },
+          { path: "/app/customer", label: "Manage Customers", icon: <FiUsers />, featureKey: 'customers', requiredPermissions: ['customer.view', 'customer.edit'] },
+          { path: "/app/customer-due-receive", label: "Customer Due Receive", icon: <FiDollarSign />, featureKey: 'customers', requiredPermissions: ['accounting.manage_payments'] },
         ]
       },
       {
@@ -273,7 +286,7 @@ const RestaurantLayout: React.FC<{ children: React.ReactNode }> = ({ children })
         icon: <FiUsers />,
         matchPaths: ['/app/employees', '/app/account-user', '/app/attendance', '/app/payroll'],
         items: [
-          { path: "/app/account-user", label: "Account and User", icon: <FiUsers /> },
+          { path: "/app/account-user", label: "Account and User", icon: <FiUsers />, requiredPermissions: ['users.view', 'users.create', 'users.edit'] },
           { path: "/app/employees", label: "Employees", icon: <FiUsers /> },
           { path: "/app/attendance", label: "Attendance", icon: <FiCalendar /> },
           { path: "/app/payroll", label: "Payroll", icon: <FiDollarSign /> },
@@ -285,7 +298,7 @@ const RestaurantLayout: React.FC<{ children: React.ReactNode }> = ({ children })
         icon: <FiSettings />,
         matchPaths: ['/app/settings/'],
         items: [
-          { path: "/app/settings/app-settings", label: "Application Settings", icon: <FiSettings /> },
+          { path: "/app/settings/app-settings", label: "Application Settings", icon: <FiSettings />, requiredPermissions: ['settings.view', 'settings.edit'] },
           { path: "/app/settings/sound-settings", label: "Sound Settings", icon: <FiVolume2 /> },
           { path: "/app/settings/white-label", label: "White Label", icon: <FiTool /> },
           { path: "/app/settings/list-printer", label: "Printer", icon: <FiPrinter /> },
@@ -354,17 +367,18 @@ const RestaurantLayout: React.FC<{ children: React.ReactNode }> = ({ children })
       }
     ];
 
-    // Filter out sections/items based on view mode
+    // Filter out sections/items based on view mode and permissions
     return allSections
       .filter(section => isAggregateView ? !section.isOperational : true)
       .filter(section => !section.featureKey || hasPlanFeature(section.featureKey as any))
+      .filter(section => hasPermission(section.requiredPermissions))
       .map(section => ({
         ...section,
-        items: section.items.filter(item => (isCloudKitchen ? !item.isCloudKitchenHidden : true) && (!item.featureKey || hasPlanFeature(item.featureKey as any)))
+        items: section.items.filter(item => (isCloudKitchen ? !item.isCloudKitchenHidden : true) && (!item.featureKey || hasPlanFeature(item.featureKey as any)) && hasPermission(item.requiredPermissions))
       }))
       .filter(section => section.items.length > 0);
 
-  }, [isCloudKitchen, isAggregateView, hasPlanFeature]);
+  }, [isCloudKitchen, isAggregateView, hasPlanFeature, hasPermission]);
 
   const getMenuKeyForPath = useCallback((path: string) => {
     let bestMatch: string | null = null;

@@ -185,6 +185,32 @@ const AuthSwitchWrapper: React.FC<{ mode: 'login' | 'register' }> = ({ mode }) =
     );
 }
 
+const ProtectedRoute: React.FC<{ children: React.ReactElement; requiredPermissions?: string[] }> = ({ children, requiredPermissions }) => {
+    const { user } = useAuth();
+    const navigate = useNavigate();
+    
+    const hasPermission = React.useCallback(() => {
+        if (!user) return false;
+        if (user.isSuperAdmin || user.roleId === 'role-admin') return true;
+        if (!requiredPermissions || requiredPermissions.length === 0) return true;
+        const userPermissions = user.permissions || [];
+        if (userPermissions.includes('*')) return true;
+        return requiredPermissions.some(perm => userPermissions.includes(perm));
+    }, [user, requiredPermissions]);
+
+    React.useEffect(() => {
+        if (!hasPermission()) {
+            navigate('/app/dashboard');
+        }
+    }, [hasPermission, navigate]);
+
+    if (!hasPermission()) {
+        return null;
+    }
+
+    return children;
+};
+
 const RestaurantPanelRoutes = () => {
     const { getSingleActiveOutlet, hasPlanFeature } = useRestaurantData();
     const location = useLocation();
@@ -413,7 +439,7 @@ const AppContent: React.FC = () => {
               <Route path="contact" element={<PublicContactPage />} />
             </Route>
 
-            <Route path="/website/:id" element={<PublicLayout />}>
+            <Route path="/website/:slug" element={<PublicLayout />}>
               <Route index element={<PublicHomePage />} />
               <Route path="menu" element={<PublicMenuPage />} />
               <Route path="about" element={<PublicAboutPage />} />

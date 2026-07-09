@@ -19,6 +19,36 @@ function normalizeTaxes(input: any): any[] | null {
   return normalized;
 }
 
+function generateSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+async function generateUniqueSlug(name: string, tenantId: string, excludeId?: string): Promise<string> {
+  let baseSlug = generateSlug(name);
+  let slug = baseSlug;
+  let counter = 1;
+
+  while (true) {
+    const existing = await prisma.outlet.findFirst({
+      where: {
+        slug,
+        tenantId,
+        ...(excludeId ? { id: { not: excludeId } } : {}),
+      },
+    });
+
+    if (!existing) break;
+
+    slug = `${baseSlug}-${counter}`;
+    counter++;
+  }
+
+  return slug;
+}
+
 export const listOutlets = async (req: Request, res: Response) => {
   const auth = req as AuthRequest;
   const user = auth.user;
@@ -134,10 +164,14 @@ export const createOutlet = async (req: Request, res: Response) => {
     return;
   }
 
+  const nameForSlug = trimmedRestaurantName || trimmedName;
+  const slug = await generateUniqueSlug(nameForSlug, tenantId);
+
   const outlet = await prisma.outlet.create({
     data: {
       name: trimmedName,
       restaurantName: trimmedRestaurantName ? trimmedRestaurantName : trimmedName,
+      slug,
       outletType: normalizedOutletType,
       tenantId,
       address: typeof address === 'string' && address.trim() ? address.trim() : null,
@@ -245,6 +279,19 @@ export const updateOutlet = async (req: Request, res: Response) => {
   if (typeof subscriptionStatus === 'string') data.subscriptionStatus = subscriptionStatus.trim() ? subscriptionStatus.trim() : null;
   if (planExpiryDate !== undefined) data.planExpiryDate = planExpiryDate ? new Date(planExpiryDate) : null;
 
+  // Update slug if name or restaurantName changed
+  const currentNameForSlug = outlet.restaurantName || outlet.name;
+  let newNameForSlug = currentNameForSlug;
+  if (typeof name === 'string' && name.trim()) {
+    newNameForSlug = name.trim();
+  }
+  if (typeof restaurantName === 'string') {
+    newNameForSlug = restaurantName.trim() || newNameForSlug;
+  }
+  if (newNameForSlug !== currentNameForSlug) {
+    data.slug = await generateUniqueSlug(newNameForSlug, outlet.tenantId, outlet.id);
+  }
+
   const updated = await prisma.outlet.update({
     where: { id },
     data,
@@ -303,4 +350,20 @@ export const deleteOutlet = async (req: Request, res: Response) => {
   } catch (err) {
     res.status(400).json({ message: 'Failed to delete outlet' });
   }
+};
+
+export const getOutletBySlug = async (req: Request, res: Response) => {
+  const { slug } = req.params;
+  if (!slug) {
+    res.status(400).json({ message: 'Slug is required' });
+    return;
+  }
+
+  const outlet = await prisma.outlet.findUnique({ where: { slug } });
+  if (!outlet) {
+    res.status(404).json({ message: 'Outlet not found' });
+    return;
+  }
+
+  res.json(outlet);
 };

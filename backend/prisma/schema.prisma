@@ -34,6 +34,7 @@ model Outlet {
   id        String   @id @default(uuid())
   name      String
   restaurantName String?
+  slug      String   @unique
   outletType String @default("Restaurant")
   tenantId  String
   tenant    Tenant   @relation(fields: [tenantId], references: [id])
@@ -119,25 +120,30 @@ model Table {
 }
 
 model Customer {
-  id          String   @id @default(uuid())
-  name        String
-  email       String?
-  phone       String?
-  address     String?
-  billingAddress String?
-  dob         DateTime?
-  companyName String?
-  vatPan      String?
-  dueAmount   Float    @default(0)
-  outletId    String?
+  id                  String   @id @default(uuid())
+  name                String
+  email               String?
+  phone               String?
+  address             String?
+  billingAddress      String?
+  dob                 DateTime?
+  companyName         String?
+  vatPan              String?
+  dueAmount           Float    @default(0)
+  totalPurchaseAmount Float    @default(0)
+  totalPaidAmount     Float    @default(0)
+  lastPaymentDate     DateTime?
+  outletId            String?
   
-  userId      String?  @unique
-  user        User?    @relation(fields: [userId], references: [id])
+  userId              String?  @unique
+  user                User?    @relation(fields: [userId], references: [id])
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  orders      Order[]
-  reservations Reservation[]
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  orders              Order[]
+  invoices            Invoice[]
+  paymentHistories    PaymentHistory[]
+  reservations        Reservation[]
 }
 
 model Order {
@@ -151,6 +157,7 @@ model Order {
   outletId   String?
   outlet     Outlet?     @relation(fields: [outletId], references: [id])
   saleData   Json?
+  invoices   Invoice[]
 }
 
 model OutletAppData {
@@ -196,6 +203,8 @@ model OrderItem {
 model User {
   id           String   @id @default(uuid())
   username     String   @unique
+  email        String?  @unique
+  phone        String?  @unique
   password     String
   roleId       String?
   
@@ -282,6 +291,40 @@ model SubscriptionInvoice {
   paidAt         DateTime?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+}
+
+model Invoice {
+  id             String           @id @default(uuid())
+  invoiceNumber  String           @unique
+  orderId        String
+  order          Order            @relation(fields: [orderId], references: [id])
+  customerId     String?
+  customer       Customer?        @relation(fields: [customerId], references: [id])
+  outletId       String
+  outlet         Outlet           @relation(fields: [outletId], references: [id])
+  totalAmount    Float            @default(0)
+  paidAmount     Float            @default(0)
+  dueAmount      Float            @default(0)
+  paymentStatus  String           @default("DUE") // DUE, PARTIAL, PAID
+  paymentMethod  String?
+  items          Json?
+  taxAmount      Float            @default(0)
+  discountAmount Float            @default(0)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  paidAt         DateTime?
+  paymentHistories PaymentHistory[]
+}
+
+model PaymentHistory {
+  id          String    @id @default(uuid())
+  invoiceId   String
+  invoice     Invoice   @relation(fields: [invoiceId], references: [id])
+  customerId  String?
+  customer    Customer? @relation(fields: [customerId], references: [id])
+  amount      Float
+  method      String
+  createdAt   DateTime  @default(now())
 }
 
 model TenantLoginHistory {

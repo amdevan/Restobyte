@@ -90,6 +90,9 @@ export interface Customer {
   address?: string; 
   dob?: string; // Date of Birth YYYY-MM-DD
   dueAmount?: number; // Outstanding due amount from the customer
+  totalPurchaseAmount?: number;
+  totalPaidAmount?: number;
+  lastPaymentDate?: string;
   companyName?: string;
   vatPan?: string;
 }
@@ -650,6 +653,7 @@ export interface Outlet {
   id: string;
   name: string; // Internal name, e.g., "Main Branch"
   restaurantName: string; // Public name for receipts
+  slug: string; // URL-friendly identifier
   address: string;
   phone: string;
   email?: string;
@@ -684,8 +688,12 @@ export interface Role {
 export interface User {
   id: string;
   username: string;
+  email?: string;
+  phone?: string;
   passwordHash: string; // This would be a salted hash in a real app
   roleId: string;
+  roleName?: string;
+  permissions?: string[];
   outletId: string; // Primary outlet
   outletIds?: string[]; // Allowed outlets (branches)
   tenantId?: string;

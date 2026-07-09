@@ -1,11 +1,16 @@
 import type { Request, Response } from 'express';
 import prisma from '../db/prisma.js';
 import type { AuthRequest } from '../middleware/authMiddleware.js';
-import { ensureRoleExistsForTenant, isAdminLike, resolveTenantIdForActor } from '../utils/roleUtils.js';
+import { ensureRoleExistsForTenant, isAdminLike, resolveTenantIdForActor, PERMISSIONS } from '../utils/roleUtils.js';
 
 const normalizePermissions = (value: unknown) => (
   Array.isArray(value) ? value.map((item) => String(item).trim()).filter(Boolean) : []
 );
+
+const validatePermissions = (permissions: string[]) => {
+  const validPermissions = new Set(PERMISSIONS);
+  return permissions.every((p) => p === '*' || validPermissions.has(p as any));
+};
 
 export const getRoles = async (req: Request, res: Response) => {
   const actor = (req as AuthRequest).user;
@@ -41,6 +46,10 @@ export const getRoles = async (req: Request, res: Response) => {
   })));
 };
 
+export const getPermissions = async (req: Request, res: Response) => {
+  res.json(PERMISSIONS);
+};
+
 export const createRole = async (req: Request, res: Response) => {
   const actor = (req as AuthRequest).user;
   if (!isAdminLike(actor)) {
@@ -61,6 +70,10 @@ export const createRole = async (req: Request, res: Response) => {
   }
   if (!tenantId) {
     res.status(400).json({ message: 'tenantId is required' });
+    return;
+  }
+  if (!validatePermissions(permissions)) {
+    res.status(400).json({ message: 'Invalid permissions' });
     return;
   }
 
@@ -120,6 +133,10 @@ export const updateRole = async (req: Request, res: Response) => {
 
   if (!name) {
     res.status(400).json({ message: 'Role name is required' });
+    return;
+  }
+  if (!validatePermissions(permissions)) {
+    res.status(400).json({ message: 'Invalid permissions' });
     return;
   }
 

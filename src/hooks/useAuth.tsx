@@ -95,8 +95,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const authUser: User = {
         id: data.user.id,
         username: data.user.username,
+        email: data.user.email,
+        phone: data.user.phone,
         isSuperAdmin: !!data.user.isSuperAdmin,
         roleId: data.user.roleId || '',
+        roleName: data.user.roleName,
+        permissions: data.user.permissions,
         outletId: data.user.outletId || '',
         outletIds,
         tenantId: data.user.tenantId || '',

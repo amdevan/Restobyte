@@ -1,4 +1,3 @@
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -9,19 +8,19 @@ datasource db {
 }
 
 model Tenant {
-  id                 String   @id @default(uuid())
+  id                 String                @id @default(uuid())
   name               String
   address            String?
   phone              String?
   adminEmail         String?
-  countryCode        String?  // ISO 3166-1 alpha-2 (e.g., US, IN)
-  currencyCode       String?  // ISO 4217 (e.g., USD, INR)
-  subscriptionStatus String   @default("trialing")
-  plan               String   @default("Basic")
-  trialDays          Int?     @default(14)
+  countryCode        String? // ISO 3166-1 alpha-2 (e.g., US, IN)
+  currencyCode       String? // ISO 4217 (e.g., USD, INR)
+  subscriptionStatus String                @default("trialing")
+  plan               String                @default("Basic")
+  trialDays          Int?                  @default(14)
   trialEndsAt        DateTime?
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
   outlets            Outlet[]
   users              User[]
   roles              Role[]
@@ -31,32 +30,33 @@ model Tenant {
 }
 
 model Outlet {
-  id        String   @id @default(uuid())
-  name      String
-  restaurantName String?
-  slug      String   @unique
-  outletType String @default("Restaurant")
-  tenantId  String
-  tenant    Tenant   @relation(fields: [tenantId], references: [id])
-  address   String?
-  phone     String?
-  email     String?
-  logoUrl   String?
-  taxes     Json?
-  whatsappNumber String?
-  whatsappOrderingEnabled Boolean @default(false)
-  whatsappDefaultMessage String?
-  fonepayIsEnabled Boolean @default(false)
-  fonepayMerchantCode String?
-  fonepayTerminalId String?
-  fonepayCurrency String?
-  plan String?
-  subscriptionStatus String?
-  planExpiryDate DateTime?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  users     User[]
-  orders    Order[]
+  id                      String    @id @default(uuid())
+  name                    String
+  restaurantName          String?
+  slug                    String    @unique
+  outletType              String    @default("Restaurant")
+  tenantId                String
+  tenant                  Tenant    @relation(fields: [tenantId], references: [id])
+  address                 String?
+  phone                   String?
+  email                   String?
+  logoUrl                 String?
+  taxes                   Json?
+  whatsappNumber          String?
+  whatsappOrderingEnabled Boolean   @default(false)
+  whatsappDefaultMessage  String?
+  fonepayIsEnabled        Boolean   @default(false)
+  fonepayMerchantCode     String?
+  fonepayTerminalId       String?
+  fonepayCurrency         String?
+  plan                    String?
+  subscriptionStatus      String?
+  planExpiryDate          DateTime?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+  users                   User[]
+  orders                  Order[]
+  invoices                Invoice[]
   // Categories, Tables, etc. could optionally be linked here too, 
   // but for now we keep the loosely coupled 'outletId' string in those models 
   // to avoid complex migration issues with existing data if any.
@@ -77,19 +77,19 @@ model Category {
 }
 
 model MenuItem {
-  id          String   @id @default(uuid())
-  name        String
-  description String?
-  price       Float
-  categoryId  String
-  category    Category @relation(fields: [categoryId], references: [id])
-  imageUrl    String?
-  isAvailable Boolean  @default(true)
-  isVegetarian Boolean @default(false)
-  variations  Variation[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  OrderItem   OrderItem[]
+  id           String      @id @default(uuid())
+  name         String
+  description  String?
+  price        Float
+  categoryId   String
+  category     Category    @relation(fields: [categoryId], references: [id])
+  imageUrl     String?
+  isAvailable  Boolean     @default(true)
+  isVegetarian Boolean     @default(false)
+  variations   Variation[]
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  OrderItem    OrderItem[]
 }
 
 model Variation {
@@ -103,24 +103,24 @@ model Variation {
 }
 
 model Table {
-  id                    String    @id @default(uuid())
+  id                    String        @id @default(uuid())
   name                  String
   capacity              Int
-  status                String    @default("Free") // Free, Occupied, Reserved
+  status                String        @default("Free") // Free, Occupied, Reserved
   outletId              String
   areaFloorId           String?
   notes                 String?
-  assistanceRequested   Boolean   @default(false)
+  assistanceRequested   Boolean       @default(false)
   assistanceRequestedAt DateTime?
-  foodReady             Boolean   @default(false)
+  foodReady             Boolean       @default(false)
   occupiedSince         DateTime?
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
   reservations          Reservation[]
 }
 
 model Customer {
-  id                  String   @id @default(uuid())
+  id                  String    @id @default(uuid())
   name                String
   email               String?
   phone               String?
@@ -129,21 +129,21 @@ model Customer {
   dob                 DateTime?
   companyName         String?
   vatPan              String?
-  dueAmount           Float    @default(0)
-  totalPurchaseAmount Float    @default(0)
-  totalPaidAmount     Float    @default(0)
+  dueAmount           Float     @default(0)
+  totalPurchaseAmount Float     @default(0)
+  totalPaidAmount     Float     @default(0)
   lastPaymentDate     DateTime?
   outletId            String?
-  
-  userId              String?  @unique
-  user                User?    @relation(fields: [userId], references: [id])
 
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
-  orders              Order[]
-  invoices            Invoice[]
-  paymentHistories    PaymentHistory[]
-  reservations        Reservation[]
+  userId String? @unique
+  user   User?   @relation(fields: [userId], references: [id])
+
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  orders           Order[]
+  invoices         Invoice[]
+  paymentHistories PaymentHistory[]
+  reservations     Reservation[]
 }
 
 model Order {
@@ -193,7 +193,7 @@ model GlobalAppData {
 model OrderItem {
   id         String   @id @default(uuid())
   orderId    String
-  order      Order   @relation(fields: [orderId], references: [id])
+  order      Order    @relation(fields: [orderId], references: [id])
   menuItemId String
   menuItem   MenuItem @relation(fields: [menuItemId], references: [id])
   quantity   Int
@@ -201,26 +201,26 @@ model OrderItem {
 }
 
 model User {
-  id           String   @id @default(uuid())
-  username     String   @unique
-  email        String?  @unique
-  phone        String?  @unique
-  password     String
-  roleId       String?
-  
-  outletId     String?
-  outletIds    Json?
-  outlet       Outlet?  @relation(fields: [outletId], references: [id])
-  
-  tenantId     String?
-  tenant       Tenant?  @relation(fields: [tenantId], references: [id])
+  id       String  @id @default(uuid())
+  username String  @unique
+  email    String? @unique
+  phone    String? @unique
+  password String
+  roleId   String?
 
-  isActive     Boolean  @default(true)
-  isSuperAdmin Boolean  @default(false)
+  outletId  String?
+  outletIds Json?
+  outlet    Outlet? @relation(fields: [outletId], references: [id])
+
+  tenantId String?
+  tenant   Tenant? @relation(fields: [tenantId], references: [id])
+
+  isActive     Boolean              @default(true)
+  isSuperAdmin Boolean              @default(false)
   customer     Customer?
   loginHistory TenantLoginHistory[]
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
 }
 
 model Currency {
@@ -264,71 +264,71 @@ model Role {
 }
 
 model Payment {
-  id        String   @id @default(uuid())
+  id        String               @id @default(uuid())
   tenantId  String
-  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  tenant    Tenant               @relation(fields: [tenantId], references: [id])
   amount    Float
-  status    String   @default("paid") // paid, failed, refunded
-  method    String?  // stripe, cash, etc.
+  status    String               @default("paid") // paid, failed, refunded
+  method    String? // stripe, cash, etc.
   notes     String?
   invoice   SubscriptionInvoice?
-  createdAt DateTime @default(now())
+  createdAt DateTime             @default(now())
 }
 
 model SubscriptionInvoice {
-  id            String   @id @default(uuid())
-  invoiceNumber String   @unique
-  tenantId       String
-  tenant         Tenant   @relation(fields: [tenantId], references: [id])
-  paymentId      String?  @unique
-  payment        Payment? @relation(fields: [paymentId], references: [id])
-  amount         Float
-  currencyCode   String   @default("NPR")
-  status         String   @default("issued") // issued, paid, failed, refunded
-  method         String?
-  notes          String?
-  issuedAt       DateTime @default(now())
-  paidAt         DateTime?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id            String    @id @default(uuid())
+  invoiceNumber String    @unique
+  tenantId      String
+  tenant        Tenant    @relation(fields: [tenantId], references: [id])
+  paymentId     String?   @unique
+  payment       Payment?  @relation(fields: [paymentId], references: [id])
+  amount        Float
+  currencyCode  String    @default("NPR")
+  status        String    @default("issued") // issued, paid, failed, refunded
+  method        String?
+  notes         String?
+  issuedAt      DateTime  @default(now())
+  paidAt        DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 }
 
 model Invoice {
-  id             String           @id @default(uuid())
-  invoiceNumber  String           @unique
-  orderId        String
-  order          Order            @relation(fields: [orderId], references: [id])
-  customerId     String?
-  customer       Customer?        @relation(fields: [customerId], references: [id])
-  outletId       String
-  outlet         Outlet           @relation(fields: [outletId], references: [id])
-  totalAmount    Float            @default(0)
-  paidAmount     Float            @default(0)
-  dueAmount      Float            @default(0)
-  paymentStatus  String           @default("DUE") // DUE, PARTIAL, PAID
-  paymentMethod  String?
-  items          Json?
-  taxAmount      Float            @default(0)
-  discountAmount Float            @default(0)
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
-  paidAt         DateTime?
+  id               String           @id @default(uuid())
+  invoiceNumber    String           @unique
+  orderId          String
+  order            Order            @relation(fields: [orderId], references: [id])
+  customerId       String?
+  customer         Customer?        @relation(fields: [customerId], references: [id])
+  outletId         String
+  outlet           Outlet           @relation(fields: [outletId], references: [id])
+  totalAmount      Float            @default(0)
+  paidAmount       Float            @default(0)
+  dueAmount        Float            @default(0)
+  paymentStatus    String           @default("DUE") // DUE, PARTIAL, PAID
+  paymentMethod    String?
+  items            Json?
+  taxAmount        Float            @default(0)
+  discountAmount   Float            @default(0)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  paidAt           DateTime?
   paymentHistories PaymentHistory[]
 }
 
 model PaymentHistory {
-  id          String    @id @default(uuid())
-  invoiceId   String
-  invoice     Invoice   @relation(fields: [invoiceId], references: [id])
-  customerId  String?
-  customer    Customer? @relation(fields: [customerId], references: [id])
-  amount      Float
-  method      String
-  createdAt   DateTime  @default(now())
+  id         String    @id @default(uuid())
+  invoiceId  String
+  invoice    Invoice   @relation(fields: [invoiceId], references: [id])
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id])
+  amount     Float
+  method     String
+  createdAt  DateTime  @default(now())
 }
 
 model TenantLoginHistory {
-  id         String   @id @default(uuid())
+  id          String   @id @default(uuid())
   tenantId    String
   tenant      Tenant   @relation(fields: [tenantId], references: [id])
   userId      String?
@@ -342,16 +342,16 @@ model TenantLoginHistory {
 }
 
 model Lead {
-  id         String   @id @default(uuid())
-  name       String
-  email      String?
-  phone      String?
-  company    String?
-  source     String?
-  stage      String   @default("New")
-  notes      LeadNote[]
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id        String     @id @default(uuid())
+  name      String
+  email     String?
+  phone     String?
+  company   String?
+  source    String?
+  stage     String     @default("New")
+  notes     LeadNote[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
 }
 
 model LeadNote {

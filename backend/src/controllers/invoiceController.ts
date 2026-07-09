@@ -26,7 +26,7 @@ const getAccessibleOutletIds = async (user: NonNullable<AuthRequest['user']>) =>
     const outlets = await prisma.outlet.findMany({ where: { tenantId: user.tenantId }, select: { id: true } });
     return outlets.map((outlet) => outlet.id);
   }
-  return Array.isArray((user as any).outletIds && (user as any).outletIds.length > 0
+  return Array.isArray((user as any).outletIds) && (user as any).outletIds.length > 0
     ? (user as any).outletIds.map(String)
     : (user.outletId ? [String(user.outletId)] : []);
 };
@@ -43,7 +43,7 @@ export const getInvoices = async (req: Request, res: Response) => {
     res.status(403).json({ message: 'Unauthorized' });
     return;
   }
-  const queryOutletId = typeof (req.query as any)?.outletId === 'string' ? String((req.query as any).outletId : undefined;
+  const queryOutletId = typeof (req.query as any)?.outletId === 'string' ? String((req.query as any).outletId) : undefined;
   const requestedOutletId = queryOutletId || (user.outletId ? String(user.outletId) : undefined);
   if (!requestedOutletId) {
     res.status(400).json({ message: 'outletId is required' });
@@ -70,7 +70,10 @@ export const getInvoice = async (req: Request, res: Response) => {
   const id = req.params.id as string;
   const allowedOutletIds = await getAccessibleOutletIds(user);
   const invoice = await prisma.invoice.findFirst({
-    where: { id, ...(allowedOutletIds ? { outletId: { in: allowedOutletIds } : {}) },
+    where: {
+      id,
+      ...(allowedOutletIds ? { outletId: { in: allowedOutletIds } } : {}),
+    },
     include: { order: true, customer: true, paymentHistories: true, outlet: true },
   });
   if (!invoice) return res.status(404).json({ error: 'Invoice not found' });
@@ -80,9 +83,9 @@ export const getInvoice = async (req: Request, res: Response) => {
 export const getPublicInvoice = async (req: Request, res: Response) => {
   const id = req.params.id as string;
   const invoice = await prisma.invoice.findFirst({
-    where: { OR: [{ id }, { invoiceNumber: id }],
+    where: { OR: [{ id }, { invoiceNumber: id }] },
     include: { 
-      order: { include: { items: { include: { menuItem: true } } },
+      order: { include: { items: { include: { menuItem: true } } } },
       customer: true,
       paymentHistories: true,
       outlet: true,
@@ -99,7 +102,7 @@ export const createInvoice = async (req: Request, res: Response) => {
     return;
   }
   const { orderId, customerId, outletId, totalAmount, taxAmount, discountAmount, paidAmount, paymentMethod, items } = req.body;
-  const queryOutletId = typeof (req.query as any)?.outletId === 'string' ? String((req.query as any).outletId : undefined;
+  const queryOutletId = typeof (req.query as any)?.outletId === 'string' ? String((req.query as any).outletId) : undefined;
   const requestedOutletId = (typeof outletId === 'string' ? outletId : undefined) || queryOutletId || (user.outletId ? String(user.outletId) : undefined);
   if (!requestedOutletId) {
     res.status(400).json({ message: 'outletId is required' });
@@ -110,7 +113,7 @@ export const createInvoice = async (req: Request, res: Response) => {
     return;
   }
 
-  const order = await prisma.order.findUnique({ where: { id: orderId });
+  const order = await prisma.order.findUnique({ where: { id: orderId } });
   if (!order) {
     res.status(404).json({ message: 'Order not found' });
     return;

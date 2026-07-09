@@ -8,10 +8,13 @@ export interface AuthRequest extends Request {
   user?: {
     id: string;
     username: string;
+    email: string | null;
+    phone: string | null;
     roleId: string | null;
     outletId: string | null;
     outletIds?: string[];
     isSuperAdmin: boolean;
+    isActive: boolean;
     tenantId: string | null;
   };
 }
@@ -32,10 +35,13 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
       select: ({
         id: true,
         username: true,
+        email: true,
+        phone: true,
         roleId: true,
         outletId: true,
         outletIds: true,
         isSuperAdmin: true,
+        isActive: true,
         tenantId: true
       } as any)
     });

@@ -102,9 +102,9 @@ const PosPage: React.FC = () => {
 
   useEffect(() => {
     if (activeOutletIds.length === 1) return;
-    if (outlets.length === 0) return;
+    if ((outlets || []).length === 0) return;
 
-    const preferredId = activeOutletIds.find(id => outlets.some(o => o.id === id)) || outlets[0]!.id;
+    const preferredId = activeOutletIds.find(id => outlets.some(o => o.id === id)) || outlets[0]?.id;
     if (preferredId && (activeOutletIds.length !== 1 || activeOutletIds[0] !== preferredId)) {
       setActiveOutletIds([preferredId]);
     }
@@ -154,16 +154,16 @@ const PosPage: React.FC = () => {
   
   const categories = useMemo(() => {
     const categorySet = new Set<string>();
-    for (const c of foodMenuCategories) categorySet.add(c.name);
-    for (const item of preMadeFoodItems) {
+    for (const c of (foodMenuCategories || [])) categorySet.add(c.name);
+    for (const item of (preMadeFoodItems || [])) {
       const categoryName = typeof item.category === 'object' && item.category !== null ? (item.category as any).name : item.category;
       if (typeof categoryName === 'string' && categoryName.trim()) categorySet.add(categoryName);
     }
     return ['All', ...Array.from(categorySet)];
   }, [foodMenuCategories, preMadeFoodItems]);
-  const activeWaiters = useMemo(() => waiters, [waiters]);
-  const activeDeliveryPartners = useMemo(() => deliveryPartners.filter(dp => dp.isEnabled), [deliveryPartners]);
-  const hasNewItems = useMemo(() => currentOrderItems.some(item => item.status === 'new'), [currentOrderItems]);
+  const activeWaiters = useMemo(() => (waiters || []), [waiters]);
+  const activeDeliveryPartners = useMemo(() => (deliveryPartners || []).filter(dp => dp.isEnabled), [deliveryPartners]);
+  const hasNewItems = useMemo(() => (currentOrderItems || []).some(item => item.status === 'new'), [currentOrderItems]);
   
   const clearOrder = useCallback((keepTable: boolean = false) => {
       setCurrentOrderItems([]);
@@ -184,7 +184,7 @@ const PosPage: React.FC = () => {
 
 // FIX: Moved handleSendKot before the useEffect that uses it.
 const handleSendKot = useCallback(async () => {
-    const newItems = currentOrderItems.filter(item => item.status === 'new');
+    const newItems = (currentOrderItems || []).filter(item => item.status === 'new');
     if (newItems.length === 0) {
       alert("No new items to send to the kitchen.");
       return;
@@ -198,16 +198,16 @@ const handleSendKot = useCallback(async () => {
       return;
     }
 
-    const subTotal = currentOrderItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    const subTotal = (currentOrderItems || []).reduce((sum, item) => sum + item.price * item.quantity, 0);
     const discountValue = discountType === 'fixed' ? discountAmount : (subTotal * discountAmount) / 100;
     const totalAfterDiscount = subTotal - discountValue;
     
-    const taxDetails: SaleTaxDetail[] = singleActiveOutlet.taxes.map(tax => {
+    const taxDetails: SaleTaxDetail[] = (singleActiveOutlet.taxes || []).map(tax => {
       const taxAmount = totalAfterDiscount * (tax.rate / 100);
       return { id: tax.id, name: tax.name, rate: tax.rate, amount: taxAmount };
     });
     
-    const totalTaxAmount = taxDetails.reduce((sum, tax) => sum + tax.amount, 0);
+    const totalTaxAmount = (taxDetails || []).reduce((sum, tax) => sum + tax.amount, 0);
     const totalAmount = totalAfterDiscount + totalTaxAmount;
 
     if (editingSale) {
@@ -414,7 +414,7 @@ const handleSendKot = useCallback(async () => {
   };
   
   const handleSaveItemNote = (lineId: string, newNote: string) => {
-    setCurrentOrderItems(prev => prev.map(item =>
+    setCurrentOrderItems(prev => (prev || []).map(item =>
       item.lineId === lineId ? { ...item, notes: newNote.trim() || undefined } : item
     ));
     setIsNoteModalOpen(false);
@@ -431,7 +431,7 @@ const handleSendKot = useCallback(async () => {
   }, [menuItems, preMadeFoodItems]);
 
   const filteredMenu = useMemo(() => {
-    return mergedMenuItems.filter(item => {
+    return (mergedMenuItems || []).filter(item => {
       const categoryName = typeof item.category === 'object' && item.category !== null ? (item.category as any).name : item.category;
       const matchesCategory = selectedCategory === 'All' || categoryName === selectedCategory;
       const matchesSearch = menuSearchTerm === '' || item.name.toLowerCase().includes(menuSearchTerm.toLowerCase());
@@ -439,14 +439,14 @@ const handleSendKot = useCallback(async () => {
     });
   }, [mergedMenuItems, selectedCategory, menuSearchTerm]);
 
-  const subTotal = useMemo(() => currentOrderItems.reduce((sum, item) => sum + item.price * item.quantity, 0), [currentOrderItems]);
+  const subTotal = useMemo(() => (currentOrderItems || []).reduce((sum, item) => sum + item.price * item.quantity, 0), [currentOrderItems]);
   const discountValue = useMemo(() => discountType === 'fixed' ? discountAmount : (subTotal * discountAmount) / 100, [subTotal, discountType, discountAmount]);
   const taxes = useMemo(() => {
     if (!singleActiveOutlet) return [];
     const totalAfterDiscount = subTotal - discountValue;
-    return singleActiveOutlet.taxes.map(tax => ({...tax, amount: totalAfterDiscount * (tax.rate / 100)}));
+    return (singleActiveOutlet.taxes || []).map(tax => ({...tax, amount: totalAfterDiscount * (tax.rate / 100)}));
   }, [subTotal, discountValue, singleActiveOutlet]);
-  const totalTaxAmount = useMemo(() => taxes.reduce((sum, tax) => sum + tax.amount, 0), [taxes]);
+  const totalTaxAmount = useMemo(() => (taxes || []).reduce((sum, tax) => sum + tax.amount, 0), [taxes]);
   const grandTotal = useMemo(() => subTotal - discountValue + totalTaxAmount, [subTotal, discountValue, totalTaxAmount]);
 
   // Update customer display whenever the order changes
@@ -474,7 +474,7 @@ const handleSendKot = useCallback(async () => {
     receivedAmount: number,
     returnAmount: number
   }) => {
-    if (currentOrderItems.length === 0) {
+    if ((currentOrderItems || []).length === 0) {
       alert("Cannot finalize an empty order.");
       return;
     }
@@ -484,18 +484,18 @@ const handleSendKot = useCallback(async () => {
       return;
     }
     
-    const subTotal = currentOrderItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    const subTotal = (currentOrderItems || []).reduce((sum, item) => sum + item.price * item.quantity, 0);
     const discountValue = discountType === 'fixed' ? discountAmount : (subTotal * discountAmount) / 100;
     const totalAfterDiscount = subTotal - discountValue;
     
-    const taxDetails: SaleTaxDetail[] = singleActiveOutlet.taxes.map(tax => {
+    const taxDetails: SaleTaxDetail[] = (singleActiveOutlet.taxes || []).map(tax => {
       const taxAmount = totalAfterDiscount * (tax.rate / 100);
       return { id: tax.id, name: tax.name, rate: tax.rate, amount: taxAmount };
     });
     
-    const totalTaxAmount = taxDetails.reduce((sum, tax) => sum + tax.amount, 0);
+    const totalTaxAmount = (taxDetails || []).reduce((sum, tax) => sum + tax.amount, 0);
     const totalAmount = totalAfterDiscount + totalTaxAmount + paymentDetails.tip;
-    const totalPaid = paymentDetails.payments.reduce((sum, p) => sum + (typeof p.amount === 'number' ? p.amount : Number(p.amount)), 0);
+    const totalPaid = (paymentDetails.payments || []).reduce((sum, p) => sum + (typeof p.amount === 'number' ? p.amount : Number(p.amount)), 0);
     const outstandingAmount = Math.max(0, totalAmount - totalPaid);
     
     let saleToProcess: Sale;

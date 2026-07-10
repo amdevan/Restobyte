@@ -93,20 +93,350 @@ async function markMigrationApplied(migrationName: string) {
 async function applyTenantMigration() {
     const migrationName = '20260710163537_add_missing_tenant_columns';
     console.log(`Checking migration ${migrationName}...`);
-    
-    // Check if all new tables exist, if not create them
-    const tablesToCreate = ['OutletAppData', 'UserAppData', 'GlobalAppData', 'PlanDefinition', 'Role', 'SubscriptionInvoice', 'Invoice', 'PaymentHistory', 'TenantLoginHistory'];
-    for (const tableName of tablesToCreate) {
-        const exists = await checkTableExists(tableName);
-        if (!exists) {
-            console.log(`Creating table ${tableName}...`);
-            // Since this is a recovery script, we can use Prisma's own migration SQL
-            // But for safety, let's just mark the migration as applied if most things are there,
-            // or if you prefer, run individual CREATE TABLE statements
+
+    // --- Fix User table ---
+    const userEmailExists = await checkColumnExists('User', 'email');
+    const userPhoneExists = await checkColumnExists('User', 'phone');
+    const userOutletIdsExists = await checkColumnExists('User', 'outletIds');
+    const userEmailIndexExists = await checkIndexExists('User_email_key', 'User');
+    const userPhoneIndexExists = await checkIndexExists('User_phone_key', 'User');
+
+    if (!userEmailExists) {
+        console.log('Adding User.email column...');
+        await prisma.$executeRawUnsafe(`ALTER TABLE "User" ADD COLUMN "email" TEXT`);
+    }
+    if (!userPhoneExists) {
+        console.log('Adding User.phone column...');
+        await prisma.$executeRawUnsafe(`ALTER TABLE "User" ADD COLUMN "phone" TEXT`);
+    }
+    if (!userOutletIdsExists) {
+        console.log('Adding User.outletIds column...');
+        await prisma.$executeRawUnsafe(`ALTER TABLE "User" ADD COLUMN "outletIds" JSONB`);
+    }
+    if (!userEmailIndexExists) {
+        console.log('Creating User_email_key index...');
+        try {
+            await prisma.$executeRawUnsafe(`CREATE UNIQUE INDEX "User_email_key" ON "User"("email")`);
+        } catch (e) {
+            console.log('Index User_email_key might already exist or duplicates found, skipping unique constraint for safety');
         }
     }
-    
-    // Now mark it as applied (since it's easier to mark and then backfill any missing parts with backfill-slugs or other scripts)
+    if (!userPhoneIndexExists) {
+        console.log('Creating User_phone_key index...');
+        try {
+            await prisma.$executeRawUnsafe(`CREATE UNIQUE INDEX "User_phone_key" ON "User"("phone")`);
+        } catch (e) {
+            console.log('Index User_phone_key might already exist or duplicates found, skipping unique constraint for safety');
+        }
+    }
+
+    // --- Fix Category table ---
+    const categoryDescExists = await checkColumnExists('Category', 'description');
+    const categoryImageUrlExists = await checkColumnExists('Category', 'imageUrl');
+    if (!categoryDescExists) {
+        console.log('Adding Category.description column...');
+        await prisma.$executeRawUnsafe(`ALTER TABLE "Category" ADD COLUMN "description" TEXT`);
+    }
+    if (!categoryImageUrlExists) {
+        console.log('Adding Category.imageUrl column...');
+        await prisma.$executeRawUnsafe(`ALTER TABLE "Category" ADD COLUMN "imageUrl" TEXT`);
+    }
+
+    // --- Fix Customer table ---
+    const customerLastPaymentDateExists = await checkColumnExists('Customer', 'lastPaymentDate');
+    const customerTotalPaidAmountExists = await checkColumnExists('Customer', 'totalPaidAmount');
+    const customerTotalPurchaseAmountExists = await checkColumnExists('Customer', 'totalPurchaseAmount');
+    if (!customerLastPaymentDateExists) {
+        console.log('Adding Customer.lastPaymentDate column...');
+        await prisma.$executeRawUnsafe(`ALTER TABLE "Customer" ADD COLUMN "lastPaymentDate" TIMESTAMP(3)`);
+    }
+    if (!customerTotalPaidAmountExists) {
+        console.log('Adding Customer.totalPaidAmount column...');
+        await prisma.$executeRawUnsafe(`ALTER TABLE "Customer" ADD COLUMN "totalPaidAmount" DOUBLE PRECISION NOT NULL DEFAULT 0`);
+    }
+    if (!customerTotalPurchaseAmountExists) {
+        console.log('Adding Customer.totalPurchaseAmount column...');
+        await prisma.$executeRawUnsafe(`ALTER TABLE "Customer" ADD COLUMN "totalPurchaseAmount" DOUBLE PRECISION NOT NULL DEFAULT 0`);
+    }
+
+    // --- Fix Order table ---
+    const orderSaleDataExists = await checkColumnExists('Order', 'saleData');
+    if (!orderSaleDataExists) {
+        console.log('Adding Order.saleData column...');
+        await prisma.$executeRawUnsafe(`ALTER TABLE "Order" ADD COLUMN "saleData" JSONB`);
+    }
+
+    // --- Fix Outlet table ---
+    const outletEmailExists = await checkColumnExists('Outlet', 'email');
+    const outletFonepayCurrencyExists = await checkColumnExists('Outlet', 'fonepayCurrency');
+    const outletFonepayIsEnabledExists = await checkColumnExists('Outlet', 'fonepayIsEnabled');
+    const outletFonepayMerchantCodeExists = await checkColumnExists('Outlet', 'fonepayMerchantCode');
+    const outletFonepayTerminalIdExists = await checkColumnExists('Outlet', 'fonepayTerminalId');
+    const outletLogoUrlExists = await checkColumnExists('Outlet', 'logoUrl');
+    const outletOutletTypeExists = await checkColumnExists('Outlet', 'outletType');
+    const outletPlanExists = await checkColumnExists('Outlet', 'plan');
+    const outletPlanExpiryDateExists = await checkColumnExists('Outlet', 'planExpiryDate');
+    const outletRestaurantNameExists = await checkColumnExists('Outlet', 'restaurantName');
+    const outletSubscriptionStatusExists = await checkColumnExists('Outlet', 'subscriptionStatus');
+    const outletTaxesExists = await checkColumnExists('Outlet', 'taxes');
+    const outletWhatsappDefaultMessageExists = await checkColumnExists('Outlet', 'whatsappDefaultMessage');
+    const outletWhatsappNumberExists = await checkColumnExists('Outlet', 'whatsappNumber');
+    const outletWhatsappOrderingEnabledExists = await checkColumnExists('Outlet', 'whatsappOrderingEnabled');
+
+    if (!outletEmailExists) await prisma.$executeRawUnsafe(`ALTER TABLE "Outlet" ADD COLUMN "email" TEXT`);
+    if (!outletFonepayCurrencyExists) await prisma.$executeRawUnsafe(`ALTER TABLE "Outlet" ADD COLUMN "fonepayCurrency" TEXT`);
+    if (!outletFonepayIsEnabledExists) await prisma.$executeRawUnsafe(`ALTER TABLE "Outlet" ADD COLUMN "fonepayIsEnabled" BOOLEAN NOT NULL DEFAULT false`);
+    if (!outletFonepayMerchantCodeExists) await prisma.$executeRawUnsafe(`ALTER TABLE "Outlet" ADD COLUMN "fonepayMerchantCode" TEXT`);
+    if (!outletFonepayTerminalIdExists) await prisma.$executeRawUnsafe(`ALTER TABLE "Outlet" ADD COLUMN "fonepayTerminalId" TEXT`);
+    if (!outletLogoUrlExists) await prisma.$executeRawUnsafe(`ALTER TABLE "Outlet" ADD COLUMN "logoUrl" TEXT`);
+    if (!outletOutletTypeExists) await prisma.$executeRawUnsafe(`ALTER TABLE "Outlet" ADD COLUMN "outletType" TEXT NOT NULL DEFAULT 'Restaurant'`);
+    if (!outletPlanExists) await prisma.$executeRawUnsafe(`ALTER TABLE "Outlet" ADD COLUMN "plan" TEXT`);
+    if (!outletPlanExpiryDateExists) await prisma.$executeRawUnsafe(`ALTER TABLE "Outlet" ADD COLUMN "planExpiryDate" TIMESTAMP(3)`);
+    if (!outletRestaurantNameExists) await prisma.$executeRawUnsafe(`ALTER TABLE "Outlet" ADD COLUMN "restaurantName" TEXT`);
+    if (!outletSubscriptionStatusExists) await prisma.$executeRawUnsafe(`ALTER TABLE "Outlet" ADD COLUMN "subscriptionStatus" TEXT`);
+    if (!outletTaxesExists) await prisma.$executeRawUnsafe(`ALTER TABLE "Outlet" ADD COLUMN "taxes" JSONB`);
+    if (!outletWhatsappDefaultMessageExists) await prisma.$executeRawUnsafe(`ALTER TABLE "Outlet" ADD COLUMN "whatsappDefaultMessage" TEXT`);
+    if (!outletWhatsappNumberExists) await prisma.$executeRawUnsafe(`ALTER TABLE "Outlet" ADD COLUMN "whatsappNumber" TEXT`);
+    if (!outletWhatsappOrderingEnabledExists) await prisma.$executeRawUnsafe(`ALTER TABLE "Outlet" ADD COLUMN "whatsappOrderingEnabled" BOOLEAN NOT NULL DEFAULT false`);
+
+    // --- Fix Tenant table ---
+    const tenantAdminEmailExists = await checkColumnExists('Tenant', 'adminEmail');
+    const tenantTrialDaysExists = await checkColumnExists('Tenant', 'trialDays');
+    const tenantTrialEndsAtExists = await checkColumnExists('Tenant', 'trialEndsAt');
+    if (!tenantAdminEmailExists) await prisma.$executeRawUnsafe(`ALTER TABLE "Tenant" ADD COLUMN "adminEmail" TEXT`);
+    if (!tenantTrialDaysExists) await prisma.$executeRawUnsafe(`ALTER TABLE "Tenant" ADD COLUMN "trialDays" INTEGER DEFAULT 14`);
+    if (!tenantTrialEndsAtExists) await prisma.$executeRawUnsafe(`ALTER TABLE "Tenant" ADD COLUMN "trialEndsAt" TIMESTAMP(3)`);
+
+    // --- Create missing tables ---
+    const tablesToCreate = [
+        {
+            name: 'OutletAppData',
+            sqlStatements: [
+                `CREATE TABLE IF NOT EXISTS "OutletAppData" (
+                    "id" TEXT NOT NULL,
+                    "outletId" TEXT NOT NULL,
+                    "key" TEXT NOT NULL,
+                    "data" JSONB NOT NULL,
+                    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    "updatedAt" TIMESTAMP(3) NOT NULL,
+                    CONSTRAINT "OutletAppData_pkey" PRIMARY KEY ("id")
+                )`,
+                `CREATE UNIQUE INDEX IF NOT EXISTS "OutletAppData_outletId_key_key" ON "OutletAppData"("outletId", "key")`
+            ]
+        },
+        {
+            name: 'UserAppData',
+            sqlStatements: [
+                `CREATE TABLE IF NOT EXISTS "UserAppData" (
+                    "id" TEXT NOT NULL,
+                    "userId" TEXT NOT NULL,
+                    "key" TEXT NOT NULL,
+                    "data" JSONB NOT NULL,
+                    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    "updatedAt" TIMESTAMP(3) NOT NULL,
+                    CONSTRAINT "UserAppData_pkey" PRIMARY KEY ("id")
+                )`,
+                `CREATE UNIQUE INDEX IF NOT EXISTS "UserAppData_userId_key_key" ON "UserAppData"("userId", "key")`
+            ]
+        },
+        {
+            name: 'GlobalAppData',
+            sqlStatements: [
+                `CREATE TABLE IF NOT EXISTS "GlobalAppData" (
+                    "id" TEXT NOT NULL,
+                    "key" TEXT NOT NULL,
+                    "data" JSONB NOT NULL,
+                    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    "updatedAt" TIMESTAMP(3) NOT NULL,
+                    CONSTRAINT "GlobalAppData_pkey" PRIMARY KEY ("id")
+                )`,
+                `CREATE UNIQUE INDEX IF NOT EXISTS "GlobalAppData_key_key" ON "GlobalAppData"("key")`
+            ]
+        },
+        {
+            name: 'PlanDefinition',
+            sqlStatements: [
+                `CREATE TABLE IF NOT EXISTS "PlanDefinition" (
+                    "id" TEXT NOT NULL,
+                    "name" TEXT NOT NULL,
+                    "price" DOUBLE PRECISION NOT NULL,
+                    "period" TEXT NOT NULL DEFAULT 'yearly',
+                    "features" JSONB,
+                    "featureKeys" JSONB,
+                    "limits" JSONB,
+                    "trialDays" INTEGER NOT NULL DEFAULT 14,
+                    "isPublic" BOOLEAN NOT NULL DEFAULT true,
+                    "isActive" BOOLEAN NOT NULL DEFAULT true,
+                    "isFeatured" BOOLEAN NOT NULL DEFAULT false,
+                    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    "updatedAt" TIMESTAMP(3) NOT NULL,
+                    CONSTRAINT "PlanDefinition_pkey" PRIMARY KEY ("id")
+                )`,
+                `CREATE UNIQUE INDEX IF NOT EXISTS "PlanDefinition_name_key" ON "PlanDefinition"("name")`
+            ]
+        },
+        {
+            name: 'Role',
+            sqlStatements: [
+                `CREATE TABLE IF NOT EXISTS "Role" (
+                    "id" TEXT NOT NULL,
+                    "name" TEXT NOT NULL,
+                    "permissions" JSONB,
+                    "tenantId" TEXT,
+                    "isSystem" BOOLEAN NOT NULL DEFAULT false,
+                    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    "updatedAt" TIMESTAMP(3) NOT NULL,
+                    CONSTRAINT "Role_pkey" PRIMARY KEY ("id")
+                )`,
+                `CREATE UNIQUE INDEX IF NOT EXISTS "Role_tenantId_name_key" ON "Role"("tenantId", "name")`,
+                `ALTER TABLE "Role" DROP CONSTRAINT IF EXISTS "Role_tenantId_fkey"`,
+                `ALTER TABLE "Role" ADD CONSTRAINT "Role_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant"("id") ON DELETE SET NULL ON UPDATE CASCADE`
+            ]
+        },
+        {
+            name: 'SubscriptionInvoice',
+            sqlStatements: [
+                `CREATE TABLE IF NOT EXISTS "SubscriptionInvoice" (
+                    "id" TEXT NOT NULL,
+                    "invoiceNumber" TEXT NOT NULL,
+                    "tenantId" TEXT NOT NULL,
+                    "paymentId" TEXT,
+                    "amount" DOUBLE PRECISION NOT NULL,
+                    "currencyCode" TEXT NOT NULL DEFAULT 'NPR',
+                    "status" TEXT NOT NULL DEFAULT 'issued',
+                    "method" TEXT,
+                    "notes" TEXT,
+                    "issuedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    "paidAt" TIMESTAMP(3),
+                    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    "updatedAt" TIMESTAMP(3) NOT NULL,
+                    CONSTRAINT "SubscriptionInvoice_pkey" PRIMARY KEY ("id")
+                )`,
+                `CREATE UNIQUE INDEX IF NOT EXISTS "SubscriptionInvoice_invoiceNumber_key" ON "SubscriptionInvoice"("invoiceNumber")`,
+                `CREATE UNIQUE INDEX IF NOT EXISTS "SubscriptionInvoice_paymentId_key" ON "SubscriptionInvoice"("paymentId")`,
+                `ALTER TABLE "SubscriptionInvoice" DROP CONSTRAINT IF EXISTS "SubscriptionInvoice_tenantId_fkey"`,
+                `ALTER TABLE "SubscriptionInvoice" ADD CONSTRAINT "SubscriptionInvoice_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant"("id") ON DELETE RESTRICT ON UPDATE CASCADE`,
+                `ALTER TABLE "SubscriptionInvoice" DROP CONSTRAINT IF EXISTS "SubscriptionInvoice_paymentId_fkey"`,
+                `ALTER TABLE "SubscriptionInvoice" ADD CONSTRAINT "SubscriptionInvoice_paymentId_fkey" FOREIGN KEY ("paymentId") REFERENCES "Payment"("id") ON DELETE SET NULL ON UPDATE CASCADE`
+            ]
+        },
+        {
+            name: 'Invoice',
+            sqlStatements: [
+                `CREATE TABLE IF NOT EXISTS "Invoice" (
+                    "id" TEXT NOT NULL,
+                    "invoiceNumber" TEXT NOT NULL,
+                    "orderId" TEXT NOT NULL,
+                    "customerId" TEXT,
+                    "outletId" TEXT NOT NULL,
+                    "totalAmount" DOUBLE PRECISION NOT NULL DEFAULT 0,
+                    "paidAmount" DOUBLE PRECISION NOT NULL DEFAULT 0,
+                    "dueAmount" DOUBLE PRECISION NOT NULL DEFAULT 0,
+                    "paymentStatus" TEXT NOT NULL DEFAULT 'DUE',
+                    "paymentMethod" TEXT,
+                    "items" JSONB,
+                    "taxAmount" DOUBLE PRECISION NOT NULL DEFAULT 0,
+                    "discountAmount" DOUBLE PRECISION NOT NULL DEFAULT 0,
+                    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    "updatedAt" TIMESTAMP(3) NOT NULL,
+                    "paidAt" TIMESTAMP(3),
+                    CONSTRAINT "Invoice_pkey" PRIMARY KEY ("id")
+                )`,
+                `CREATE UNIQUE INDEX IF NOT EXISTS "Invoice_invoiceNumber_key" ON "Invoice"("invoiceNumber")`,
+                `ALTER TABLE "Invoice" DROP CONSTRAINT IF EXISTS "Invoice_orderId_fkey"`,
+                `ALTER TABLE "Invoice" ADD CONSTRAINT "Invoice_orderId_fkey" FOREIGN KEY ("orderId") REFERENCES "Order"("id") ON DELETE RESTRICT ON UPDATE CASCADE`,
+                `ALTER TABLE "Invoice" DROP CONSTRAINT IF EXISTS "Invoice_customerId_fkey"`,
+                `ALTER TABLE "Invoice" ADD CONSTRAINT "Invoice_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "Customer"("id") ON DELETE SET NULL ON UPDATE CASCADE`,
+                `ALTER TABLE "Invoice" DROP CONSTRAINT IF EXISTS "Invoice_outletId_fkey"`,
+                `ALTER TABLE "Invoice" ADD CONSTRAINT "Invoice_outletId_fkey" FOREIGN KEY ("outletId") REFERENCES "Outlet"("id") ON DELETE RESTRICT ON UPDATE CASCADE`
+            ]
+        },
+        {
+            name: 'PaymentHistory',
+            sqlStatements: [
+                `CREATE TABLE IF NOT EXISTS "PaymentHistory" (
+                    "id" TEXT NOT NULL,
+                    "invoiceId" TEXT NOT NULL,
+                    "customerId" TEXT,
+                    "amount" DOUBLE PRECISION NOT NULL,
+                    "method" TEXT NOT NULL,
+                    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    CONSTRAINT "PaymentHistory_pkey" PRIMARY KEY ("id")
+                )`,
+                `ALTER TABLE "PaymentHistory" DROP CONSTRAINT IF EXISTS "PaymentHistory_invoiceId_fkey"`,
+                `ALTER TABLE "PaymentHistory" ADD CONSTRAINT "PaymentHistory_invoiceId_fkey" FOREIGN KEY ("invoiceId") REFERENCES "Invoice"("id") ON DELETE RESTRICT ON UPDATE CASCADE`,
+                `ALTER TABLE "PaymentHistory" DROP CONSTRAINT IF EXISTS "PaymentHistory_customerId_fkey"`,
+                `ALTER TABLE "PaymentHistory" ADD CONSTRAINT "PaymentHistory_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "Customer"("id") ON DELETE SET NULL ON UPDATE CASCADE`
+            ]
+        },
+        {
+            name: 'TenantLoginHistory',
+            sqlStatements: [
+                `CREATE TABLE IF NOT EXISTS "TenantLoginHistory" (
+                    "id" TEXT NOT NULL,
+                    "tenantId" TEXT NOT NULL,
+                    "userId" TEXT,
+                    "username" TEXT NOT NULL,
+                    "ipAddress" TEXT,
+                    "userAgent" TEXT,
+                    "deviceLabel" TEXT,
+                    "loginType" TEXT NOT NULL DEFAULT 'password',
+                    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    CONSTRAINT "TenantLoginHistory_pkey" PRIMARY KEY ("id")
+                )`,
+                `ALTER TABLE "TenantLoginHistory" DROP CONSTRAINT IF EXISTS "TenantLoginHistory_tenantId_fkey"`,
+                `ALTER TABLE "TenantLoginHistory" ADD CONSTRAINT "TenantLoginHistory_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant"("id") ON DELETE RESTRICT ON UPDATE CASCADE`,
+                `ALTER TABLE "TenantLoginHistory" DROP CONSTRAINT IF EXISTS "TenantLoginHistory_userId_fkey"`,
+                `ALTER TABLE "TenantLoginHistory" ADD CONSTRAINT "TenantLoginHistory_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE`
+            ]
+        }
+    ];
+
+    for (const table of tablesToCreate) {
+        const exists = await checkTableExists(table.name);
+        if (!exists) {
+            console.log(`Creating table ${table.name}...`);
+            for (const stmt of table.sqlStatements) {
+                if (stmt.trim()) {
+                    try {
+                        await prisma.$executeRawUnsafe(stmt);
+                    } catch (e) {
+                        console.log(`Warning: Failed to execute statement for table ${table.name}, continuing...`, e);
+                    }
+                }
+            }
+        }
+    }
+
+    // --- Add missing foreign key to Order (outletId) ---
+    try {
+        const orderOutletFkExists = await prisma.$queryRawUnsafe<any[]>(`
+            SELECT 1 FROM information_schema.table_constraints 
+            WHERE constraint_name = 'Order_outletId_fkey' AND table_name = 'Order'
+        `);
+        if (!orderOutletFkExists.length) {
+            console.log('Adding Order_outletId_fkey foreign key...');
+            await prisma.$executeRawUnsafe(`ALTER TABLE "Order" DROP CONSTRAINT IF EXISTS "Order_outletId_fkey"`);
+            await prisma.$executeRawUnsafe(`ALTER TABLE "Order" ADD CONSTRAINT "Order_outletId_fkey" FOREIGN KEY ("outletId") REFERENCES "Outlet"("id") ON DELETE SET NULL ON UPDATE CASCADE`);
+        }
+    } catch (e) {
+        console.log('Error checking/adding Order_outletId_fkey:', e);
+    }
+
+    // --- Add Customer.userId column and foreign key if not exists ---
+    const customerUserIdExists = await checkColumnExists('Customer', 'userId');
+    if (!customerUserIdExists) {
+        console.log('Adding Customer.userId column...');
+        await prisma.$executeRawUnsafe(`ALTER TABLE "Customer" ADD COLUMN "userId" TEXT UNIQUE`);
+        try {
+            await prisma.$executeRawUnsafe(`ALTER TABLE "Customer" DROP CONSTRAINT IF EXISTS "Customer_userId_fkey"`);
+            await prisma.$executeRawUnsafe(`ALTER TABLE "Customer" ADD CONSTRAINT "Customer_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE`);
+        } catch (e) {
+            console.log('Error adding Customer_userId_fkey:', e);
+        }
+    }
+
+    // Mark migration as applied
     await markMigrationApplied(migrationName);
 }
 

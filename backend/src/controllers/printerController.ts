@@ -84,17 +84,24 @@ export const getSystemPrinters = async (req: Request, res: Response) => {
       getUSBPrinterDetails()
     ]);
 
-    // Enhance printer info with USB details
+    // Enhance printer info with USB details and map to frontend expected fields
     const enhancedPrinters = printers.map((printer: any) => {
-      const matchingUsb = usbDetails.find(
+      // Check if printer URI is USB to auto-set usbPath
+      const isUsbPrinter = printer.uri?.toLowerCase().startsWith('usb:') || printer.uri?.toLowerCase().startsWith('ippusb:');
+      let matchingUsb = usbDetails.find(
         (usb: any) => 
           (printer.name && usb.name && printer.name.toLowerCase().includes(usb.name.toLowerCase())) ||
           (usb.name && printer.name?.toLowerCase().includes(usb.name?.toLowerCase()))
       );
       
       return {
-        ...printer,
-        usbPath: matchingUsb?.path || matchingUsb?.uri || undefined
+        name: printer.name,
+        model: printer.model,
+        status: printer.status,
+        port: printer.uri,
+        usbPath: isUsbPrinter ? printer.uri : (matchingUsb?.path || matchingUsb?.uri),
+        uri: printer.uri,
+        raw: printer
       };
     });
 

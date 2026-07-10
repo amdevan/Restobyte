@@ -329,7 +329,7 @@ export const deletePrinter = async (req: Request, res: Response) => {
   res.status(204).send();
 };
 
-export const printTestPage = async (req: Request, res: Response) => {
+export const printDocument = async (req: Request, res: Response) => {
   try {
     const user = (req as AuthRequest).user;
     if (!user) {
@@ -337,7 +337,7 @@ export const printTestPage = async (req: Request, res: Response) => {
       return;
     }
 
-    const { printerId, content, title } = req.body;
+    const { printerId, content, printType } = req.body;
     const queryOutletId = typeof (req.query as any)?.outletId === 'string' ? String((req.query as any).outletId) : undefined;
     const requestedOutletId = queryOutletId || (user.outletId ? String(user.outletId) : undefined);
     if (!requestedOutletId) {
@@ -355,8 +355,11 @@ export const printTestPage = async (req: Request, res: Response) => {
       return;
     }
 
-    // Generate print content
-    const printContent = content || `
+    // Generate print content if not provided
+    let printContent = content;
+    if (!printContent) {
+      if (printType === 'test') {
+        printContent = `
 ----------------------------------------
 |        RESTOBYTE TEST PRINT          |
 ----------------------------------------
@@ -368,6 +371,26 @@ Interface: ${printer.interfaceType}
 
 Thank you for using RestoByte!
 `;
+      } else if (printType === 'invoice') {
+        printContent = `
+----------------------------------------
+|          RESTOBYTE INVOICE           |
+----------------------------------------
+Date: ${new Date().toLocaleString()}
+
+This is a sample invoice.
+`;
+      } else if (printType === 'kot') {
+        printContent = `
+----------------------------------------
+|     RESTOBYTE KITCHEN ORDER TICKET   |
+----------------------------------------
+Date: ${new Date().toLocaleString()}
+
+This is a sample KOT.
+`;
+      }
+    }
 
     // Create a temporary file
     const tempDir = os.tmpdir();
@@ -379,9 +402,34 @@ Thank you for using RestoByte!
     
     // Determine print command based on OS and printer type
     if (process.platform === 'darwin' || process.platform === 'linux') {
+      // First get list of available printers to find a match
+      let systemPrinters: string[] = [];
+      try {
+        const { stdout } = await execAsync('lpstat -p');
+        systemPrinters = stdout.split('\n')
+          .filter(line => line.trim().startsWith('printer '))
+          .map(line => line.split(' ')[1]);
+      } catch (e) {
+        console.error('Failed to get system printers:', e);
+      }
+
+      let printerToUse = printer.name;
+      
+      // Try to find a matching printer in the system list
+      if (systemPrinters.length > 0) {
+        const normalizedDbName = printer.name.toLowerCase().replace(/[^a-z0-9]/g, '_');
+        const matchingPrinter = systemPrinters.find(sp => {
+          const normalizedSystemName = sp.toLowerCase().replace(/[^a-z0-9]/g, '_');
+          return normalizedSystemName.includes(normalizedDbName) || normalizedDbName.includes(normalizedSystemName);
+        });
+        if (matchingPrinter) {
+          printerToUse = matchingPrinter;
+        }
+      }
+
       // macOS or Linux: use lpr
-      if (printer.name) {
-        printCommand = `lpr -P "${printer.name}" "${tempFilePath}"`;
+      if (printerToUse) {
+        printCommand = `lpr -P "${printerToUse}" "${tempFilePath}"`;
       } else {
         printCommand = `lpr "${tempFilePath}"`;
       }
@@ -398,16 +446,14 @@ Thank you for using RestoByte!
       await execAsync(printCommand);
     }
 
-    // Clean up temp file after a short delay
-    setTimeout(() => {
-      try {
-        if (fs.existsSync(tempFilePath)) {
-          fs.unlinkSync(tempFilePath);
-        }
-      } catch (e) {
-        console.error('Error cleaning up temp print file:', e);
+    // Clean up temp file only after the print command has completed
+    try {
+      if (fs.existsSync(tempFilePath)) {
+        fs.unlinkSync(tempFilePath);
       }
-    }, 5000);
+    } catch (e) {
+      console.error('Error cleaning up temp print file:', e);
+    }
 
     res.status(200).json({ 
       message: 'Print job sent successfully',

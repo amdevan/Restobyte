@@ -12,88 +12,166 @@ interface ReceiptModalProps {
 }
 
 const ReceiptModal: React.FC<ReceiptModalProps> = ({ onClose, sale }) => {
-  const { websiteSettings, getSingleActiveOutlet, applicationSettings, customers, printers } = useRestaurantData();
+  const { websiteSettings, getSingleActiveOutlet, applicationSettings, customers, printers, printInvoice } = useRestaurantData();
   const currentOutlet = getSingleActiveOutlet();
   const receiptRef = useRef<HTMLDivElement>(null);
+
+  const generatePlainTextInvoice = (): string => {
+    const outletName = currentOutlet?.restaurantName || websiteSettings.whiteLabel.appName || 'Demo Restaurant';
+    const outletAddress = currentOutlet?.address || websiteSettings.contactUsContent.address || 'Address not set';
+    const outletPhone = currentOutlet?.phone || websiteSettings.contactUsContent.phone || 'Phone not set';
+    const customer: Customer | undefined = sale.customerId ? customers.find(c => c.id === sale.customerId) : undefined;
+    let invoiceText = `
+----------------------------------------
+${outletName}
+${outletAddress}
+Tel: ${outletPhone}
+----------------------------------------
+
+${applicationSettings.invoiceTitle || 'INVOICE'}
+Bill No: DNBILL ${sale.id.slice(-4).toUpperCase()}
+`;
+    if (sale.assignedTableName) {
+      invoiceText += `Table: ${sale.assignedTableName}  Pax: ${sale.pax || 1}\n`;
+    }
+    if (sale.waiterName) {
+      invoiceText += `Waiter: ${sale.waiterName}\n`;
+    }
+    invoiceText += `Date: ${new Date(sale.saleDate).toLocaleString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}\n`;
+    invoiceText += `Bill By: Admin\n\n`;
+    invoiceText += `----------------------------------------\n`;
+    invoiceText += `Item                     Qty   Rate   Amount\n`;
+    invoiceText += `----------------------------------------\n`;
+    sale.items.forEach(item => {
+      const name = item.name.substring(0, 22).padEnd(22);
+      const qty = item.quantity.toString().padStart(3);
+      const rate = item.price.toFixed(2).padStart(6);
+      const amount = (item.price * item.quantity).toFixed(2).padStart(8);
+      invoiceText += `${name}${qty} ${rate} ${amount}\n`;
+    });
+    invoiceText += `----------------------------------------\n`;
+    invoiceText += `Items: ${sale.items.length}     Sub Total: ${sale.subTotal.toFixed(2)}\n`;
+    let totalTax = 0;
+    sale.taxDetails.forEach(tax => {
+      totalTax += tax.amount;
+      invoiceText += `${tax.name} (${tax.rate}%): ${tax.amount.toFixed(2)}\n`;
+    });
+    if (sale.discountAmount && sale.discountAmount > 0) {
+      const discountVal = sale.discountType === 'percentage' ? (sale.subTotal * sale.discountAmount / 100) : sale.discountAmount;
+      invoiceText += `Discount: -${discountVal.toFixed(2)}\n`;
+    }
+    if (sale.tipAmount && sale.tipAmount > 0) {
+      invoiceText += `Tip: ${sale.tipAmount.toFixed(2)}\n`;
+    }
+    invoiceText += `\nGrand Total: ${sale.totalAmount.toFixed(2)}\n`;
+    invoiceText += `----------------------------------------\n\n`;
+    if (applicationSettings.invoiceShowPaymentDetails) {
+      if (sale.paymentMethod) invoiceText += `Payment: ${sale.paymentMethod}\n`;
+      invoiceText += `Paid: ${(sale.receivedAmount || sale.totalAmount).toFixed(2)}\n`;
+      if (sale.returnAmount > 0 || (sale.receivedAmount && sale.receivedAmount > sale.totalAmount)) {
+        invoiceText += `Change: ${(sale.returnAmount || (sale.receivedAmount || sale.totalAmount) - sale.totalAmount).toFixed(2)}\n`;
+      }
+      invoiceText += `\n`;
+    }
+    invoiceText += `${applicationSettings.invoiceFooterText || 'Thank you for your business!'}\n`;
+    invoiceText += `Powered by RestoByte\n`;
+    invoiceText += `----------------------------------------\n`;
+    return invoiceText;
+  };
   
   // Auto-print receipt if configured
   useEffect(() => {
-    if (sale && printers.some(p => p.type === PrinterType.Receipt && p.autoPrintReceipt && p.isActive)) {
-      const timer = setTimeout(() => handlePrint(), 500);
-      return () => clearTimeout(timer);
+    if (sale) {
+      const autoPrintPrinters = printers.filter(p => 
+        p.type === PrinterType.Receipt && p.autoPrintReceipt && p.isActive
+      );
+      if (autoPrintPrinters.length > 0) {
+        const timer = setTimeout(() => {
+          const content = generatePlainTextInvoice();
+          autoPrintPrinters.forEach(printer => printInvoice(printer.id, content));
+        }, 500);
+        return () => clearTimeout(timer);
+      }
     }
-  }, [sale, printers]);
+  }, [sale, printers, printInvoice]);
 
   if (!sale) return null;
 
   const customer: Customer | undefined = sale.customerId ? customers.find(c => c.id === sale.customerId) : undefined;
 
   const handlePrint = () => {
-    if (!receiptRef.current) return;
+    // Find active receipt printers
+    const activeReceiptPrinters = printers.filter(p => 
+      p.type === PrinterType.Receipt && p.isActive
+    );
     
-    // Open new window for printing
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) {
-      alert('Please allow pop-ups to print receipts');
-      return;
+    if (activeReceiptPrinters.length === 0) {
+      // Fallback to browser print if no printers configured
+      if (!receiptRef.current) return;
+      
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) {
+        alert('Please allow pop-ups to print receipts');
+        return;
+      }
+      
+      const activeReceiptPrinter = printers.find(p => p.type === PrinterType.Receipt && p.isActive);
+      const paperWidth = activeReceiptPrinter?.paperSize === '58mm' ? '58mm' : '80mm';
+      
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>Receipt ${sale.id.slice(-6).toUpperCase()}</title>
+            <style>
+              * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+                font-family: 'Courier New', monospace;
+              }
+              body {
+                width: ${paperWidth};
+                padding: 5mm;
+                font-size: 12px;
+                line-height: 1.4;
+              }
+              .text-center { text-align: center; }
+              .text-right { text-align: right; }
+              .flex { display: flex; }
+              .justify-between { justify-content: space-between; }
+              .border-t { border-top: 1px dashed #000; margin: 8px 0; padding-top: 8px; }
+              .border-b { border-bottom: 1px dashed #000; margin: 8px 0; padding-bottom: 8px; }
+              .mt-2 { margin-top: 8px; }
+              .mt-4 { margin-top: 16px; }
+              .mb-2 { margin-bottom: 8px; }
+              .font-bold { font-weight: bold; }
+              .text-sm { font-size: 10px; }
+              .text-lg { font-size: 14px; }
+              .text-xl { font-size: 16px; }
+              table { width: 100%; border-collapse: collapse; margin: 8px 0; }
+              td { vertical-align: top; }
+              @media print {
+                body { margin: 0; padding: 5mm; }
+                @page { margin: 0; size: auto; }
+              }
+            </style>
+          </head>
+          <body>${receiptRef.current.innerHTML}</body>
+        </html>
+      `);
+      
+      printWindow.document.close();
+      printWindow.focus();
+      
+      setTimeout(() => {
+        printWindow.print();
+      }, 500);
+    } else {
+      // Use our backend print function
+      const content = generatePlainTextInvoice();
+      activeReceiptPrinters.forEach(printer => printInvoice(printer.id, content));
     }
-    
-    // Get active receipt printers to determine paper size
-    const activeReceiptPrinter = printers.find(p => p.type === PrinterType.Receipt && p.isActive);
-    const paperWidth = activeReceiptPrinter?.paperSize === '58mm' ? '58mm' : '80mm';
-    
-    // Write receipt content to new window
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Receipt ${sale.id.slice(-6).toUpperCase()}</title>
-          <style>
-            * {
-              margin: 0;
-              padding: 0;
-              box-sizing: border-box;
-              font-family: 'Courier New', monospace;
-            }
-            body {
-              width: ${paperWidth};
-              padding: 5mm;
-              font-size: 12px;
-              line-height: 1.4;
-            }
-            .text-center { text-align: center; }
-            .text-right { text-align: right; }
-            .flex { display: flex; }
-            .justify-between { justify-content: space-between; }
-            .border-t { border-top: 1px dashed #000; margin: 8px 0; padding-top: 8px; }
-            .border-b { border-bottom: 1px dashed #000; margin: 8px 0; padding-bottom: 8px; }
-            .mt-2 { margin-top: 8px; }
-            .mt-4 { margin-top: 16px; }
-            .mb-2 { margin-bottom: 8px; }
-            .font-bold { font-weight: bold; }
-            .text-sm { font-size: 10px; }
-            .text-lg { font-size: 14px; }
-            .text-xl { font-size: 16px; }
-            table { width: 100%; border-collapse: collapse; margin: 8px 0; }
-            td { vertical-align: top; }
-            @media print {
-              body { margin: 0; padding: 5mm; }
-              @page { margin: 0; size: auto; }
-            }
-          </style>
-        </head>
-        <body>${receiptRef.current.innerHTML}</body>
-      </html>
-    `);
-    
-    printWindow.document.close();
-    printWindow.focus();
-    
-    // Wait for content to load, then print
-    setTimeout(() => {
-      printWindow.print();
-      // Don't close immediately - let user see the print dialog
-    }, 500);
   };
 
   const handleDownload = () => {

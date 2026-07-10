@@ -140,7 +140,13 @@ ${new Date().toLocaleString()}
 `;
         }
         
-        printTest(printer.id, testContent, `Test Print - ${printer.name}`);
+        // Find the active printer of the same type to use, or use the selected printer
+        const activePrinter = printers.find(p => 
+            p.type === printer.type && 
+            p.isActive
+        ) || printer;
+        
+        printTest(activePrinter.id, testContent);
     };
 
   return (

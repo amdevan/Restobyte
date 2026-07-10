@@ -2906,7 +2906,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 console.error("Failed to delete printer:", err);
             }
         },
-        printTest: async (printerId, content, title) => {
+        printTest: async (printerId, content) => {
             try {
                 const selectedOutletId = activeOutletIds.length === 1 ? activeOutletIds[0] : undefined;
                 if (!selectedOutletId) {
@@ -2919,7 +2919,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                         'Content-Type': 'application/json',
                         Authorization: `Bearer ${localStorage.getItem('authToken')}`
                     },
-                    body: JSON.stringify({ printerId, content, title })
+                    body: JSON.stringify({ printerId, content, printType: 'test' })
                 });
                 if (!res.ok) {
                     const err = await res.json().catch(() => null);
@@ -2931,6 +2931,60 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             } catch (err) {
                 console.error("Failed to print test page:", err);
                 alert('Failed to print test page');
+            }
+        },
+        printInvoice: async (printerId, content) => {
+            try {
+                const selectedOutletId = activeOutletIds.length === 1 ? activeOutletIds[0] : undefined;
+                if (!selectedOutletId) {
+                    alert('Please select a single outlet before printing an invoice.');
+                    return;
+                }
+                const res = await fetch(`${API_BASE_URL}/printers/print?outletId=${encodeURIComponent(selectedOutletId)}`, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${localStorage.getItem('authToken')}`
+                    },
+                    body: JSON.stringify({ printerId, content, printType: 'invoice' })
+                });
+                if (!res.ok) {
+                    const err = await res.json().catch(() => null);
+                    alert(err?.message || `Failed to print invoice (${res.status})`);
+                    return;
+                }
+                const result = await res.json();
+                alert(result.message || 'Invoice print sent successfully!');
+            } catch (err) {
+                console.error("Failed to print invoice:", err);
+                alert('Failed to print invoice');
+            }
+        },
+        printKot: async (printerId, content) => {
+            try {
+                const selectedOutletId = activeOutletIds.length === 1 ? activeOutletIds[0] : undefined;
+                if (!selectedOutletId) {
+                    alert('Please select a single outlet before printing a KOT.');
+                    return;
+                }
+                const res = await fetch(`${API_BASE_URL}/printers/print?outletId=${encodeURIComponent(selectedOutletId)}`, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${localStorage.getItem('authToken')}`
+                    },
+                    body: JSON.stringify({ printerId, content, printType: 'kot' })
+                });
+                if (!res.ok) {
+                    const err = await res.json().catch(() => null);
+                    alert(err?.message || `Failed to print KOT (${res.status})`);
+                    return;
+                }
+                const result = await res.json();
+                alert(result.message || 'KOT print sent successfully!');
+            } catch (err) {
+                console.error("Failed to print KOT:", err);
+                alert('Failed to print KOT');
             }
         },
 

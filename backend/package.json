@@ -11,7 +11,7 @@
     "migrate:dev": "npx prisma migrate dev",
     "migrate:deploy": "npx prisma migrate deploy",
     "db:seed": "npx prisma db seed",
-    "backfill:slugs": "tsx backfill-slugs.ts",
+    "backfill:slugs": "node dist/backfill-slugs.js",
     "postinstall": "prisma generate",
     "test": "echo \"Error: no test specified\" && exit 1"  },
   "keywords": [],

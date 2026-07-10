@@ -1,5 +1,5 @@
-import React from 'react';
-import { Sale, SaleItem, Customer } from '../../types';
+import React, { useEffect, useRef } from 'react';
+import { Sale, SaleItem, Customer, Printer, PrinterType } from '../../types';
 import Button from '../common/Button';
 import { FiPrinter, FiXCircle, FiDownload } from 'react-icons/fi';
 import { useRestaurantData } from '../../hooks/useRestaurantData';
@@ -12,26 +12,88 @@ interface ReceiptModalProps {
 }
 
 const ReceiptModal: React.FC<ReceiptModalProps> = ({ onClose, sale }) => {
-  const { websiteSettings, getSingleActiveOutlet, applicationSettings, customers } = useRestaurantData();
+  const { websiteSettings, getSingleActiveOutlet, applicationSettings, customers, printers } = useRestaurantData();
   const currentOutlet = getSingleActiveOutlet();
+  const receiptRef = useRef<HTMLDivElement>(null);
+  
+  // Auto-print receipt if configured
+  useEffect(() => {
+    if (sale && printers.some(p => p.type === PrinterType.Receipt && p.autoPrintReceipt && p.isActive)) {
+      const timer = setTimeout(() => handlePrint(), 500);
+      return () => clearTimeout(timer);
+    }
+  }, [sale, printers]);
 
   if (!sale) return null;
 
   const customer: Customer | undefined = sale.customerId ? customers.find(c => c.id === sale.customerId) : undefined;
 
   const handlePrint = () => {
-    const receiptElement = document.getElementById('receipt-content');
-    if(!receiptElement) return;
-
-    const options = {
-      margin: 0.5,
-      filename: `invoice-${sale.id.slice(-6).toUpperCase()}.pdf`,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true },
-      jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
-    };
-
-    html2pdf().set(options).from(receiptElement).print();
+    if (!receiptRef.current) return;
+    
+    // Open new window for printing
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert('Please allow pop-ups to print receipts');
+      return;
+    }
+    
+    // Get active receipt printers to determine paper size
+    const activeReceiptPrinter = printers.find(p => p.type === PrinterType.Receipt && p.isActive);
+    const paperWidth = activeReceiptPrinter?.paperSize === '58mm' ? '58mm' : '80mm';
+    
+    // Write receipt content to new window
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Receipt ${sale.id.slice(-6).toUpperCase()}</title>
+          <style>
+            * {
+              margin: 0;
+              padding: 0;
+              box-sizing: border-box;
+              font-family: 'Courier New', monospace;
+            }
+            body {
+              width: ${paperWidth};
+              padding: 5mm;
+              font-size: 12px;
+              line-height: 1.4;
+            }
+            .text-center { text-align: center; }
+            .text-right { text-align: right; }
+            .flex { display: flex; }
+            .justify-between { justify-content: space-between; }
+            .border-t { border-top: 1px dashed #000; margin: 8px 0; padding-top: 8px; }
+            .border-b { border-bottom: 1px dashed #000; margin: 8px 0; padding-bottom: 8px; }
+            .mt-2 { margin-top: 8px; }
+            .mt-4 { margin-top: 16px; }
+            .mb-2 { margin-bottom: 8px; }
+            .font-bold { font-weight: bold; }
+            .text-sm { font-size: 10px; }
+            .text-lg { font-size: 14px; }
+            .text-xl { font-size: 16px; }
+            table { width: 100%; border-collapse: collapse; margin: 8px 0; }
+            td { vertical-align: top; }
+            @media print {
+              body { margin: 0; padding: 5mm; }
+              @page { margin: 0; size: auto; }
+            }
+          </style>
+        </head>
+        <body>${receiptRef.current.innerHTML}</body>
+      </html>
+    `);
+    
+    printWindow.document.close();
+    printWindow.focus();
+    
+    // Wait for content to load, then print
+    setTimeout(() => {
+      printWindow.print();
+      // Don't close immediately - let user see the print dialog
+    }, 500);
   };
 
   const handleDownload = () => {
@@ -85,7 +147,7 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ onClose, sale }) => {
 
   return (
     <div className="text-gray-700">
-      <div id="receipt-content" className="bg-white p-4 rounded-lg max-w-md mx-auto">
+      <div ref={receiptRef} id="receipt-content" className="bg-white p-4 rounded-lg max-w-md mx-auto">
         {/* Header Section */}
         <div className="text-center mb-4">
             {(applicationSettings.invoiceShowLogo && (currentOutlet?.logoUrl || websiteSettings.whiteLabel.logoUrl)) && (

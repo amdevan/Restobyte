@@ -2817,7 +2817,12 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         },
         updatePrinter: async (printer) => {
             try {
-                const res = await fetch(`${API_BASE_URL}/printers/${printer.id}`, {
+                const selectedOutletId = activeOutletIds.length === 1 ? activeOutletIds[0] : undefined;
+                if (!selectedOutletId) {
+                    alert('Please select a single outlet before updating a printer.');
+                    return;
+                }
+                const res = await fetch(`${API_BASE_URL}/printers/${printer.id}?outletId=${encodeURIComponent(selectedOutletId)}`, {
                     method: 'PUT',
                     headers: { 
                         'Content-Type': 'application/json',
@@ -2838,7 +2843,12 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         },
         deletePrinter: async (printerId) => {
             try {
-                const res = await fetch(`${API_BASE_URL}/printers/${printerId}`, {
+                const selectedOutletId = activeOutletIds.length === 1 ? activeOutletIds[0] : undefined;
+                if (!selectedOutletId) {
+                    alert('Please select a single outlet before deleting a printer.');
+                    return;
+                }
+                const res = await fetch(`${API_BASE_URL}/printers/${printerId}?outletId=${encodeURIComponent(selectedOutletId)}`, {
                     method: 'DELETE',
                     headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` }
                 });

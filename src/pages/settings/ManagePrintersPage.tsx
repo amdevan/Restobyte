@@ -104,13 +104,6 @@ const ManagePrintersPage: React.FC = () => {
   };
 
   const handleTestPrint = (printer: Printer) => {
-    // Open a new window
-    const printWindow = window.open('', '_blank', 'width=300,height=500');
-    if (!printWindow) {
-      alert('Please allow popups to print test page');
-      return;
-    }
-    
     // Determine paper width in pixels (approx 58mm ≈ 200px, 80mm ≈ 280px)
     const paperWidth = printer.paperSize === '80mm' ? '280px' : '200px';
     
@@ -154,60 +147,82 @@ const ManagePrintersPage: React.FC = () => {
       `;
     }
     
-    // Build HTML for print window
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Test Print - ${printer.name}</title>
-          <style>
-            * {
-              margin: 0;
-              padding: 0;
-              box-sizing: border-box;
-            }
-            body {
-              font-family: monospace;
-              font-size: 12px;
-              padding: 10px;
-              width: ${paperWidth};
-              margin: 0 auto;
-              line-height: 1.4;
-            }
-            .title {
-              text-align: center;
-              font-weight: bold;
-              margin-bottom: 8px;
-              font-size: 14px;
-            }
-            pre {
-              white-space: pre-wrap;
-              word-wrap: break-word;
-            }
-            @media print {
-              body {
-                width: 100%;
+    // Create hidden iframe for printing
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'absolute';
+    iframe.style.left = '-9999px';
+    iframe.style.top = '0';
+    iframe.style.width = paperWidth;
+    iframe.style.height = '500px';
+    document.body.appendChild(iframe);
+    
+    // Wait for iframe to load
+    iframe.onload = () => {
+      const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (!iframeDoc) {
+        document.body.removeChild(iframe);
+        return;
+      }
+      
+      // Write test content to iframe
+      iframeDoc.write(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>Test Print - ${printer.name}</title>
+            <style>
+              * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
               }
-            }
-          </style>
-        </head>
-        <body>
-          <div class="title">${title}</div>
-          <pre>${testContent}</pre>
-        </body>
-      </html>
-    `);
-    
-    printWindow.document.close();
-    
-    // Wait for content to load then print
-    printWindow.onload = () => {
-      printWindow.focus();
-      printWindow.print();
-      // Close window after a short delay
+              body {
+                font-family: monospace;
+                font-size: 12px;
+                padding: 10px;
+                width: ${paperWidth};
+                margin: 0 auto;
+                line-height: 1.4;
+              }
+              .title {
+                text-align: center;
+                font-weight: bold;
+                margin-bottom: 8px;
+                font-size: 14px;
+              }
+              pre {
+                white-space: pre-wrap;
+                word-wrap: break-word;
+              }
+              @media print {
+                body {
+                  width: 100%;
+                }
+              }
+            </style>
+          </head>
+          <body>
+            <div class="title">${title}</div>
+            <pre>${testContent}</pre>
+          </body>
+        </html>
+      `);
+      iframeDoc.close();
+      
+      // Wait a tiny bit then trigger print
       setTimeout(() => {
-        printWindow.close();
-      }, 500);
+        try {
+          iframe.contentWindow?.focus();
+          iframe.contentWindow?.print();
+        } finally {
+          // Clean up iframe after printing
+          setTimeout(() => {
+            if (document.body.contains(iframe)) {
+              document.body.removeChild(iframe);
+            }
+          }, 1000);
+        }
+      }, 200);
     };
   };
 

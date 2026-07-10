@@ -440,8 +440,67 @@ async function applyTenantMigration() {
     await markMigrationApplied(migrationName);
 }
 
+async function applyInitMigration() {
+    const migrationName = '20260225065717_init';
+    console.log(`Checking migration ${migrationName}...`);
+
+    // Check if key tables from init migration exist
+    const requiredTables = ['Tenant', 'Outlet', 'Category', 'MenuItem', 'Variation', 'Table', 'Customer', 'Order', 'OrderItem', 'User', 'Currency', 'Payment', 'Lead', 'LeadNote', 'SaasEmailConfig'];
+    let allTablesExist = true;
+    for (const tableName of requiredTables) {
+        const exists = await checkTableExists(tableName);
+        if (!exists) {
+            console.log(`Table ${tableName} does not exist, will not mark init migration as applied`);
+            allTablesExist = false;
+            break;
+        }
+    }
+
+    if (allTablesExist) {
+        console.log('All init tables exist, marking migration as applied');
+        await markMigrationApplied(migrationName);
+    }
+}
+
+async function applyReservationsMigration() {
+    const migrationName = '20260225072526_add_reservations_and_user_link';
+    console.log(`Checking migration ${migrationName}...`);
+
+    const reservationTableExists = await checkTableExists('Reservation');
+    if (reservationTableExists) {
+        console.log('Reservation table exists, marking migration as applied');
+        await markMigrationApplied(migrationName);
+    }
+}
+
+async function applyBillingAddressMigration() {
+    const migrationName = '20260225073428_add_billing_address';
+    console.log(`Checking migration ${migrationName}...`);
+
+    const billingAddressExists = await checkColumnExists('Customer', 'billingAddress');
+    if (billingAddressExists) {
+        console.log('Customer.billingAddress exists, marking migration as applied');
+        await markMigrationApplied(migrationName);
+    }
+}
+
+async function applySaasWebsiteContentMigration() {
+    const migrationName = '20260324122524_add_saas_website_content';
+    console.log(`Checking migration ${migrationName}...`);
+
+    const saasWebsiteContentTableExists = await checkTableExists('SaasWebsiteContent');
+    if (saasWebsiteContentTableExists) {
+        console.log('SaasWebsiteContent table exists, marking migration as applied');
+        await markMigrationApplied(migrationName);
+    }
+}
+
 async function main() {
     console.log('Starting comprehensive migration fix script (idempotent)...');
+    await applyInitMigration();
+    await applyReservationsMigration();
+    await applyBillingAddressMigration();
+    await applySaasWebsiteContentMigration();
     await applySlugMigration();
     await applyTenantMigration();
     console.log('✅ All migration fixes complete!');

@@ -3,7 +3,7 @@ import React, { createContext, useState, useEffect, useContext, useCallback, Rea
 import { 
     MenuItem, Table, TableStatus, Reservation, Sale, SaleItem, FoodMenuCategory, PreMadeFoodItem, 
     StockItem, StockEntry, StockEntryItem, StockAdjustment, StockAdjustmentItem, StockAdjustmentType,
-    Supplier, Customer, AreaFloor, Kitchen, Printer, PrinterType, PrinterInterfaceType, Counter, Waiter,
+    Supplier, Customer, AreaFloor, Kitchen, Printer, PrinterType, PrinterInterfaceType, PaperSize, Counter, Waiter,
     Currency, Denomination, Purchase, PurchaseItem, ExpenseCategory, Expense, WasteRecord, Employee,
     AttendanceRecord, AttendanceStatus, ReservationSettings, ReservationAvailability, WebsiteSettings,
     PaymentMethod, Outlet, User, Role, ApplicationSettings, Tax, SaleTaxDetail, DeliveryPartner, Split, CustomerPayment, RestaurantDataContextType, SaasWebsiteContent, SaasPost,

@@ -13,7 +13,7 @@ interface SaleDetailsModalProps {
 }
 
 const SaleDetailsModal: React.FC<SaleDetailsModalProps> = ({ isOpen, onClose, sale }) => {
-  const { websiteSettings, getSingleActiveOutlet, customers, applicationSettings } = useRestaurantData();
+  const { websiteSettings, getSingleActiveOutlet, customers, applicationSettings, printers } = useRestaurantData();
   const currentOutlet = getSingleActiveOutlet();
 
   if (!isOpen || !sale) return null;
@@ -24,15 +24,80 @@ const SaleDetailsModal: React.FC<SaleDetailsModalProps> = ({ isOpen, onClose, sa
     const contentElement = document.getElementById('sale-details-content');
     if(!contentElement) return;
 
-    const options = {
-      margin: 0.5,
-      filename: `invoice-${sale.id.slice(-6).toUpperCase()}.pdf`,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true },
-      jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
-    };
+    // Open new window for printing
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert('Please allow pop-ups to print receipts');
+      return;
+    }
 
-    html2pdf().set(options).from(contentElement).print();
+    // Get active receipt printers to determine paper size
+    const activeReceiptPrinter = printers.find(p => p.type === 'Receipt' && p.isActive);
+    const paperWidth = activeReceiptPrinter?.paperSize === '58mm' ? '58mm' : '80mm';
+
+    // Write receipt content to new window
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Receipt ${sale.id.slice(-6).toUpperCase()}</title>
+          <style>
+            * {
+              margin: 0;
+              padding: 0;
+              box-sizing: border-box;
+              font-family: 'Courier New', monospace;
+            }
+            body {
+              width: ${paperWidth};
+              padding: 5mm;
+              font-size: 12px;
+              line-height: 1.4;
+            }
+            .text-center { text-align: center; }
+            .text-right { text-align: right; }
+            .flex { display: flex; }
+            .justify-between { justify-content: space-between; }
+            .border-t { border-top: 1px dashed #000; margin: 8px 0; padding-top: 8px; }
+            .border-b { border-bottom: 1px dashed #000; margin: 8px 0; padding-bottom: 8px; }
+            .mt-2 { margin-top: 8px; }
+            .mt-4 { margin-top: 16px; }
+            .mb-2 { margin-bottom: 8px; }
+            .mb-4 { margin-bottom: 16px; }
+            .py-2 { padding-top: 8px; padding-bottom: 8px; }
+            .py-3 { padding-top: 12px; padding-bottom: 12px; }
+            .mt-6 { margin-top: 24px; }
+            .font-bold { font-weight: bold; }
+            .text-sm { font-size: 10px; }
+            .text-lg { font-size: 14px; }
+            .text-xl { font-size: 16px; }
+            .text-2xl { font-size: 20px; }
+            .text-xs { font-size: 8px; }
+            .text-gray-600 { color: #666; }
+            .text-gray-700 { color: #333; }
+            .text-gray-800 { color: #111; }
+            .text-gray-900 { color: #000; }
+            .bg-white { background-color: white; }
+            table { width: 100%; border-collapse: collapse; margin: 8px 0; }
+            td { vertical-align: top; }
+            .max-w-md { max-width: 280px; margin: 0 auto; }
+            @media print {
+              body { margin: 0; padding: 5mm; }
+              @page { margin: 0; size: auto; }
+            }
+          </style>
+        </head>
+        <body>${contentElement.innerHTML}</body>
+      </html>
+    `);
+
+    printWindow.document.close();
+    printWindow.focus();
+
+    // Wait for content to load, then print
+    setTimeout(() => {
+      printWindow.print();
+    }, 500);
   };
 
   const handleDownloadReceipt = () => {

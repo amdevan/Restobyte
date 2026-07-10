@@ -663,10 +663,11 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         }
     }, [isLoading, isAuthenticated, user?.outletId, user?.tenantId]);
 
-    const [activeOutletIds, setActiveOutletIds] = useState<string[]>([initialOutlets[0]?.id].filter(Boolean));
+    const [activeOutletIds, setActiveOutletIds] = useState<string[]>([]);
     const selectedDataOutletId = activeOutletIds[0] || (user?.outletId ? String(user.outletId) : undefined);
 
     // This is a simplified implementation. A real app would use a more robust state management solution.
+    const [outlets, setOutlets] = useState<Outlet[]>([]);
     const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
     const [foodMenuCategories, setFoodMenuCategories] = useState<FoodMenuCategory[]>([]);
     const [tables, setTables] = useState<Table[]>([]);
@@ -942,7 +943,6 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
     const [websiteSettings, setWebsiteSettings] = useState<WebsiteSettings>({ orderEnabled: true, orderReceivingUserIds: [], whiteLabel: { appName: 'RestoByte', primaryColor: '#0ea5e9' }, homePageContent: { bannerSection: { title: 'Welcome', subtitle: '' }, serviceSection: {services:[]}, exploreMenuSection: {title: 'Explore', subtitle: '', buttonText: 'View Menu'}, gallery: [], socialMedia: []}, availableOnlineFoodIds: [], aboutUsContent: {title: '', content: ''}, contactUsContent: {address: '', phone: '', email: ''}, contactMessages: [], commonMenuPage: {title: 'Our Menu'}, socialLogin: {google: false, facebook: false}, emailSettings: {mailer: 'log'}, paymentSettings: {paypalEnabled: false, stripeEnabled: false, fonepayEnabled: false} });
     const [applicationSettings, setApplicationSettings] = useState<ApplicationSettings>(initialApplicationSettings);
     const [soundSettings, setSoundSettings] = useState<SoundSettings>({ soundsEnabled: true });
-    const [outlets, setOutlets] = useState<Outlet[]>([]);
     const [roles, setRoles] = useState<Role[]>(initialRoles);
     const [users, setUsers] = useState<User[]>([]);
     const [saasWebsiteContent, setSaasWebsiteContent] = useState<SaasWebsiteContent>(initialSaasWebsiteContent);

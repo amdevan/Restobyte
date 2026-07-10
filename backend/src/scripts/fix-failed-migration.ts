@@ -1,4 +1,4 @@
-import prisma from './src/db/prisma.js';
+import prisma from '../db/prisma.js';
 
 async function checkColumnExists(tableName: string, columnName: string): Promise<boolean> {
     const result = await prisma.$queryRawUnsafe<{ column_name: string }[]>(

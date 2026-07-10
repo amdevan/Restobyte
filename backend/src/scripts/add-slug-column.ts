@@ -1,5 +1,5 @@
 
-import prisma from './src/db/prisma.js';
+import prisma from '../db/prisma.js';
 
 function generateSlug(name: string): string {
   return name

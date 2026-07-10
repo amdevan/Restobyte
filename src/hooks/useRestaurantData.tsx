@@ -672,6 +672,30 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
     const [tables, setTables] = useState<Table[]>([]);
     const [customers, setCustomers] = useState<Customer[]>([]);
 
+    const fetchOutlets = useCallback(async () => {
+        if (!isAuthenticated) return;
+        const token = localStorage.getItem('authToken');
+        if (!token) {
+            setOutlets([]);
+            return;
+        }
+        try {
+            const res = await fetch(`${API_BASE_URL}/outlets`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (res.status === 401) { logout(); return; }
+            if (!res.ok) {
+                setOutlets([]);
+                return;
+            }
+            const data = await res.json();
+            setOutlets(Array.isArray(data) ? data : []);
+        } catch (err) {
+            console.error("Failed to fetch outlets:", err);
+            setOutlets([]);
+        }
+    }, [isAuthenticated, logout]);
+
     const fetchMenuItems = useCallback(async () => {
         if (!isAuthenticated) return;
         const token = localStorage.getItem('authToken');
@@ -841,12 +865,35 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         }
     }, [isAuthenticated, activeOutletIds, logout]);
 
+    useEffect(() => { fetchOutlets(); }, [fetchOutlets]);
     useEffect(() => { fetchMenuItems(); }, [fetchMenuItems]);
     useEffect(() => { fetchCategories(); }, [fetchCategories]);
     useEffect(() => { fetchTables(); }, [fetchTables]);
     useEffect(() => { fetchCustomers(); }, [fetchCustomers]);
     useEffect(() => { fetchPrinters(); }, [fetchPrinters]);
     useEffect(() => { fetchSales(); }, [fetchSales]);
+
+    // Update activeOutletIds when outlets or user changes
+    useEffect(() => {
+        if (!isAuthenticated || outlets.length === 0) {
+            setActiveOutletIds([]);
+            return;
+        }
+
+        // Use user's outletId first, then fall back to first outlet
+        const userOutletId = user?.outletId ? String(user.outletId) : undefined;
+        const userOutletIds = Array.isArray((user as any)?.outletIds) ? (user as any).outletIds.map(String) : (userOutletId ? [userOutletId] : []);
+        
+        const allowedOutletIds = user?.isSuperAdmin ? outlets.map(o => o.id) : userOutletIds;
+
+        const validActiveOutletIds = activeOutletIds.filter(id => allowedOutletIds.includes(id));
+        
+        if (validActiveOutletIds.length === 0 && allowedOutletIds.length > 0) {
+            setActiveOutletIds([allowedOutletIds[0]]);
+        } else if (validActiveOutletIds.length !== activeOutletIds.length || !validActiveOutletIds.every((id, i) => id === activeOutletIds[i]))) {
+            setActiveOutletIds(validActiveOutletIds);
+        }
+    }, [outlets, user, isAuthenticated]);
 
     const [reservations, setReservations] = useState<Reservation[]>([]);
     const [sales, setSales] = useState<Sale[]>([]);
@@ -895,7 +942,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
     const [websiteSettings, setWebsiteSettings] = useState<WebsiteSettings>({ orderEnabled: true, orderReceivingUserIds: [], whiteLabel: { appName: 'RestoByte', primaryColor: '#0ea5e9' }, homePageContent: { bannerSection: { title: 'Welcome', subtitle: '' }, serviceSection: {services:[]}, exploreMenuSection: {title: 'Explore', subtitle: '', buttonText: 'View Menu'}, gallery: [], socialMedia: []}, availableOnlineFoodIds: [], aboutUsContent: {title: '', content: ''}, contactUsContent: {address: '', phone: '', email: ''}, contactMessages: [], commonMenuPage: {title: 'Our Menu'}, socialLogin: {google: false, facebook: false}, emailSettings: {mailer: 'log'}, paymentSettings: {paypalEnabled: false, stripeEnabled: false, fonepayEnabled: false} });
     const [applicationSettings, setApplicationSettings] = useState<ApplicationSettings>(initialApplicationSettings);
     const [soundSettings, setSoundSettings] = useState<SoundSettings>({ soundsEnabled: true });
-    const [outlets, setOutlets] = useLocalStorage<Outlet[]>(getTenantKey('outlets'), initialOutlets);
+    const [outlets, setOutlets] = useState<Outlet[]>([]);
     const [roles, setRoles] = useState<Role[]>(initialRoles);
     const [users, setUsers] = useState<User[]>([]);
     const [saasWebsiteContent, setSaasWebsiteContent] = useState<SaasWebsiteContent>(initialSaasWebsiteContent);

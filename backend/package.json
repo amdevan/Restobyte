@@ -5,17 +5,15 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "start": "node dist/src/index.js",
-    "dev": "tsx watch src/index.ts",
+    "dev": "tsx watch src/server.ts",
     "build": "tsc",
-    "db:push": "npx prisma db push --skip-generate",
+    "start": "node dist/server.js",
+    "migrate:dev": "npx prisma migrate dev",
     "migrate:deploy": "npx prisma migrate deploy",
+    "db:seed": "npx prisma db seed",
+    "backfill:slugs": "tsx backfill-slugs.ts",
     "postinstall": "prisma generate",
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "prisma": {
-    "seed": "tsx prisma/seed.ts"
-  },
+    "test": "echo \"Error: no test specified\" && exit 1"  },
   "keywords": [],
   "author": "",
   "license": "ISC",
@@ -31,6 +29,7 @@
     "pg": "^8.13.1"
   },
   "devDependencies": {
+    "@prisma/config": "^7.8.0",
     "@types/bcryptjs": "^3.0.0",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.5",

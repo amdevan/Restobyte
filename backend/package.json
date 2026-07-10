@@ -14,7 +14,8 @@
     "fix:migration": "node dist/scripts/fix-failed-migration.js",
     "backfill:slugs": "node dist/scripts/backfill-slugs.js",
     "postinstall": "prisma generate",
-    "test": "echo \"Error: no test specified\" && exit 1"  },
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
@@ -27,7 +28,8 @@
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.3",
     "nodemailer": "^6.9.14",
-    "pg": "^8.13.1"
+    "pg": "^8.13.1",
+    "systeminformation": "^5.31.16"
   },
   "devDependencies": {
     "@prisma/config": "^7.8.0",

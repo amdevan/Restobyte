@@ -27,6 +27,7 @@ import saasWebsiteContentAdminRoutes from './routes/saasWebsiteContentAdminRoute
 import planRoutes from './routes/planRoutes.js';
 import appDataRoutes from './routes/appDataRoutes.js';
 import invoiceRoutes from './routes/invoiceRoutes.js';
+import printerRoutes from './routes/printerRoutes.js';
 import { DEFAULT_PLAN_DEFINITIONS } from './utils/planConfig.js';
 import { ensureSystemRoles } from './utils/roleUtils.js';
 import { backfillMissingInvoices } from './services/invoiceService.js';
@@ -71,6 +72,7 @@ app.use('/api/saas', saasWebsiteContentAdminRoutes);
 app.use('/api/plans', planRoutes);
 app.use('/api/app-data', appDataRoutes);
 app.use('/api/invoices', invoiceRoutes);
+app.use('/api/printers', printerRoutes);
 
 async function start() {
   try {

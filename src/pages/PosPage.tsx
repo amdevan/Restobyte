@@ -91,7 +91,8 @@ const PosPage: React.FC = () => {
     recordSale,
     updateSale,
     sales,
-    applyCustomerDueDelta
+    applyCustomerDueDelta,
+    printers
   } = useRestaurantData();
 
   const navigate = useNavigate();

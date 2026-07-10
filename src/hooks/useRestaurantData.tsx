@@ -2906,6 +2906,33 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 console.error("Failed to delete printer:", err);
             }
         },
+        printTest: async (printerId, content, title) => {
+            try {
+                const selectedOutletId = activeOutletIds.length === 1 ? activeOutletIds[0] : undefined;
+                if (!selectedOutletId) {
+                    alert('Please select a single outlet before printing a test page.');
+                    return;
+                }
+                const res = await fetch(`${API_BASE_URL}/printers/print?outletId=${encodeURIComponent(selectedOutletId)}`, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${localStorage.getItem('authToken')}`
+                    },
+                    body: JSON.stringify({ printerId, content, title })
+                });
+                if (!res.ok) {
+                    const err = await res.json().catch(() => null);
+                    alert(err?.message || `Failed to print (${res.status})`);
+                    return;
+                }
+                const result = await res.json();
+                alert(result.message || 'Test print sent successfully!');
+            } catch (err) {
+                console.error("Failed to print test page:", err);
+                alert('Failed to print test page');
+            }
+        },
 
         counters,
         addCounter: (counterData) => setCounters(prev => [...prev, { ...counterData, id: `c-${Date.now()}` }]),

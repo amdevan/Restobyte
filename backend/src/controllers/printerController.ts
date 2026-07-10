@@ -2,6 +2,9 @@ import { Request, Response } from 'express';
 import si from 'systeminformation';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
 import prisma from '../db/prisma.js';
 import { AuthRequest } from '../middleware/authMiddleware.js';
 
@@ -324,4 +327,97 @@ export const deletePrinter = async (req: Request, res: Response) => {
 
   await prisma.printer.delete({ where: { id } });
   res.status(204).send();
+};
+
+export const printTestPage = async (req: Request, res: Response) => {
+  try {
+    const user = (req as AuthRequest).user;
+    if (!user) {
+      res.status(403).json({ message: 'Unauthorized' });
+      return;
+    }
+
+    const { printerId, content, title } = req.body;
+    const queryOutletId = typeof (req.query as any)?.outletId === 'string' ? String((req.query as any).outletId) : undefined;
+    const requestedOutletId = queryOutletId || (user.outletId ? String(user.outletId) : undefined);
+    if (!requestedOutletId) {
+      res.status(400).json({ message: 'outletId is required' });
+      return;
+    }
+
+    // Get printer from database
+    const printer = await prisma.printer.findFirst({
+      where: { id: printerId, outletId: requestedOutletId }
+    });
+
+    if (!printer) {
+      res.status(404).json({ message: 'Printer not found or unauthorized' });
+      return;
+    }
+
+    // Generate print content
+    const printContent = content || `
+----------------------------------------
+|        RESTOBYTE TEST PRINT          |
+----------------------------------------
+Date: ${new Date().toLocaleString()}
+
+Printer: ${printer.name}
+Type: ${printer.type}
+Interface: ${printer.interfaceType}
+
+Thank you for using RestoByte!
+`;
+
+    // Create a temporary file
+    const tempDir = os.tmpdir();
+    const tempFilePath = path.join(tempDir, `restobyte-print-${Date.now()}.txt`);
+    
+    fs.writeFileSync(tempFilePath, printContent, 'utf8');
+
+    let printCommand = '';
+    
+    // Determine print command based on OS and printer type
+    if (process.platform === 'darwin' || process.platform === 'linux') {
+      // macOS or Linux: use lpr
+      if (printer.name) {
+        printCommand = `lpr -P "${printer.name}" "${tempFilePath}"`;
+      } else {
+        printCommand = `lpr "${tempFilePath}"`;
+      }
+    } else if (process.platform === 'win32') {
+      // Windows: use print command or PowerShell
+      if (printer.name) {
+        printCommand = `powershell -Command "Out-File -FilePath '${tempFilePath}' -Encoding utf8; Start-Process -FilePath '${tempFilePath}' -Verb PrintTo -ArgumentList '${printer.name}'"`;
+      } else {
+        printCommand = `print /D:"PRN" "${tempFilePath}"`;
+      }
+    }
+
+    if (printCommand) {
+      await execAsync(printCommand);
+    }
+
+    // Clean up temp file after a short delay
+    setTimeout(() => {
+      try {
+        if (fs.existsSync(tempFilePath)) {
+          fs.unlinkSync(tempFilePath);
+        }
+      } catch (e) {
+        console.error('Error cleaning up temp print file:', e);
+      }
+    }, 5000);
+
+    res.status(200).json({ 
+      message: 'Print job sent successfully',
+      printer: printer.name 
+    });
+  } catch (error) {
+    console.error('Error printing:', error);
+    res.status(500).json({
+      message: 'Failed to print',
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
 };

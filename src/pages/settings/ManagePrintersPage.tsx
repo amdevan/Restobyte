@@ -19,226 +19,129 @@ interface SystemPrinter {
 }
 
 const ManagePrintersPage: React.FC = () => {
-  const { printers, addPrinter, updatePrinter, deletePrinter } = useRestaurantData();
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingPrinter, setEditingPrinter] = useState<Printer | null>(null);
-  const [systemPrinters, setSystemPrinters] = useState<SystemPrinter[]>([]);
-  const [isDetecting, setIsDetecting] = useState(false);
-  const [showSystemPrintersModal, setShowSystemPrintersModal] = useState(false);
+    const { printers, addPrinter, updatePrinter, deletePrinter, printTest } = useRestaurantData();
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingPrinter, setEditingPrinter] = useState<Printer | null>(null);
+    const [systemPrinters, setSystemPrinters] = useState<SystemPrinter[]>([]);
+    const [isDetecting, setIsDetecting] = useState(false);
+    const [showSystemPrintersModal, setShowSystemPrintersModal] = useState(false);
 
-  const handleOpenModalForAdd = () => {
-    setEditingPrinter(null);
-    setIsModalOpen(true);
-  };
-
-  const handleOpenModalForEdit = (printer: Printer) => {
-    setEditingPrinter(printer);
-    setIsModalOpen(true);
-  };
-
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-    setEditingPrinter(null);
-  };
-
-  const handleDelete = async (printerId: string) => {
-    if (window.confirm('Are you sure you want to delete this printer configuration?')) {
-      await deletePrinter(printerId);
-    }
-  };
-  
-  const handleAddSubmit = async (printerData: Omit<Printer, 'id'>) => {
-    await addPrinter(printerData);
-    handleCloseModal();
-  };
-
-  const handleUpdateSubmit = async (updatedPrinter: Printer) => {
-    await updatePrinter(updatedPrinter);
-    handleCloseModal();
-  };
-
-  const handleDetectPrinters = async () => {
-    setIsDetecting(true);
-    try {
-      const response = await fetch(`${API_BASE_URL}/printers/system`);
-      if (!response.ok) throw new Error('Failed to fetch system printers');
-      const data = await response.json();
-      setSystemPrinters(data.printers || []);
-      setShowSystemPrintersModal(true);
-    } catch (error) {
-      console.error('Error detecting printers:', error);
-      alert('Failed to detect system printers');
-    } finally {
-      setIsDetecting(false);
-    }
-  };
-
-  const handleAddSystemPrinter = async (systemPrinter: SystemPrinter) => {
-    const isUsbPrinter = !!systemPrinter.usbPath;
-    const newPrinter: Omit<Printer, 'id'> = {
-      name: systemPrinter.name,
-      type: PrinterType.Receipt,
-      interfaceType: isUsbPrinter ? PrinterInterfaceType.USB : PrinterInterfaceType.Network,
-      isActive: true,
-      printerModel: systemPrinter.model,
-      usbPath: systemPrinter.usbPath,
+    const handleOpenModalForAdd = () => {
+        setEditingPrinter(null);
+        setIsModalOpen(true);
     };
-    await addPrinter(newPrinter);
-    setShowSystemPrintersModal(false);
-  };
 
-  const getConnectionDetails = (printer: Printer): string => {
-    if (printer.interfaceType === PrinterInterfaceType.Network) {
-      return `${printer.ipAddress || 'N/A'}:${printer.port || 'N/A'}`;
-    }
-    if (printer.interfaceType === PrinterInterfaceType.USB) {
-      return printer.usbPath || 'USB';
-    }
-    if (printer.interfaceType === PrinterInterfaceType.Bluetooth) {
-      return printer.bluetoothMac || 'Bluetooth';
-    }
-    if (printer.interfaceType === PrinterInterfaceType.Serial) {
-      return printer.serialPort ? `${printer.serialPort} @ ${printer.baudRate}` : 'Serial';
-    }
-    return printer.interfaceType;
-  };
+    const handleOpenModalForEdit = (printer: Printer) => {
+        setEditingPrinter(printer);
+        setIsModalOpen(true);
+    };
 
-  const handleTestPrint = (printer: Printer) => {
-    // Determine paper width in pixels (approx 58mm ≈ 200px, 80mm ≈ 280px)
-    const paperWidth = printer.paperSize === '80mm' ? '280px' : '200px';
-    
-    let title = '';
-    let testContent = '';
-    if (printer.type === PrinterType.Receipt) {
-      title = 'TEST RECEIPT';
-      testContent = `
-        ----------------------------------------
-        |        RESTOBYTE TEST RECEIPT        |
-        ----------------------------------------
-        Date: ${new Date().toLocaleString()}
-        
-        Item 1                  $10.00
-        Item 2                  $15.50
-        
-        ----------------------------------------
-        TOTAL                   $25.50
-        ----------------------------------------
-        
-        Thank you for using RestoByte!
-      `;
-    } else if (printer.type === PrinterType.KitchenOrderTicket || printer.type === 'Kitchen Order Ticket (KOT)') {
-      title = 'TEST KOT';
-      testContent = `
-        ----------------------------------------
-        |         RESTOBYTE TEST KOT           |
-        ----------------------------------------
-        Date: ${new Date().toLocaleString()}
-        
-        2x Cheeseburger (Medium)
-        1x Fries (Large)
-        
-        Notes: Extra ketchup!
-      `;
-    } else if (printer.type === PrinterType.Label) {
-      title = 'TEST LABEL';
-      testContent = `
-        RESTOBYTE TEST LABEL
-        ${new Date().toLocaleString()}
-      `;
-    }
-    
-    // Create hidden iframe for printing
-    const iframe = document.createElement('iframe');
-    iframe.style.position = 'fixed';
-    iframe.style.left = '-9999px';
-    iframe.style.top = '0';
-    iframe.style.width = paperWidth;
-    iframe.style.height = '500px';
-    iframe.style.border = 'none';
-    iframe.style.visibility = 'hidden';
-    
-    // Set up onload handler first before setting src
-    iframe.onload = () => {
-      const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
-      if (!iframeDoc) {
-        if (document.body.contains(iframe)) {
-          document.body.removeChild(iframe);
+    const handleCloseModal = () => {
+        setIsModalOpen(false);
+        setEditingPrinter(null);
+    };
+
+    const handleDelete = async (printerId: string) => {
+        if (window.confirm('Are you sure you want to delete this printer configuration?')) {
+            await deletePrinter(printerId);
         }
-        return;
-      }
-      
-      // Write test content to iframe
-      iframeDoc.open();
-      iframeDoc.write(`
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <title>Test Print - ${printer.name}</title>
-            <style>
-              * {
-                margin: 0;
-                padding: 0;
-                box-sizing: border-box;
-              }
-              body {
-                font-family: monospace;
-                font-size: 12px;
-                padding: 10px;
-                width: ${paperWidth};
-                margin: 0;
-                line-height: 1.4;
-              }
-              .title {
-                text-align: center;
-                font-weight: bold;
-                margin-bottom: 8px;
-                font-size: 14px;
-              }
-              pre {
-                white-space: pre-wrap;
-                word-wrap: break-word;
-              }
-              @page {
-                size: auto;
-                margin: 0;
-              }
-              @media print {
-                body {
-                  width: 100%;
-                }
-              }
-            </style>
-          </head>
-          <body>
-            <div class="title">${title}</div>
-            <pre>${testContent}</pre>
-          </body>
-        </html>
-      `);
-      iframeDoc.close();
-      
-      // Wait for content to render then print
-      setTimeout(() => {
+    };
+    
+    const handleAddSubmit = async (printerData: Omit<Printer, 'id'>) => {
+        await addPrinter(printerData);
+        handleCloseModal();
+    };
+
+    const handleUpdateSubmit = async (updatedPrinter: Printer) => {
+        await updatePrinter(updatedPrinter);
+        handleCloseModal();
+    };
+
+    const handleDetectPrinters = async () => {
+        setIsDetecting(true);
         try {
-          iframe.contentWindow?.focus();
-          iframe.contentWindow?.print();
+            const response = await fetch(`${API_BASE_URL}/printers/system`);
+            if (!response.ok) throw new Error('Failed to fetch system printers');
+            const data = await response.json();
+            setSystemPrinters(data.printers || []);
+            setShowSystemPrintersModal(true);
         } catch (error) {
-          console.error('Print error:', error);
+            console.error('Error detecting printers:', error);
+            alert('Failed to detect system printers');
         } finally {
-          // Clean up iframe
-          setTimeout(() => {
-            if (document.body.contains(iframe)) {
-              document.body.removeChild(iframe);
-            }
-          }, 500);
+            setIsDetecting(false);
         }
-      }, 100);
     };
-    
-    // Now append to DOM and set blank src to trigger onload
-    document.body.appendChild(iframe);
-    iframe.src = 'about:blank';
-  };
+
+    const handleAddSystemPrinter = async (systemPrinter: SystemPrinter) => {
+        const isUsbPrinter = !!systemPrinter.usbPath;
+        const newPrinter: Omit<Printer, 'id'> = {
+            name: systemPrinter.name,
+            type: PrinterType.Receipt,
+            interfaceType: isUsbPrinter ? PrinterInterfaceType.USB : PrinterInterfaceType.Network,
+            isActive: true,
+            printerModel: systemPrinter.model,
+            usbPath: systemPrinter.usbPath,
+        };
+        await addPrinter(newPrinter);
+        setShowSystemPrintersModal(false);
+    };
+
+    const getConnectionDetails = (printer: Printer): string => {
+        if (printer.interfaceType === PrinterInterfaceType.Network) {
+            return `${printer.ipAddress || 'N/A'}:${printer.port || 'N/A'}`;
+        }
+        if (printer.interfaceType === PrinterInterfaceType.USB) {
+            return printer.usbPath || 'USB';
+        }
+        if (printer.interfaceType === PrinterInterfaceType.Bluetooth) {
+            return printer.bluetoothMac || 'Bluetooth';
+        }
+        if (printer.interfaceType === PrinterInterfaceType.Serial) {
+            return printer.serialPort ? `${printer.serialPort} @ ${printer.baudRate}` : 'Serial';
+        }
+        return printer.interfaceType;
+    };
+
+    const handleTestPrint = (printer: Printer) => {
+        let testContent = '';
+        if (printer.type === PrinterType.Receipt) {
+            testContent = `
+----------------------------------------
+|        RESTOBYTE TEST RECEIPT        |
+----------------------------------------
+Date: ${new Date().toLocaleString()}
+
+Item 1                  $10.00
+Item 2                  $15.50
+
+----------------------------------------
+TOTAL                   $25.50
+----------------------------------------
+
+Thank you for using RestoByte!
+`;
+        } else if (printer.type === PrinterType.KitchenOrderTicket || printer.type === 'Kitchen Order Ticket (KOT)') {
+            testContent = `
+----------------------------------------
+|         RESTOBYTE TEST KOT           |
+----------------------------------------
+Date: ${new Date().toLocaleString()}
+
+2x Cheeseburger (Medium)
+1x Fries (Large)
+
+Notes: Extra ketchup!
+`;
+        } else if (printer.type === PrinterType.Label) {
+            testContent = `
+RESTOBYTE TEST LABEL
+${new Date().toLocaleString()}
+`;
+        }
+        
+        printTest(printer.id, testContent, `Test Print - ${printer.name}`);
+    };
 
   return (
     <div className="p-4 sm:p-6 space-y-6">

@@ -1057,9 +1057,10 @@ export interface RestaurantDataContextType {
     deleteKitchen: (kitchenId: string) => void;
 
     printers: Printer[];
-    addPrinter: (printerData: Omit<Printer, 'id'>) => void;
-    updatePrinter: (printer: Printer) => void;
-    deletePrinter: (printerId: string) => void;
+    addPrinter: (printerData: Omit<Printer, 'id'>) => Promise<void>;
+    updatePrinter: (printer: Printer) => Promise<void>;
+    deletePrinter: (printerId: string) => Promise<void>;
+    printTest: (printerId: string, content?: string, title?: string) => Promise<void>;
 
     counters: Counter[];
     addCounter: (counterData: Omit<Counter, 'id' | 'assignedPrinterIds'> & { assignedPrinterIds?: string[] }) => void;

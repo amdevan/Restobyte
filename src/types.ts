@@ -318,14 +318,33 @@ export enum PrinterInterfaceType {
   Serial = 'Serial',
 }
 
+export enum PaperSize {
+  '58mm' = '58mm',
+  '80mm' = '80mm',
+  'A4' = 'A4',
+  'Label' = 'Label',
+}
+
 export interface Printer {
   id: string;
   name: string;
   type: PrinterType;
   interfaceType: PrinterInterfaceType;
+  isActive: boolean;
   ipAddress?: string; // For Network printers
   port?: string;      // For Network printers
-  // Potentially other fields for USB path, Bluetooth MAC, etc.
+  usbPath?: string;   // For USB printers
+  bluetoothMac?: string; // For Bluetooth printers
+  serialPort?: string; // For Serial printers
+  baudRate?: number; // For Serial printers
+  paperSize?: PaperSize;
+  printerModel?: string;
+  timeoutMs?: number;
+  retries?: number;
+  autoPrintReceipt?: boolean;
+  autoPrintKOT?: boolean;
+  autoPrintLabel?: boolean;
+  notes?: string;
 }
 
 // Type for Counters

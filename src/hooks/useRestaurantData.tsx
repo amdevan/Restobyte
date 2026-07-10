@@ -193,8 +193,28 @@ const initialAreasFloors: AreaFloor[] = [
 ];
 const initialKitchens: Kitchen[] = [];
 const initialPrinters: Printer[] = [
-    { id: 'printer-1', name: 'Main Receipt Printer', type: PrinterType.Receipt, interfaceType: PrinterInterfaceType.Network, ipAddress: '192.168.1.100', port: '9100'},
-    { id: 'printer-2', name: 'Kitchen KOT Printer', type: PrinterType.KOT, interfaceType: PrinterInterfaceType.Network, ipAddress: '192.168.1.101', port: '9100'},
+    { 
+        id: 'printer-1', 
+        name: 'Main Receipt Printer', 
+        type: PrinterType.Receipt, 
+        interfaceType: PrinterInterfaceType.Network, 
+        ipAddress: '192.168.1.100', 
+        port: '9100',
+        isActive: true,
+        paperSize: PaperSize['80mm'],
+        autoPrintReceipt: true,
+    },
+    { 
+        id: 'printer-2', 
+        name: 'Kitchen KOT Printer', 
+        type: PrinterType.KOT, 
+        interfaceType: PrinterInterfaceType.Network, 
+        ipAddress: '192.168.1.101', 
+        port: '9100',
+        isActive: true,
+        paperSize: PaperSize['80mm'],
+        autoPrintKOT: true,
+    },
 ];
 const initialCounters: Counter[] = [
     { id: 'counter-1', name: 'Main Counter', assignedPrinterIds: ['printer-1'] },
@@ -1087,7 +1107,27 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             { key: 'suppliers', fallback: [] as Supplier[], getValue: () => suppliers, setValue: (value) => setSuppliers(value) },
             { key: 'areasFloors', fallback: initialAreasFloors, getValue: () => areasFloors, setValue: (value) => setAreasFloors(value) },
             { key: 'kitchens', fallback: initialKitchens, getValue: () => kitchens, setValue: (value) => setKitchens(value) },
-            { key: 'printers', fallback: initialPrinters, getValue: () => printers, setValue: (value) => setPrinters(value) },
+            { 
+                key: 'printers', 
+                fallback: initialPrinters, 
+                getValue: () => printers, 
+                setValue: (value) => { 
+                    // Migrate printers to ensure all new fields exist
+                    const migrated = Array.isArray(value) ? value.map(p => ({
+                        isActive: true,
+                        paperSize: undefined,
+                        printerModel: undefined,
+                        timeoutMs: 5000,
+                        retries: 3,
+                        autoPrintReceipt: false,
+                        autoPrintKOT: false,
+                        autoPrintLabel: false,
+                        notes: undefined,
+                        ...p
+                    })) : initialPrinters;
+                    setPrinters(migrated);
+                } 
+            },
             { key: 'counters', fallback: initialCounters, getValue: () => counters, setValue: (value) => setCounters(value) },
             { key: 'waiters', fallback: initialWaiters, getValue: () => waiters, setValue: (value) => setWaiters(value) },
             { key: 'denominations', fallback: initialDenominations, getValue: () => denominations, setValue: (value) => setDenominations(value) },

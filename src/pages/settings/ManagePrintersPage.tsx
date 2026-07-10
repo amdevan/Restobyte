@@ -149,22 +149,26 @@ const ManagePrintersPage: React.FC = () => {
     
     // Create hidden iframe for printing
     const iframe = document.createElement('iframe');
-    iframe.style.position = 'absolute';
+    iframe.style.position = 'fixed';
     iframe.style.left = '-9999px';
     iframe.style.top = '0';
     iframe.style.width = paperWidth;
     iframe.style.height = '500px';
-    document.body.appendChild(iframe);
+    iframe.style.border = 'none';
+    iframe.style.visibility = 'hidden';
     
-    // Wait for iframe to load
+    // Set up onload handler first before setting src
     iframe.onload = () => {
       const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
       if (!iframeDoc) {
-        document.body.removeChild(iframe);
+        if (document.body.contains(iframe)) {
+          document.body.removeChild(iframe);
+        }
         return;
       }
       
       // Write test content to iframe
+      iframeDoc.open();
       iframeDoc.write(`
         <!DOCTYPE html>
         <html>
@@ -181,7 +185,7 @@ const ManagePrintersPage: React.FC = () => {
                 font-size: 12px;
                 padding: 10px;
                 width: ${paperWidth};
-                margin: 0 auto;
+                margin: 0;
                 line-height: 1.4;
               }
               .title {
@@ -193,6 +197,10 @@ const ManagePrintersPage: React.FC = () => {
               pre {
                 white-space: pre-wrap;
                 word-wrap: break-word;
+              }
+              @page {
+                size: auto;
+                margin: 0;
               }
               @media print {
                 body {
@@ -209,21 +217,27 @@ const ManagePrintersPage: React.FC = () => {
       `);
       iframeDoc.close();
       
-      // Wait a tiny bit then trigger print
+      // Wait for content to render then print
       setTimeout(() => {
         try {
           iframe.contentWindow?.focus();
           iframe.contentWindow?.print();
+        } catch (error) {
+          console.error('Print error:', error);
         } finally {
-          // Clean up iframe after printing
+          // Clean up iframe
           setTimeout(() => {
             if (document.body.contains(iframe)) {
               document.body.removeChild(iframe);
             }
-          }, 1000);
+          }, 500);
         }
-      }, 200);
+      }, 100);
     };
+    
+    // Now append to DOM and set blank src to trigger onload
+    document.body.appendChild(iframe);
+    iframe.src = 'about:blank';
   };
 
   return (

@@ -44,5 +44,5 @@
     "skipLibCheck": true,
   }
   ,
-  "include": ["src", "prisma", "backfill-slugs.ts", "add-slug-column.ts"]
+  "include": ["src", "prisma", "backfill-slugs.ts", "add-slug-column.ts", "fix-failed-migration.ts"]
 }

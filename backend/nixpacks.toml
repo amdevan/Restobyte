@@ -5,4 +5,4 @@ nixPkgs = ["nodejs_22", "openssl"]
 cmds = ["npx prisma generate", "npm run build"]
 
 [start]
-cmd = "sh -c 'set -e; while true; do OUT=$(npm run -s migrate:deploy 2>&1) && break || true; echo \"$OUT\"; if echo \"$OUT\" | grep -q \"P1001\"; then echo \"[startup] waiting for database...\"; sleep 3; continue; fi; echo \"[startup] migration failed\"; exit 1; done; npm run -s backfill:slugs; npm start'"
+cmd = "sh -c 'set -e; while true; do OUT=$(npm run -s fix:migration 2>&1) && break || true; echo \"$OUT\"; if echo \"$OUT\" | grep -q \"P1001\"; then echo \"[startup] waiting for database...\"; sleep 3; continue; fi; echo \"[startup] migration fix failed\"; exit 1; done; while true; do OUT=$(npm run -s migrate:deploy 2>&1) && break || true; echo \"$OUT\"; if echo \"$OUT\" | grep -q \"P1001\"; then echo \"[startup] waiting for database...\"; sleep 3; continue; fi; echo \"[startup] migration failed\"; exit 1; done; npm run -s backfill:slugs; npm start'"

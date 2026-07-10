@@ -890,7 +890,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         
         if (validActiveOutletIds.length === 0 && allowedOutletIds.length > 0) {
             setActiveOutletIds([allowedOutletIds[0]]);
-        } else if (validActiveOutletIds.length !== activeOutletIds.length || !validActiveOutletIds.every((id, i) => id === activeOutletIds[i]))) {
+        } else if (validActiveOutletIds.length !== activeOutletIds.length || !validActiveOutletIds.every((id, i) => id === activeOutletIds[i])) {
             setActiveOutletIds(validActiveOutletIds);
         }
     }, [outlets, user, isAuthenticated]);

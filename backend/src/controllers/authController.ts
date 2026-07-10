@@ -189,51 +189,122 @@ export const register = async (req: Request, res: Response): Promise<void> => {
 
 export const login = async (req: Request, res: Response): Promise<void> => {
   const { username, password } = req.body;
+  console.log('[login]: Starting login attempt for username:', username);
 
   try {
-    const user = await prisma.user.findUnique({ where: { username } } as any);
+    // Step 1: Verify database connection
+    console.log('[login]: Step 1 - Verifying Prisma DB connection...');
+    try {
+      await prisma.$queryRaw`SELECT 1`;
+      console.log('[login]: Prisma DB connection verified');
+    } catch (dbErr) {
+      console.error('[login]: Failed to verify DB connection', dbErr);
+      throw new Error('Database connection error');
+    }
+
+    // Step 2: Look up user by username
+    console.log('[login]: Step 2 - Looking up user by username...');
+    let user;
+    try {
+      user = await prisma.user.findUnique({ where: { username } });
+    } catch (lookupErr) {
+      console.error('[login]: Failed to look up user', lookupErr);
+      throw new Error('User lookup failed');
+    }
+
     if (!user) {
+      console.log('[login]: User not found');
       res.status(401).json({ message: 'Invalid username or password' });
       return;
     }
+    console.log('[login]: User found:', { id: user.id, username: user.username, hasPassword: !!user.password });
 
-    const isMatch = await bcrypt.compare(password, user.password);
+    // Step 3: Verify password
+    console.log('[login]: Step 3 - Verifying password...');
+    let isMatch;
+    try {
+      isMatch = await bcrypt.compare(password, user.password);
+    } catch (bcryptErr) {
+      console.error('[login]: Failed to compare passwords', bcryptErr);
+      throw new Error('Password verification failed');
+    }
+
     if (!isMatch) {
+      console.log('[login]: Password mismatch');
       res.status(401).json({ message: 'Invalid username or password' });
       return;
     }
+    console.log('[login]: Password verified successfully');
 
-    const role = await prisma.role.findUnique({ where: { id: user.roleId || '' } });
+    // Step 4: Retrieve role
+    console.log('[login]: Step 4 - Retrieving user role...');
+    let role;
+    try {
+      role = await prisma.role.findUnique({ where: { id: user.roleId || '' } });
+    } catch (roleErr) {
+      console.error('[login]: Failed to retrieve role', roleErr);
+      throw new Error('Role retrieval failed');
+    }
+    console.log('[login]: Role retrieved:', role ? { id: role.id, name: role.name } : 'no role found');
 
-    const token = jwt.sign(
-      { userId: user.id, username: user.username, isSuperAdmin: user.isSuperAdmin },
-      JWT_SECRET,
-      { expiresIn: '1h' }
-    );
+    // Step 5: Generate JWT token
+    console.log('[login]: Step 5 - Generating JWT token...');
+    let token;
+    try {
+      token = jwt.sign(
+        { userId: user.id, username: user.username, isSuperAdmin: user.isSuperAdmin },
+        JWT_SECRET,
+        { expiresIn: '1h' }
+      );
+    } catch (jwtErr) {
+      console.error('[login]: Failed to generate JWT token', jwtErr);
+      throw new Error('Token generation failed');
+    }
+    console.log('[login]: JWT token generated');
 
-    await recordTenantLogin(req, user, 'password');
+    // Step 6: Record tenant login history
+    console.log('[login]: Step 6 - Recording tenant login history...');
+    try {
+      await recordTenantLogin(req, user, 'password');
+      console.log('[login]: Tenant login history recorded');
+    } catch (recordErr) {
+      // This is non-critical, so we just log it and proceed
+      console.error('[login]: Failed to record tenant login (non-critical)', recordErr);
+    }
 
+    // Prepare user response
+    console.log('[login]: Step 7 - Preparing user response...');
+    const userResponse = {
+      id: user.id,
+      username: user.username,
+      email: (user as any).email,
+      phone: (user as any).phone,
+      isSuperAdmin: user.isSuperAdmin,
+      roleId: user.roleId,
+      roleName: role?.name,
+      permissions: normalizePermissions(role?.permissions),
+      outletId: user.outletId,
+      outletIds: Array.isArray((user as any).outletIds) ? (user as any).outletIds : (user.outletId ? [user.outletId] : []),
+      tenantId: user.tenantId,
+      isActive: user.isActive
+    };
+
+    console.log('[login]: Login successful! Sending response');
     res.json({
       token,
-      user: {
-        id: user.id,
-        username: user.username,
-        email: (user as any).email,
-        phone: (user as any).phone,
-        isSuperAdmin: user.isSuperAdmin,
-        roleId: user.roleId,
-        roleName: role?.name,
-        permissions: normalizePermissions(role?.permissions),
-        outletId: user.outletId,
-        outletIds: Array.isArray((user as any).outletIds) ? (user as any).outletIds : (user.outletId ? [user.outletId] : []),
-        tenantId: user.tenantId,
-        isActive: user.isActive
-      },
+      user: userResponse,
       message: 'Login successful'
     });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Server error', error: error instanceof Error ? error.message : String(error) });
+    console.error('[login]: Unexpected error during login process');
+    console.error('[login]: Error name:', error instanceof Error ? error.name : 'Unknown');
+    console.error('[login]: Error message:', error instanceof Error ? error.message : String(error));
+    console.error('[login]: Stack trace:', error instanceof Error ? error.stack : 'No stack available');
+    res.status(500).json({ 
+      message: 'Server error', 
+      error: error instanceof Error ? error.message : String(error),
+      stack: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.stack : undefined) : undefined 
+    });
   }
 };
 

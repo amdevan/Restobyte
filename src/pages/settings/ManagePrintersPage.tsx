@@ -15,6 +15,7 @@ interface SystemPrinter {
   port?: string;
   status?: string;
   description?: string;
+  usbPath?: string;
 }
 
 const ManagePrintersPage: React.FC = () => {
@@ -40,19 +41,19 @@ const ManagePrintersPage: React.FC = () => {
     setEditingPrinter(null);
   };
 
-  const handleDelete = (printerId: string) => {
+  const handleDelete = async (printerId: string) => {
     if (window.confirm('Are you sure you want to delete this printer configuration?')) {
-      deletePrinter(printerId);
+      await deletePrinter(printerId);
     }
   };
   
-  const handleAddSubmit = (printerData: Omit<Printer, 'id'>) => {
-    addPrinter(printerData);
+  const handleAddSubmit = async (printerData: Omit<Printer, 'id'>) => {
+    await addPrinter(printerData);
     handleCloseModal();
   };
 
-  const handleUpdateSubmit = (updatedPrinter: Printer) => {
-    updatePrinter(updatedPrinter);
+  const handleUpdateSubmit = async (updatedPrinter: Printer) => {
+    await updatePrinter(updatedPrinter);
     handleCloseModal();
   };
 
@@ -72,15 +73,17 @@ const ManagePrintersPage: React.FC = () => {
     }
   };
 
-  const handleAddSystemPrinter = (systemPrinter: SystemPrinter) => {
+  const handleAddSystemPrinter = async (systemPrinter: SystemPrinter) => {
+    const isUsbPrinter = !!systemPrinter.usbPath;
     const newPrinter: Omit<Printer, 'id'> = {
       name: systemPrinter.name,
       type: PrinterType.Receipt,
-      interfaceType: PrinterInterfaceType.Network,
+      interfaceType: isUsbPrinter ? PrinterInterfaceType.USB : PrinterInterfaceType.Network,
       isActive: true,
       printerModel: systemPrinter.model,
+      usbPath: systemPrinter.usbPath,
     };
-    addPrinter(newPrinter);
+    await addPrinter(newPrinter);
     setShowSystemPrintersModal(false);
   };
 

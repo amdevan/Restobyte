@@ -781,6 +781,32 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         }
     }, [isAuthenticated, activeOutletIds, logout]);
 
+    const fetchPrinters = useCallback(async () => {
+        if (!isAuthenticated) return;
+        const token = localStorage.getItem('authToken');
+        if (!token || activeOutletIds.length === 0) {
+            setPrinters([]);
+            return;
+        }
+        try {
+            const results = await Promise.all(activeOutletIds.map(outletId =>
+                fetch(`${API_BASE_URL}/printers?outletId=${encodeURIComponent(outletId)}`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                }).then(async res => {
+                    if (res.status === 401) { logout(); return []; }
+                    if (!res.ok) return [];
+                    return res.json().catch(() => []);
+                })
+            ));
+            const flat = results.flat().filter(Boolean);
+            const deduped = Array.from(new Map(flat.map((it: any) => [String(it?.id || ''), it])).values()).filter((it: any) => it && it.id);
+            setPrinters(deduped);
+        } catch (err) {
+            console.error("Failed to fetch printers:", err);
+            setPrinters([]);
+        }
+    }, [isAuthenticated, activeOutletIds, logout]);
+
     const fetchSales = useCallback(async () => {
         if (!isAuthenticated) {
             setSales([]);
@@ -819,6 +845,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
     useEffect(() => { fetchCategories(); }, [fetchCategories]);
     useEffect(() => { fetchTables(); }, [fetchTables]);
     useEffect(() => { fetchCustomers(); }, [fetchCustomers]);
+    useEffect(() => { fetchPrinters(); }, [fetchPrinters]);
     useEffect(() => { fetchSales(); }, [fetchSales]);
 
     const [reservations, setReservations] = useState<Reservation[]>([]);
@@ -2762,9 +2789,66 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         deleteKitchen: (kitchenId) => setKitchens(prev => prev.filter(k => k.id !== kitchenId)),
 
         printers,
-        addPrinter: (printerData) => setPrinters(prev => [...prev, { ...printerData, id: `p-${Date.now()}` }]),
-        updatePrinter: (printer) => setPrinters(prev => prev.map(p => p.id === printer.id ? printer : p)),
-        deletePrinter: (printerId) => setPrinters(prev => prev.filter(p => p.id !== printerId)),
+        addPrinter: async (printerData) => {
+            try {
+                const selectedOutletId = activeOutletIds.length === 1 ? activeOutletIds[0] : undefined;
+                if (!selectedOutletId) {
+                    alert('Please select a single outlet before adding a printer.');
+                    return;
+                }
+                const res = await fetch(`${API_BASE_URL}/printers?outletId=${encodeURIComponent(selectedOutletId)}`, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${localStorage.getItem('authToken')}`
+                    },
+                    body: JSON.stringify(printerData)
+                });
+                if (!res.ok) {
+                    const err = await res.json().catch(() => null);
+                    alert(err?.message || `Failed to add printer (${res.status})`);
+                    return;
+                }
+                const newPrinter = await res.json();
+                setPrinters(prev => [...prev, newPrinter]);
+            } catch (err) {
+                console.error("Failed to add printer:", err);
+            }
+        },
+        updatePrinter: async (printer) => {
+            try {
+                const res = await fetch(`${API_BASE_URL}/printers/${printer.id}`, {
+                    method: 'PUT',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${localStorage.getItem('authToken')}`
+                    },
+                    body: JSON.stringify(printer)
+                });
+                if (!res.ok) {
+                    const err = await res.json().catch(() => null);
+                    alert(err?.message || `Failed to update printer (${res.status})`);
+                    return;
+                }
+                const updatedPrinter = await res.json();
+                setPrinters(prev => prev.map(p => p.id === printer.id ? updatedPrinter : p));
+            } catch (err) {
+                console.error("Failed to update printer:", err);
+            }
+        },
+        deletePrinter: async (printerId) => {
+            try {
+                const res = await fetch(`${API_BASE_URL}/printers/${printerId}`, {
+                    method: 'DELETE',
+                    headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` }
+                });
+                if (res.ok) {
+                    setPrinters(prev => prev.filter(p => p.id !== printerId));
+                }
+            } catch (err) {
+                console.error("Failed to delete printer:", err);
+            }
+        },
 
         counters,
         addCounter: (counterData) => setCounters(prev => [...prev, { ...counterData, id: `c-${Date.now()}` }]),

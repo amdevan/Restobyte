@@ -403,3 +403,28 @@ model Reservation {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 }
+
+model Printer {
+  id               String   @id @default(uuid())
+  name             String
+  type             String   @default("Receipt") // Receipt, Kitchen Order Ticket (KOT), Label
+  interfaceType    String   @default("Network (IP/Ethernet)") // Network (IP/Ethernet), USB, Bluetooth, Serial
+  isActive         Boolean  @default(true)
+  ipAddress        String?
+  port             String?
+  usbPath          String?
+  bluetoothMac     String?
+  serialPort       String?
+  baudRate         Int?
+  paperSize        String?  @default("80mm") // 58mm, 80mm, A4, Label
+  printerModel     String?
+  timeoutMs        Int?     @default(5000)
+  retries          Int?     @default(3)
+  autoPrintReceipt Boolean  @default(false)
+  autoPrintKOT     Boolean  @default(false)
+  autoPrintLabel   Boolean  @default(false)
+  notes            String?
+  outletId         String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}

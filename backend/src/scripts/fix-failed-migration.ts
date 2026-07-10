@@ -495,6 +495,47 @@ async function applySaasWebsiteContentMigration() {
     }
 }
 
+async function applyPrinterMigration() {
+    const migrationName = '20260711_add_printer_model'; // We'll create this migration folder
+    console.log(`Checking migration ${migrationName}...`);
+    
+    const printerTableExists = await checkTableExists('Printer');
+    
+    if (!printerTableExists) {
+        console.log('Creating Printer table...');
+        await prisma.$executeRawUnsafe(`
+            CREATE TABLE IF NOT EXISTS "Printer" (
+                "id" TEXT NOT NULL,
+                "name" TEXT NOT NULL,
+                "type" TEXT NOT NULL DEFAULT 'Receipt',
+                "interfaceType" TEXT NOT NULL DEFAULT 'Network (IP/Ethernet)',
+                "isActive" BOOLEAN NOT NULL DEFAULT true,
+                "ipAddress" TEXT,
+                "port" TEXT,
+                "usbPath" TEXT,
+                "bluetoothMac" TEXT,
+                "serialPort" TEXT,
+                "baudRate" INTEGER,
+                "paperSize" TEXT DEFAULT '80mm',
+                "printerModel" TEXT,
+                "timeoutMs" INTEGER DEFAULT 5000,
+                "retries" INTEGER DEFAULT 3,
+                "autoPrintReceipt" BOOLEAN NOT NULL DEFAULT false,
+                "autoPrintKOT" BOOLEAN NOT NULL DEFAULT false,
+                "autoPrintLabel" BOOLEAN NOT NULL DEFAULT false,
+                "notes" TEXT,
+                "outletId" TEXT NOT NULL,
+                "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                "updatedAt" TIMESTAMP(3) NOT NULL,
+                CONSTRAINT "Printer_pkey" PRIMARY KEY ("id")
+            )
+        `);
+        console.log('Printer table created!');
+    }
+    
+    await markMigrationApplied(migrationName);
+}
+
 async function main() {
     console.log('Starting comprehensive migration fix script (idempotent)...');
     await applyInitMigration();
@@ -503,6 +544,7 @@ async function main() {
     await applySaasWebsiteContentMigration();
     await applySlugMigration();
     await applyTenantMigration();
+    await applyPrinterMigration();
     console.log('✅ All migration fixes complete!');
     await prisma.$disconnect();
 }

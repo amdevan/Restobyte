@@ -422,12 +422,12 @@ const handleSendKot = useCallback(async () => {
   };
 
   const mergedMenuItems = useMemo(() => {
-    const normalizedPreMade = preMadeFoodItems.map(item => {
+    const normalizedPreMade = (preMadeFoodItems || []).map(item => {
       const normalizedPrice = typeof item.price === 'number' ? item.price : (item.variations?.[0]?.price ?? 0);
       const normalizedIsVeg = item.isVegetarian === undefined ? ((item as any).isVeg === undefined ? true : (item as any).isVeg) : item.isVegetarian;
       return { ...item, price: normalizedPrice, isVegetarian: normalizedIsVeg };
     });
-    return [...menuItems, ...normalizedPreMade];
+    return [...(menuItems || []), ...normalizedPreMade];
   }, [menuItems, preMadeFoodItems]);
 
   const filteredMenu = useMemo(() => {

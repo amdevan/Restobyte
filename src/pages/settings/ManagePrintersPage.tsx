@@ -103,6 +103,114 @@ const ManagePrintersPage: React.FC = () => {
     return printer.interfaceType;
   };
 
+  const handleTestPrint = (printer: Printer) => {
+    // Open a new window
+    const printWindow = window.open('', '_blank', 'width=300,height=500');
+    if (!printWindow) {
+      alert('Please allow popups to print test page');
+      return;
+    }
+    
+    // Determine paper width in pixels (approx 58mm ≈ 200px, 80mm ≈ 280px)
+    const paperWidth = printer.paperSize === '80mm' ? '280px' : '200px';
+    
+    let title = '';
+    let testContent = '';
+    if (printer.type === PrinterType.Receipt) {
+      title = 'TEST RECEIPT';
+      testContent = `
+        ----------------------------------------
+        |        RESTOBYTE TEST RECEIPT        |
+        ----------------------------------------
+        Date: ${new Date().toLocaleString()}
+        
+        Item 1                  $10.00
+        Item 2                  $15.50
+        
+        ----------------------------------------
+        TOTAL                   $25.50
+        ----------------------------------------
+        
+        Thank you for using RestoByte!
+      `;
+    } else if (printer.type === PrinterType.KitchenOrderTicket || printer.type === 'Kitchen Order Ticket (KOT)') {
+      title = 'TEST KOT';
+      testContent = `
+        ----------------------------------------
+        |         RESTOBYTE TEST KOT           |
+        ----------------------------------------
+        Date: ${new Date().toLocaleString()}
+        
+        2x Cheeseburger (Medium)
+        1x Fries (Large)
+        
+        Notes: Extra ketchup!
+      `;
+    } else if (printer.type === PrinterType.Label) {
+      title = 'TEST LABEL';
+      testContent = `
+        RESTOBYTE TEST LABEL
+        ${new Date().toLocaleString()}
+      `;
+    }
+    
+    // Build HTML for print window
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Test Print - ${printer.name}</title>
+          <style>
+            * {
+              margin: 0;
+              padding: 0;
+              box-sizing: border-box;
+            }
+            body {
+              font-family: monospace;
+              font-size: 12px;
+              padding: 10px;
+              width: ${paperWidth};
+              margin: 0 auto;
+              line-height: 1.4;
+            }
+            .title {
+              text-align: center;
+              font-weight: bold;
+              margin-bottom: 8px;
+              font-size: 14px;
+            }
+            pre {
+              white-space: pre-wrap;
+              word-wrap: break-word;
+            }
+            @media print {
+              body {
+                width: 100%;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="title">${title}</div>
+          <pre>${testContent}</pre>
+        </body>
+      </html>
+    `);
+    
+    printWindow.document.close();
+    
+    // Wait for content to load then print
+    printWindow.onload = () => {
+      printWindow.focus();
+      printWindow.print();
+      // Close window after a short delay
+      setTimeout(() => {
+        printWindow.close();
+      }, 500);
+    };
+  };
+
   return (
     <div className="p-4 sm:p-6 space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
@@ -175,6 +283,9 @@ const ManagePrintersPage: React.FC = () => {
                   </td>
                   <td className="py-3 px-4 text-sm">
                     <div className="flex space-x-2">
+                      <Button onClick={() => handleTestPrint(p)} variant="secondary" size="sm" aria-label="Test Printer">
+                        <FiPrinterIcon />
+                      </Button>
                       <Button onClick={() => handleOpenModalForEdit(p)} variant="secondary" size="sm" aria-label="Edit Printer">
                         <FiEdit />
                       </Button>

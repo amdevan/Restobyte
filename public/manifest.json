@@ -1,8 +1,10 @@
 {
     "short_name": "RestoByte",
     "name": "RestoByte Restaurant Management",
-    "id": "/",
-    "description": "Restaurant POS, billing, kitchen order ticket printing, and outlet operations in one installable app.",
+    "start_url": "/",
+    "display": "fullscreen",
+    "theme_color": "#0ea5e9",
+    "background_color": "#ffffff",
     "icons": [
         {
             "src": "/icons/pwa-192x192.png",
@@ -22,13 +24,5 @@
             "type": "image/png",
             "purpose": "maskable"
         }
-    ],
-    "start_url": "/",
-    "scope": "/",
-    "display": "fullscreen",
-    "display_override": ["fullscreen", "standalone"],
-    "orientation": "any",
-    "categories": ["business", "productivity", "food"],
-    "theme_color": "#0ea5e9",
-    "background_color": "#ffffff"
+    ]
 }

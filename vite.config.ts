@@ -21,17 +21,36 @@ export default defineConfig(({ mode }) => {
         VitePWA({
           registerType: 'autoUpdate',
           injectRegister: 'auto',
-          manifest: false,
-          workbox: {
-            globPatterns: ['**/*.{js,css,html,ico,png,svg,json}'],
-            navigateFallback: 'index.html',
-          },
-          includeAssets: [
-            'fevicon.png',
-            'icons/pwa-192x192.png',
-            'icons/pwa-512x512.png',
-            'icons/pwa-maskable-512x512.png'
-          ]
+          includeAssets: ['fevicon.png'],
+          manifestFilename: 'manifest.json',
+          manifest: {
+            short_name: 'RestoByte',
+            name: 'RestoByte Restaurant Management',
+            start_url: '/',
+            display: 'fullscreen',
+            background_color: '#ffffff',
+            theme_color: '#0ea5e9',
+            icons: [
+              {
+                src: '/icons/pwa-192x192.png',
+                sizes: '192x192',
+                type: 'image/png',
+                purpose: 'any'
+              },
+              {
+                src: '/icons/pwa-512x512.png',
+                sizes: '512x512',
+                type: 'image/png',
+                purpose: 'any'
+              },
+              {
+                src: '/icons/pwa-maskable-512x512.png',
+                sizes: '512x512',
+                type: 'image/png',
+                purpose: 'maskable'
+              }
+            ]
+          }
         }),
       ],
       define: {

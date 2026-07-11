@@ -106,3 +106,107 @@ export const getEscPosBottomFeed = (lines: number = 12): string => {
   const safeLines = Math.max(3, Math.min(24, Math.round(lines)));
   return `${ESC}d${String.fromCharCode(safeLines)}`;
 };
+
+const escapeHtml = (value: string): string =>
+  String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
+const getBrowserPrintPageSize = (paperSize?: PaperSize): string => {
+  switch (paperSize) {
+    case PaperSize['58mm']:
+      return '58mm auto';
+    case PaperSize['80mm']:
+      return '80mm auto';
+    case PaperSize.A4:
+      return 'A4 portrait';
+    case PaperSize.Label:
+      return '100mm auto';
+    default:
+      return '80mm auto';
+  }
+};
+
+type BrowserPrintOptions = {
+  title: string;
+  content: string;
+  paperSize?: PaperSize;
+  fontSizePx?: number;
+  sideMarginMm?: number;
+};
+
+export const openBrowserPrintDialog = async ({
+  title,
+  content,
+  paperSize,
+  fontSizePx = 12,
+  sideMarginMm = 4,
+}: BrowserPrintOptions): Promise<void> => {
+  if (typeof window === 'undefined') {
+    throw new Error('Browser printing is only available in the browser.');
+  }
+
+  const printWindow = window.open('', '_blank', 'noopener,noreferrer');
+  if (!printWindow) {
+    throw new Error('Please allow pop-ups to print.');
+  }
+
+  const safeTitle = escapeHtml(title);
+  const safeContent = escapeHtml(content);
+  const pageSize = getBrowserPrintPageSize(paperSize);
+  const safeFontSize = Math.max(10, Number(fontSizePx) || 12);
+  const safeMargin = Math.max(0, Number(sideMarginMm) || 0);
+
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="UTF-8" />
+        <title>${safeTitle}</title>
+        <style>
+          * { box-sizing: border-box; }
+          html, body {
+            margin: 0;
+            padding: 0;
+            background: #fff;
+          }
+          body {
+            padding: ${safeMargin}mm;
+            font-family: "Courier New", monospace;
+            font-size: ${safeFontSize}px;
+            line-height: 1.35;
+            color: #000;
+            white-space: pre-wrap;
+            word-break: break-word;
+          }
+          pre {
+            margin: 0;
+            font: inherit;
+            white-space: pre-wrap;
+            word-break: break-word;
+          }
+          @page {
+            margin: 0;
+            size: ${pageSize};
+          }
+        </style>
+      </head>
+      <body>
+        <pre>${safeContent}</pre>
+      </body>
+    </html>
+  `);
+
+  printWindow.document.close();
+
+  await new Promise<void>((resolve) => {
+    setTimeout(() => {
+      printWindow.focus();
+      printWindow.print();
+      resolve();
+    }, 250);
+  });
+};

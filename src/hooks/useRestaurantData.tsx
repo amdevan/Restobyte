@@ -13,6 +13,7 @@ import { INITIAL_TABLES_COUNT } from '../constants';
 import { API_BASE_URL } from '../config';
 import { CURRENCIES, DEFAULT_CURRENCY_BY_COUNTRY } from '@/constants/geo';
 import { useAuth } from './useAuth';
+import { openBrowserPrintDialog } from '@/utils/printSettings';
 
 const RestaurantDataContext = createContext<RestaurantDataContextType | undefined>(undefined);
 
@@ -2208,6 +2209,41 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         }
     }, [logout, setAndPersistTableStatus, upsertSaleInState]);
 
+    const openBrowserPrintFallback = useCallback(async (
+        printerId: string,
+        content: string,
+        printType: 'test' | 'invoice' | 'kot',
+        reason?: string
+    ) => {
+        const printer = printers.find((candidate) => candidate.id === printerId);
+        const paperSize = printer?.paperSize
+            || (printType === 'invoice'
+                ? applicationSettings.invoicePaperSize
+                : printType === 'kot'
+                    ? applicationSettings.kotPaperSize
+                    : applicationSettings.receiptPaperSize || applicationSettings.invoicePaperSize);
+        const fontSizePx = printType === 'invoice' ? (applicationSettings.invoiceFontSize || 12) : 12;
+        const sideMarginMm = printType === 'invoice' ? (applicationSettings.invoiceSideMarginMm || 4) : 3;
+        const title = printType === 'invoice'
+            ? `Invoice${printer?.name ? ` - ${printer.name}` : ''}`
+            : printType === 'kot'
+                ? `KOT${printer?.name ? ` - ${printer.name}` : ''}`
+                : `Test Print${printer?.name ? ` - ${printer.name}` : ''}`;
+
+        try {
+            await openBrowserPrintDialog({
+                title,
+                content: content || 'RestoByte print job',
+                paperSize,
+                fontSizePx,
+                sideMarginMm,
+            });
+        } catch (fallbackError) {
+            const fallbackMessage = fallbackError instanceof Error ? fallbackError.message : 'Browser print fallback failed';
+            alert(reason ? `${reason}\n\n${fallbackMessage}` : fallbackMessage);
+        }
+    }, [applicationSettings, printers]);
+
 
     const contextValue: RestaurantDataContextType = {
         // Implement all functions from RestaurantDataContextType
@@ -2944,14 +2980,16 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 });
                 if (!res.ok) {
                     const err = await res.json().catch(() => null);
-                    alert(err?.message || `Failed to print (${res.status})`);
+                    const message = err?.error ? `${err?.message || 'Failed to print'}: ${err.error}` : (err?.message || `Failed to print (${res.status})`);
+                    await openBrowserPrintFallback(printerId, content || 'RestoByte test print', 'test', message);
                     return;
                 }
                 const result = await res.json();
                 alert(result.message || 'Test print sent successfully!');
             } catch (err) {
                 console.error("Failed to print test page:", err);
-                alert('Failed to print test page');
+                const message = err instanceof Error ? err.message : 'Failed to print test page';
+                await openBrowserPrintFallback(printerId, content || 'RestoByte test print', 'test', message);
             }
         },
         printInvoice: async (printerId, content) => {
@@ -2971,14 +3009,16 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 });
                 if (!res.ok) {
                     const err = await res.json().catch(() => null);
-                    alert(err?.message || `Failed to print invoice (${res.status})`);
+                    const message = err?.error ? `${err?.message || 'Failed to print invoice'}: ${err.error}` : (err?.message || `Failed to print invoice (${res.status})`);
+                    await openBrowserPrintFallback(printerId, content, 'invoice', message);
                     return;
                 }
                 const result = await res.json();
                 alert(result.message || 'Invoice print sent successfully!');
             } catch (err) {
                 console.error("Failed to print invoice:", err);
-                alert('Failed to print invoice');
+                const message = err instanceof Error ? err.message : 'Failed to print invoice';
+                await openBrowserPrintFallback(printerId, content, 'invoice', message);
             }
         },
         printKot: async (printerId, content) => {
@@ -2998,14 +3038,16 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 });
                 if (!res.ok) {
                     const err = await res.json().catch(() => null);
-                    alert(err?.message || `Failed to print KOT (${res.status})`);
+                    const message = err?.error ? `${err?.message || 'Failed to print KOT'}: ${err.error}` : (err?.message || `Failed to print KOT (${res.status})`);
+                    await openBrowserPrintFallback(printerId, content, 'kot', message);
                     return;
                 }
                 const result = await res.json();
                 alert(result.message || 'KOT print sent successfully!');
             } catch (err) {
                 console.error("Failed to print KOT:", err);
-                alert('Failed to print KOT');
+                const message = err instanceof Error ? err.message : 'Failed to print KOT';
+                await openBrowserPrintFallback(printerId, content, 'kot', message);
             }
         },
 

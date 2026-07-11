@@ -2,6 +2,7 @@
 import path from 'path';
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
+import { VitePWA } from 'vite-plugin-pwa';
 import { fileURLToPath } from 'url'; // Added for ES module __dirname equivalent
 import packageJson from './package.json';
 
@@ -17,6 +18,21 @@ export default defineConfig(({ mode }) => {
     return {
       plugins: [
         react(),
+        VitePWA({
+          registerType: 'autoUpdate',
+          injectRegister: 'auto',
+          manifest: false,
+          workbox: {
+            globPatterns: ['**/*.{js,css,html,ico,png,svg,json}'],
+            navigateFallback: 'index.html',
+          },
+          includeAssets: [
+            'fevicon.png',
+            'icons/pwa-192x192.png',
+            'icons/pwa-512x512.png',
+            'icons/pwa-maskable-512x512.png'
+          ]
+        }),
       ],
       define: {
         'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),

@@ -8,6 +8,7 @@ import Modal from '@/components/common/Modal';
 import PrinterForm from '@/components/settings/PrinterForm';
 import { FiPlusCircle, FiEdit, FiTrash2, FiPrinter as FiPrinterIcon, FiCheckCircle, FiXCircle, FiRefreshCw } from 'react-icons/fi';
 import { API_BASE_URL } from '@/config';
+import { detectQzTrayPrinters } from '@/utils/qzTray';
 
 interface SystemPrinter {
   name: string;
@@ -16,6 +17,8 @@ interface SystemPrinter {
   status?: string;
   description?: string;
   usbPath?: string;
+  interfaceType?: PrinterInterfaceType;
+  source?: 'server' | 'qz';
 }
 
 const ManagePrintersPage: React.FC = () => {
@@ -24,6 +27,7 @@ const ManagePrintersPage: React.FC = () => {
     const [editingPrinter, setEditingPrinter] = useState<Printer | null>(null);
     const [systemPrinters, setSystemPrinters] = useState<SystemPrinter[]>([]);
     const [isDetecting, setIsDetecting] = useState(false);
+    const [isDetectingQz, setIsDetectingQz] = useState(false);
     const [showSystemPrintersModal, setShowSystemPrintersModal] = useState(false);
 
     const handleOpenModalForAdd = () => {
@@ -63,7 +67,11 @@ const ManagePrintersPage: React.FC = () => {
             const response = await fetch(`${API_BASE_URL}/printers/system`);
             if (!response.ok) throw new Error('Failed to fetch system printers');
             const data = await response.json();
-            setSystemPrinters(data.printers || []);
+            setSystemPrinters((data.printers || []).map((printer: SystemPrinter) => ({
+                ...printer,
+                interfaceType: printer.usbPath ? PrinterInterfaceType.USB : PrinterInterfaceType.Network,
+                source: 'server',
+            })));
             setShowSystemPrintersModal(true);
         } catch (error) {
             console.error('Error detecting printers:', error);
@@ -73,15 +81,34 @@ const ManagePrintersPage: React.FC = () => {
         }
     };
 
+    const handleDetectQzPrinters = async () => {
+        setIsDetectingQz(true);
+        try {
+            const printerNames = await detectQzTrayPrinters();
+            setSystemPrinters(printerNames.map((printerName) => ({
+                name: printerName,
+                model: 'Browser / QZ Tray',
+                interfaceType: PrinterInterfaceType.QZTray,
+                source: 'qz',
+            })));
+            setShowSystemPrintersModal(true);
+        } catch (error) {
+            console.error('Error detecting QZ Tray printers:', error);
+            alert('QZ Tray printer detection failed. Make sure QZ Tray is installed and running on this PC.');
+        } finally {
+            setIsDetectingQz(false);
+        }
+    };
+
     const handleAddSystemPrinter = async (systemPrinter: SystemPrinter) => {
-        const isUsbPrinter = !!systemPrinter.usbPath;
+        const resolvedInterfaceType = systemPrinter.interfaceType || (systemPrinter.usbPath ? PrinterInterfaceType.USB : PrinterInterfaceType.Network);
         const newPrinter: Omit<Printer, 'id'> = {
             name: systemPrinter.name,
             type: PrinterType.Receipt,
-            interfaceType: isUsbPrinter ? PrinterInterfaceType.USB : PrinterInterfaceType.Network,
+            interfaceType: resolvedInterfaceType,
             isActive: true,
             printerModel: systemPrinter.model,
-            usbPath: systemPrinter.usbPath,
+            usbPath: resolvedInterfaceType === PrinterInterfaceType.USB ? systemPrinter.usbPath : undefined,
         };
         await addPrinter(newPrinter);
         setShowSystemPrintersModal(false);
@@ -99,6 +126,9 @@ const ManagePrintersPage: React.FC = () => {
         }
         if (printer.interfaceType === PrinterInterfaceType.Serial) {
             return printer.serialPort ? `${printer.serialPort} @ ${printer.baudRate}` : 'Serial';
+        }
+        if (printer.interfaceType === PrinterInterfaceType.QZTray) {
+            return 'Browser -> QZ Tray';
         }
         return printer.interfaceType;
     };
@@ -121,7 +151,7 @@ TOTAL                   $25.50
 
 Thank you for using RestoByte!
 `;
-        } else if (printer.type === PrinterType.KitchenOrderTicket || printer.type === 'Kitchen Order Ticket (KOT)') {
+        } else if (printer.type === PrinterType.KOT || printer.type === 'Kitchen Order Ticket (KOT)') {
             testContent = `
 ----------------------------------------
 |         RESTOBYTE TEST KOT           |
@@ -162,7 +192,15 @@ ${new Date().toLocaleString()}
             variant="secondary"
             disabled={isDetecting}
           >
-            {isDetecting ? 'Detecting...' : 'Detect Printers'}
+            {isDetecting ? 'Detecting...' : 'Detect Server Printers'}
+          </Button>
+          <Button
+            onClick={handleDetectQzPrinters}
+            leftIcon={<FiRefreshCw size={20} className={isDetectingQz ? 'animate-spin' : ''}/>}
+            variant="secondary"
+            disabled={isDetectingQz}
+          >
+            {isDetectingQz ? 'Detecting...' : 'Detect QZ Tray'}
           </Button>
           <Button onClick={handleOpenModalForAdd} leftIcon={<FiPlusCircle size={20}/>} variant="primary">
             Add New Printer
@@ -274,6 +312,8 @@ ${new Date().toLocaleString()}
                     <p className="text-sm text-gray-500">
                       {printer.model ? `Model: ${printer.model}` : ''}
                       {printer.status ? ` • Status: ${printer.status}` : ''}
+                      {printer.interfaceType ? ` • ${printer.interfaceType}` : ''}
+                      {printer.source === 'qz' ? ' • Detected in browser' : ''}
                     </p>
                   </div>
                   <Button 

@@ -316,6 +316,7 @@ export enum PrinterInterfaceType {
   USB = 'USB',
   Bluetooth = 'Bluetooth',
   Serial = 'Serial',
+  QZTray = 'QZ Tray',
 }
 
 export enum PaperSize {

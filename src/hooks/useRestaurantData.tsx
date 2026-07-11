@@ -13,6 +13,7 @@ import { INITIAL_TABLES_COUNT } from '../constants';
 import { API_BASE_URL } from '../config';
 import { CURRENCIES, DEFAULT_CURRENCY_BY_COUNTRY } from '@/constants/geo';
 import { useAuth } from './useAuth';
+import { printRawViaQzTray } from '@/utils/qzTray';
 
 const RestaurantDataContext = createContext<RestaurantDataContextType | undefined>(undefined);
 
@@ -2208,6 +2209,54 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         }
     }, [logout, setAndPersistTableStatus, upsertSaleInState]);
 
+    const sendBackendPrintJob = useCallback(async (
+        printerId: string,
+        content: string | undefined,
+        printType: 'test' | 'invoice' | 'kot'
+    ): Promise<string> => {
+        const selectedOutletId = activeOutletIds.length === 1 ? activeOutletIds[0] : undefined;
+        if (!selectedOutletId) {
+            const label = printType === 'invoice' ? 'an invoice' : printType === 'kot' ? 'a KOT' : 'a test page';
+            throw new Error(`Please select a single outlet before printing ${label}.`);
+        }
+
+        const res = await fetch(`${API_BASE_URL}/printers/print?outletId=${encodeURIComponent(selectedOutletId)}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${localStorage.getItem('authToken')}`
+            },
+            body: JSON.stringify({ printerId, content, printType })
+        });
+
+        if (!res.ok) {
+            const err = await res.json().catch(() => null);
+            throw new Error(err?.message || `Failed to print ${printType} (${res.status})`);
+        }
+
+        const result = await res.json().catch(() => null);
+        return result?.message || 'Print job sent successfully!';
+    }, [activeOutletIds]);
+
+    const sendPrinterJob = useCallback(async (
+        printerId: string,
+        content: string | undefined,
+        printType: 'test' | 'invoice' | 'kot'
+    ): Promise<string> => {
+        const printer = printers.find((item) => item.id === printerId);
+        if (!printer) {
+            throw new Error('Printer not found.');
+        }
+
+        if (printer.interfaceType === PrinterInterfaceType.QZTray) {
+            await printRawViaQzTray(printer.name, String(content || ''));
+            const label = printType === 'invoice' ? 'Invoice' : printType === 'kot' ? 'KOT' : 'Test print';
+            return `${label} sent successfully via QZ Tray!`;
+        }
+
+        return sendBackendPrintJob(printerId, content, printType);
+    }, [printers, sendBackendPrintJob]);
+
 
     const contextValue: RestaurantDataContextType = {
         // Implement all functions from RestaurantDataContextType
@@ -2929,83 +2978,29 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         },
         printTest: async (printerId, content) => {
             try {
-                const selectedOutletId = activeOutletIds.length === 1 ? activeOutletIds[0] : undefined;
-                if (!selectedOutletId) {
-                    alert('Please select a single outlet before printing a test page.');
-                    return;
-                }
-                const res = await fetch(`${API_BASE_URL}/printers/print?outletId=${encodeURIComponent(selectedOutletId)}`, {
-                    method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        Authorization: `Bearer ${localStorage.getItem('authToken')}`
-                    },
-                    body: JSON.stringify({ printerId, content, printType: 'test' })
-                });
-                if (!res.ok) {
-                    const err = await res.json().catch(() => null);
-                    alert(err?.message || `Failed to print (${res.status})`);
-                    return;
-                }
-                const result = await res.json();
-                alert(result.message || 'Test print sent successfully!');
+                const message = await sendPrinterJob(printerId, content, 'test');
+                alert(message || 'Test print sent successfully!');
             } catch (err) {
                 console.error("Failed to print test page:", err);
-                alert('Failed to print test page');
+                alert(err instanceof Error ? err.message : 'Failed to print test page');
             }
         },
         printInvoice: async (printerId, content) => {
             try {
-                const selectedOutletId = activeOutletIds.length === 1 ? activeOutletIds[0] : undefined;
-                if (!selectedOutletId) {
-                    alert('Please select a single outlet before printing an invoice.');
-                    return;
-                }
-                const res = await fetch(`${API_BASE_URL}/printers/print?outletId=${encodeURIComponent(selectedOutletId)}`, {
-                    method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        Authorization: `Bearer ${localStorage.getItem('authToken')}`
-                    },
-                    body: JSON.stringify({ printerId, content, printType: 'invoice' })
-                });
-                if (!res.ok) {
-                    const err = await res.json().catch(() => null);
-                    alert(err?.message || `Failed to print invoice (${res.status})`);
-                    return;
-                }
-                const result = await res.json();
-                alert(result.message || 'Invoice print sent successfully!');
+                const message = await sendPrinterJob(printerId, content, 'invoice');
+                alert(message || 'Invoice print sent successfully!');
             } catch (err) {
                 console.error("Failed to print invoice:", err);
-                alert('Failed to print invoice');
+                alert(err instanceof Error ? err.message : 'Failed to print invoice');
             }
         },
         printKot: async (printerId, content) => {
             try {
-                const selectedOutletId = activeOutletIds.length === 1 ? activeOutletIds[0] : undefined;
-                if (!selectedOutletId) {
-                    alert('Please select a single outlet before printing a KOT.');
-                    return;
-                }
-                const res = await fetch(`${API_BASE_URL}/printers/print?outletId=${encodeURIComponent(selectedOutletId)}`, {
-                    method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        Authorization: `Bearer ${localStorage.getItem('authToken')}`
-                    },
-                    body: JSON.stringify({ printerId, content, printType: 'kot' })
-                });
-                if (!res.ok) {
-                    const err = await res.json().catch(() => null);
-                    alert(err?.message || `Failed to print KOT (${res.status})`);
-                    return;
-                }
-                const result = await res.json();
-                alert(result.message || 'KOT print sent successfully!');
+                const message = await sendPrinterJob(printerId, content, 'kot');
+                alert(message || 'KOT print sent successfully!');
             } catch (err) {
                 console.error("Failed to print KOT:", err);
-                alert('Failed to print KOT');
+                alert(err instanceof Error ? err.message : 'Failed to print KOT');
             }
         },
 

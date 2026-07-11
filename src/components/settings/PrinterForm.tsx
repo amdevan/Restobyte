@@ -88,6 +88,10 @@ const PrinterForm: React.FC<PrinterFormProps> = ({ initialData, onSubmit, onUpda
       alert('Serial Port is required for Serial printers.');
       return;
     }
+    if (interfaceType === PrinterInterfaceType.QZTray && !name.trim()) {
+      alert('QZ Tray printers need the exact local printer name.');
+      return;
+    }
 
     const printerData: Omit<Printer, 'id'> = { 
         name, 
@@ -231,6 +235,18 @@ const PrinterForm: React.FC<PrinterFormProps> = ({ initialData, onSubmit, onUpda
             onChange={(e) => setBaudRate(Number(e.target.value))}
             placeholder="9600"
           />
+        </div>
+      )}
+
+      {interfaceType === PrinterInterfaceType.QZTray && (
+        <div className="rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-800">
+          <div className="flex items-start gap-2">
+            <FiInfo className="mt-0.5 shrink-0" />
+            <div>
+              Use the exact printer name exposed by QZ Tray on the restaurant PC. Printing will go
+              from the browser to QZ Tray, then directly to the local thermal printer.
+            </div>
+          </div>
         </div>
       )}
 

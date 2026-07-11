@@ -37,7 +37,7 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ onClose, sale }) => {
     const showRestaurantAddress = applicationSettings.invoiceShowRestaurantAddress ?? true;
     const showRestaurantPhone = applicationSettings.invoiceShowRestaurantPhone ?? true;
     const showRestaurantEmail = applicationSettings.invoiceShowRestaurantEmail ?? true;
-    let invoiceText = `${divider}\n`;
+    let invoiceText = '';
     if (showRestaurantDetails) {
       if (showRestaurantName) invoiceText += getEscPosEmphasizedTitle(outletName, lineWidth) || `${outletName.toUpperCase()}\n`;
       if (showRestaurantAddress) invoiceText += `${outletAddress}\n`;

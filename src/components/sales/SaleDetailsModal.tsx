@@ -71,7 +71,7 @@ const SaleDetailsModal: React.FC<SaleDetailsModalProps> = ({ isOpen, onClose, sa
       return `${left}${' '.repeat(firstGap)}${middle}${' '.repeat(secondGap)}${right}\n`;
     };
 
-    let invoiceText = '\n';
+    let invoiceText = '';
     if (showRestaurantDetails) {
       if (showRestaurantName) invoiceText += getEscPosEmphasizedTitle(outletName, lineWidth) || centerText(outletName.toUpperCase());
       if (showRestaurantAddress) invoiceText += centerText(outletAddress);

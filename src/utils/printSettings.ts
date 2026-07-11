@@ -81,7 +81,18 @@ export const applyLeftMarginToText = (text: string, marginSpaces: number): strin
   const prefix = ' '.repeat(marginSpaces);
   return text
     .split('\n')
-    .map((line) => (line ? `${prefix}${line}` : line))
+    .map((line) => {
+      if (!line) {
+        return line;
+      }
+
+      // Raw ESC/POS command lines must start with control bytes, not spaces.
+      if (/[\x00-\x1F]/.test(line)) {
+        return line;
+      }
+
+      return `${prefix}${line}`;
+    })
     .join('\n');
 };
 
@@ -91,14 +102,19 @@ export const getEscPosEmphasizedTitle = (text: string, lineWidth: number): strin
     return '';
   }
 
-  const upperText = normalized.toUpperCase();
+  const upperText = normalized.toUpperCase().replace(/[^\x20-\x7E]/g, '');
+  if (!upperText) {
+    return '';
+  }
+
   const ESC = '\x1B';
   const GS = '\x1D';
+  const LF = '\x0A';
   const estimatedDoubleWidthCapacity = Math.max(8, Math.floor(lineWidth / 2));
   const useDoubleSize = upperText.length <= estimatedDoubleWidthCapacity;
   const sizeMode = useDoubleSize ? '\x11' : '\x01';
 
-  return `${ESC}a\x01${ESC}E\x01${GS}!${sizeMode}${upperText}\n${GS}!\x00${ESC}E\x00${ESC}a\x00\n`;
+  return `${ESC}@${ESC}a\x01${ESC}E\x01${GS}!${sizeMode}${upperText}${LF}${GS}!\x00${ESC}E\x00${ESC}a\x00${LF}`;
 };
 
 export const getEscPosBottomFeed = (lines: number = 12): string => {

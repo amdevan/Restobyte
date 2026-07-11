@@ -284,7 +284,7 @@ const PosPage: React.FC = () => {
       return `${label}${' '.repeat(spaces)}${amountText}\n`;
     };
 
-    let invoiceText = `\n`;
+    let invoiceText = '';
     if (showRestaurantDetails) {
       if (showRestaurantName) {
         invoiceText += getEscPosEmphasizedTitle(outletName, lineWidth) || centerText(outletName.toUpperCase());

@@ -536,59 +536,6 @@ async function applyPrinterMigration() {
     await markMigrationApplied(migrationName);
 }
 
-async function applyUsbPrintBridgeMigration() {
-    const migrationName = '20260711133000_add_usb_print_bridge';
-    console.log(`Checking migration ${migrationName}...`);
-
-    const printerJobTableExists = await checkTableExists('PrinterJob');
-    const outletStatusIndexExists = await checkIndexExists('PrinterJob_outletId_interfaceType_status_createdAt_idx', 'PrinterJob');
-    const printerStatusIndexExists = await checkIndexExists('PrinterJob_printerId_status_createdAt_idx', 'PrinterJob');
-
-    if (!printerJobTableExists) {
-        console.log('Creating PrinterJob table...');
-        await prisma.$executeRawUnsafe(`
-            CREATE TABLE IF NOT EXISTS "PrinterJob" (
-                "id" TEXT NOT NULL,
-                "printerId" TEXT NOT NULL,
-                "outletId" TEXT NOT NULL,
-                "printerName" TEXT NOT NULL,
-                "interfaceType" TEXT NOT NULL,
-                "printType" TEXT NOT NULL,
-                "content" TEXT NOT NULL,
-                "status" TEXT NOT NULL DEFAULT 'pending',
-                "attempts" INTEGER NOT NULL DEFAULT 0,
-                "maxRetries" INTEGER NOT NULL DEFAULT 3,
-                "timeoutMs" INTEGER NOT NULL DEFAULT 5000,
-                "claimedBy" TEXT,
-                "claimedAt" TIMESTAMP(3),
-                "completedAt" TIMESTAMP(3),
-                "failedAt" TIMESTAMP(3),
-                "errorMessage" TEXT,
-                "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                CONSTRAINT "PrinterJob_pkey" PRIMARY KEY ("id")
-            )
-        `);
-        console.log('PrinterJob table created!');
-    }
-
-    if (!outletStatusIndexExists) {
-        await prisma.$executeRawUnsafe(`
-            CREATE INDEX IF NOT EXISTS "PrinterJob_outletId_interfaceType_status_createdAt_idx"
-            ON "PrinterJob"("outletId", "interfaceType", "status", "createdAt")
-        `);
-    }
-
-    if (!printerStatusIndexExists) {
-        await prisma.$executeRawUnsafe(`
-            CREATE INDEX IF NOT EXISTS "PrinterJob_printerId_status_createdAt_idx"
-            ON "PrinterJob"("printerId", "status", "createdAt")
-        `);
-    }
-
-    await markMigrationApplied(migrationName);
-}
-
 async function main() {
     console.log('Starting comprehensive migration fix script (idempotent)...');
     await applyInitMigration();
@@ -598,7 +545,6 @@ async function main() {
     await applySlugMigration();
     await applyTenantMigration();
     await applyPrinterMigration();
-    await applyUsbPrintBridgeMigration();
     console.log('✅ All migration fixes complete!');
     await prisma.$disconnect();
 }
@@ -607,3 +553,4 @@ main().catch(error => {
     console.error('❌ Error fixing migrations:', error);
     process.exit(1);
 });
+

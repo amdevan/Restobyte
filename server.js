@@ -68,19 +68,9 @@ function setCacheHeaders(res, requestPath) {
   const normalizedPath = requestPath === '/' ? '/index.html' : requestPath;
   const isHtmlEntry = normalizedPath === '/index.html';
   const isHashedAsset = normalizedPath.startsWith('/assets/');
-  const isPwaShellFile =
-    normalizedPath === '/manifest.json' ||
-    normalizedPath === '/sw.js' ||
-    normalizedPath === '/registerSW.js' ||
-    normalizedPath.startsWith('/workbox-');
 
   if (isHtmlEntry) {
     // Prevent stale HTML from pointing at a newer or already-pruned hashed asset bundle.
-    res.setHeader('cache-control', 'no-cache, no-store, must-revalidate');
-    return;
-  }
-
-  if (isPwaShellFile) {
     res.setHeader('cache-control', 'no-cache, no-store, must-revalidate');
     return;
   }

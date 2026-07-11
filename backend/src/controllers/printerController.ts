@@ -104,6 +104,18 @@ async function saveUsbBridgeConfig(outletId: string, config: UsbBridgeConfig) {
   });
 }
 
+function getPrinterJobDelegate() {
+  return (prisma as any).printerJob ?? null;
+}
+
+function requirePrinterJobDelegate() {
+  const delegate = getPrinterJobDelegate();
+  if (!delegate) {
+    throw new Error('USB print queue is not available on this backend yet. Run prisma generate, apply the latest migration, and redeploy the backend.');
+  }
+  return delegate;
+}
+
 function sanitizePrintContent(content: string): string {
   return String(content || '')
     .replace(/\r\n/g, '\n')
@@ -170,7 +182,8 @@ async function printViaSystemPrinter(printerName: string, content: string): Prom
 }
 
 async function enqueueUsbPrintJob(printer: any, outletId: string, printType: string, content: string) {
-  return prisma.printerJob.create({
+  const printerJob = requirePrinterJobDelegate();
+  return printerJob.create({
     data: {
       printerId: String(printer.id),
       outletId,
@@ -504,15 +517,18 @@ export const getUsbBridgeSetup = async (req: Request, res: Response) => {
     return;
   }
 
+  const printerJob = getPrinterJobDelegate();
   const [config, pendingJobs, usbPrinters] = await Promise.all([
     getUsbBridgeConfig(requestedOutletId),
-    prisma.printerJob.count({
-      where: {
-        outletId: requestedOutletId,
-        interfaceType: USB_INTERFACE_TYPE,
-        status: 'pending'
-      }
-    }),
+    printerJob
+      ? printerJob.count({
+          where: {
+            outletId: requestedOutletId,
+            interfaceType: USB_INTERFACE_TYPE,
+            status: 'pending'
+          }
+        })
+      : Promise.resolve(0),
     prisma.printer.findMany({
       where: {
         outletId: requestedOutletId,
@@ -607,13 +623,14 @@ export const bridgeHeartbeat = async (req: Request, res: Response) => {
 export const claimUsbBridgeJob = async (req: Request, res: Response) => {
   try {
     const { outletId } = await authenticateUsbBridgeRequest(req);
+    const printerJob = requirePrinterJobDelegate();
     const bridgeClientId = typeof req.body?.bridgeClientId === 'string' && req.body.bridgeClientId.trim()
       ? req.body.bridgeClientId.trim()
       : `bridge-${os.hostname()}`;
     const staleBefore = new Date(Date.now() - STALE_PROCESSING_JOB_MS);
 
     for (let attempt = 0; attempt < 3; attempt += 1) {
-      const candidate = await prisma.printerJob.findFirst({
+      const candidate = await printerJob.findFirst({
         where: {
           outletId,
           interfaceType: USB_INTERFACE_TYPE,
@@ -630,7 +647,7 @@ export const claimUsbBridgeJob = async (req: Request, res: Response) => {
         return;
       }
 
-      const updateResult = await prisma.printerJob.updateMany({
+      const updateResult = await printerJob.updateMany({
         where: {
           id: candidate.id,
           updatedAt: candidate.updatedAt
@@ -678,20 +695,23 @@ export const claimUsbBridgeJob = async (req: Request, res: Response) => {
 
     res.json({ job: null });
   } catch (error) {
-    res.status(401).json({ message: error instanceof Error ? error.message : 'Unauthorized' });
+    const message = error instanceof Error ? error.message : 'Unable to claim USB bridge job';
+    const status = message === 'Invalid bridge token' || message === 'Bridge token is required' || message === 'outletId is required' ? 401 : 503;
+    res.status(status).json({ message });
   }
 };
 
 export const completeUsbBridgeJob = async (req: Request, res: Response) => {
   try {
     const { outletId, config } = await authenticateUsbBridgeRequest(req);
+    const printerJob = requirePrinterJobDelegate();
     const jobId = typeof req.params.id === 'string' ? req.params.id : '';
     if (!jobId) {
       res.status(400).json({ message: 'job id is required' });
       return;
     }
 
-    await prisma.printerJob.updateMany({
+    await printerJob.updateMany({
       where: { id: jobId, outletId },
       data: {
         status: 'completed',
@@ -708,13 +728,16 @@ export const completeUsbBridgeJob = async (req: Request, res: Response) => {
 
     res.json({ ok: true, jobId });
   } catch (error) {
-    res.status(401).json({ message: error instanceof Error ? error.message : 'Unauthorized' });
+    const message = error instanceof Error ? error.message : 'Unable to complete USB bridge job';
+    const status = message === 'Invalid bridge token' || message === 'Bridge token is required' || message === 'outletId is required' ? 401 : 503;
+    res.status(status).json({ message });
   }
 };
 
 export const failUsbBridgeJob = async (req: Request, res: Response) => {
   try {
     const { outletId, config } = await authenticateUsbBridgeRequest(req);
+    const printerJob = requirePrinterJobDelegate();
     const jobId = typeof req.params.id === 'string' ? req.params.id : '';
     if (!jobId) {
       res.status(400).json({ message: 'job id is required' });
@@ -722,7 +745,7 @@ export const failUsbBridgeJob = async (req: Request, res: Response) => {
     }
 
     const errorMessage = typeof req.body?.error === 'string' ? req.body.error.slice(0, 500) : 'USB bridge failed to print';
-    const job = await prisma.printerJob.findFirst({
+    const job = await printerJob.findFirst({
       where: { id: jobId, outletId }
     });
 
@@ -734,7 +757,7 @@ export const failUsbBridgeJob = async (req: Request, res: Response) => {
     const nextAttempts = Number(job.attempts || 0) + 1;
     const shouldFailPermanently = nextAttempts >= Number(job.maxRetries || 1);
 
-    await prisma.printerJob.update({
+    await printerJob.update({
       where: { id: jobId },
       data: {
         attempts: nextAttempts,
@@ -759,7 +782,9 @@ export const failUsbBridgeJob = async (req: Request, res: Response) => {
       attempts: nextAttempts
     });
   } catch (error) {
-    res.status(401).json({ message: error instanceof Error ? error.message : 'Unauthorized' });
+    const message = error instanceof Error ? error.message : 'Unable to fail USB bridge job';
+    const status = message === 'Invalid bridge token' || message === 'Bridge token is required' || message === 'outletId is required' ? 401 : 503;
+    res.status(status).json({ message });
   }
 };
 

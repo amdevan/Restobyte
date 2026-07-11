@@ -145,13 +145,8 @@ export const openBrowserPrintDialog = async ({
   fontSizePx = 12,
   sideMarginMm = 4,
 }: BrowserPrintOptions): Promise<void> => {
-  if (typeof window === 'undefined') {
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
     throw new Error('Browser printing is only available in the browser.');
-  }
-
-  const printWindow = window.open('', '_blank', 'noopener,noreferrer');
-  if (!printWindow) {
-    throw new Error('Please allow pop-ups to print.');
   }
 
   const safeTitle = escapeHtml(title);
@@ -159,8 +154,7 @@ export const openBrowserPrintDialog = async ({
   const pageSize = getBrowserPrintPageSize(paperSize);
   const safeFontSize = Math.max(10, Number(fontSizePx) || 12);
   const safeMargin = Math.max(0, Number(sideMarginMm) || 0);
-
-  printWindow.document.write(`
+  const html = `
     <!DOCTYPE html>
     <html>
       <head>
@@ -198,15 +192,59 @@ export const openBrowserPrintDialog = async ({
         <pre>${safeContent}</pre>
       </body>
     </html>
-  `);
+  `;
 
-  printWindow.document.close();
+  await new Promise<void>((resolve, reject) => {
+    const iframe = document.createElement('iframe');
+    iframe.setAttribute('aria-hidden', 'true');
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    iframe.style.opacity = '0';
 
-  await new Promise<void>((resolve) => {
-    setTimeout(() => {
-      printWindow.focus();
-      printWindow.print();
-      resolve();
-    }, 250);
+    const cleanup = () => {
+      window.setTimeout(() => {
+        iframe.remove();
+      }, 1000);
+    };
+
+    iframe.onload = () => {
+      const frameWindow = iframe.contentWindow;
+      const frameDocument = frameWindow?.document;
+
+      if (!frameWindow || !frameDocument) {
+        cleanup();
+        reject(new Error('Could not open the browser print frame.'));
+        return;
+      }
+
+      frameWindow.focus();
+      window.setTimeout(() => {
+        try {
+          frameWindow.print();
+          cleanup();
+          resolve();
+        } catch (error) {
+          cleanup();
+          reject(error instanceof Error ? error : new Error('Browser print failed'));
+        }
+      }, 150);
+    };
+
+    document.body.appendChild(iframe);
+
+    const frameDocument = iframe.contentWindow?.document;
+    if (!frameDocument) {
+      cleanup();
+      reject(new Error('Could not access the browser print frame.'));
+      return;
+    }
+
+    frameDocument.open();
+    frameDocument.write(html);
+    frameDocument.close();
   });
 };

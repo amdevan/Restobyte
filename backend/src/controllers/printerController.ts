@@ -392,11 +392,18 @@ This is a sample KOT.
       }
     }
 
-    // Create a temporary file
     const tempDir = os.tmpdir();
     const tempFilePath = path.join(tempDir, `restobyte-print-${Date.now()}.txt`);
-    
-    fs.writeFileSync(tempFilePath, printContent, 'utf8');
+
+    // Keep direct thermal jobs raw-friendly so ESC/POS emphasis commands survive.
+    printContent = String(printContent || '')
+      .replace(/\r\n/g, '\n')
+      .replace(/\r/g, '\n')
+      .replace(/[^\x00-\x1F\x20-\x7E]/g, '')
+      .replace(/^\n+/, '')
+      .replace(/\n+$/, '\n');
+
+    fs.writeFileSync(tempFilePath, Buffer.from(printContent, 'latin1'));
 
     let printCommand = '';
     
@@ -408,7 +415,8 @@ This is a sample KOT.
         const { stdout } = await execAsync('lpstat -p');
         systemPrinters = stdout.split('\n')
           .filter(line => line.trim().startsWith('printer '))
-          .map(line => line.split(' ')[1]);
+          .map(line => line.split(' ')[1])
+          .filter((name): name is string => Boolean(name));
       } catch (e) {
         console.error('Failed to get system printers:', e);
       }
@@ -427,11 +435,11 @@ This is a sample KOT.
         }
       }
 
-      // macOS or Linux: use lpr
       if (printerToUse) {
-        printCommand = `lpr -P "${printerToUse}" "${tempFilePath}"`;
+        // Raw text keeps thermal alignment for thermal printers.
+        printCommand = `lpr -l -P "${printerToUse}" "${tempFilePath}"`;
       } else {
-        printCommand = `lpr "${tempFilePath}"`;
+        printCommand = `lpr -l "${tempFilePath}"`;
       }
     } else if (process.platform === 'win32') {
       // Windows: use print command or PowerShell

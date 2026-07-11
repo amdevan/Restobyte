@@ -636,7 +636,16 @@ export interface ApplicationSettings {
   timeFormat: '12h' | '24h';
   currencySymbolPosition: 'before' | 'after';
   decimalPlaces: number;
+  kotPaperSize: PaperSize;
   kotCharactersPerLine: number;
+  receiptPaperSize: PaperSize;
+  invoicePaperSize: PaperSize;
+  invoiceCharactersPerLine: number;
+  saleDetailsPaperSize: PaperSize;
+  saleDetailsCharactersPerLine: number;
+  invoiceFontSize: number;
+  invoiceSideMarginMm: number;
+  invoiceDividerStyle: 'solid' | 'dashed';
   defaultWalkInCustomerId: string;
   defaultOrderType: 'Dine In' | 'Delivery' | 'Pickup' | 'WhatsApp';
   autoClearHistoryDays?: number; // 0 = never auto-clear, number of days to keep history
@@ -644,7 +653,14 @@ export interface ApplicationSettings {
   invoiceFooterText?: string;
   invoiceShowLogo?: boolean;
   invoiceShowQrCode?: boolean;
+  invoiceShowRestaurantDetails?: boolean;
+  invoiceRestaurantSectionTitle?: string;
+  invoiceShowRestaurantName?: boolean;
+  invoiceShowRestaurantAddress?: boolean;
+  invoiceShowRestaurantPhone?: boolean;
+  invoiceShowRestaurantEmail?: boolean;
   invoiceShowCustomerDetails?: boolean;
+  invoiceCustomerSectionTitle?: string;
   invoiceShowCustomerName?: boolean;
   invoiceShowCustomerPhone?: boolean;
   invoiceShowCustomerEmail?: boolean;
@@ -729,6 +745,7 @@ export interface DeliveryPartner {
 
 export interface KOT {
   kotNumber: string;
+  customer?: string;
   table?: string;
   waiter?: string;
   timestamp: string;

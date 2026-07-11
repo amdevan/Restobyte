@@ -1,10 +1,11 @@
 
 import React, { useEffect, useRef } from 'react';
-import { KOT, SaleItem, Printer, PrinterType } from '../../types';
+import { KOT, PrinterType } from '../../types';
 import Button from '../common/Button';
 import Modal from '../common/Modal';
 import { FiPrinter, FiXCircle } from 'react-icons/fi';
 import { useRestaurantData } from '../../hooks/useRestaurantData';
+import { clampCharsPerLine, getEscPosBottomFeed, getEscPosEmphasizedTitle } from '../../utils/printSettings';
 
 interface KotModalProps {
   isOpen: boolean;
@@ -13,63 +14,113 @@ interface KotModalProps {
 }
 
 const KotModal: React.FC<KotModalProps> = ({ isOpen, onClose, kotData }) => {
-  const { printers, printKot } = useRestaurantData();
+  const { printers, printKot, applicationSettings } = useRestaurantData();
   const kotRef = useRef<HTMLDivElement>(null);
 
+  if (!kotData) return null;
+
   const generatePlainTextKot = (): string => {
-    let kotText = `
-----------------------------------------
-KITCHEN ORDER TICKET
-----------------------------------------
+    const lineWidth = clampCharsPerLine(applicationSettings?.kotCharactersPerLine, applicationSettings?.kotPaperSize);
+    const serialWidth = 4;
+    const columnGap = 1;
+    const qtyWidth = 4;
+    const nameWidth = lineWidth - serialWidth - columnGap - qtyWidth;
+    const divider = '-'.repeat(lineWidth);
+    const centerText = (value: string) => {
+      const text = value.trim();
+      if (!text) return '';
+      if (text.length >= lineWidth) return text;
+      const leftPad = Math.floor((lineWidth - text.length) / 2);
+      return `${' '.repeat(leftPad)}${text}`;
+    };
+    const formatTwoCol = (left: string, right: string) => {
+      const spaces = Math.max(1, lineWidth - left.length - right.length);
+      return `${left}${' '.repeat(spaces)}${right}`;
+    };
+    const wrapText = (value: string, width: number) => {
+      const words = value.trim().split(/\s+/).filter(Boolean);
+      const lines: string[] = [];
+      let current = '';
 
-KOT No: ${kotData.kotNumber}
-Table: ${kotData.table || 'N/A'}
-Waiter: ${kotData.waiter || 'N/A'}
-Time: ${kotData.timestamp}
+      words.forEach((word) => {
+        const candidate = current ? `${current} ${word}` : word;
+        if (candidate.length <= width) {
+          current = candidate;
+        } else {
+          if (current) lines.push(current);
+          current = word;
+        }
+      });
 
-----------------------------------------
-Items:
-----------------------------------------
-`;
-    kotData.items.forEach(item => {
-      kotText += `${item.quantity}x ${item.name}\n`;
+      if (current) lines.push(current);
+      return lines.length > 0 ? lines : [''];
+    };
+    const lines: string[] = [];
+    const formatLabelLine = (label: string, value: string) => {
+      const prefix = `${label} : `;
+      const wrapped = wrapText(value, Math.max(8, lineWidth - prefix.length));
+      lines.push(`${prefix}${wrapped[0]}`);
+      wrapped.slice(1).forEach((line) => {
+        lines.push(`${' '.repeat(prefix.length)}${line}`);
+      });
+    };
+
+    lines.push(getEscPosEmphasizedTitle('KOT', lineWidth) || centerText('KOT'));
+    lines.push(formatTwoCol(kotData.kotNumber, kotData.timestamp));
+    lines.push(divider);
+    formatLabelLine('Customer', kotData.customer || 'Walk-in Customer');
+    formatLabelLine('Table No.', kotData.table || 'N/A');
+    if (kotData.waiter) {
+      formatLabelLine('Waiter', kotData.waiter);
+    }
+    lines.push(divider);
+    lines.push(`${'Sl'.padEnd(serialWidth)}${' '.repeat(columnGap)}${'Item Name'.padEnd(nameWidth)}${'Qty.'.padStart(qtyWidth)}`);
+    lines.push(divider);
+
+    kotData.items.forEach((item, index) => {
+      const serial = String(index + 1).padEnd(serialWidth);
+      const nameLines = wrapText(item.name, nameWidth);
+      const qty = String(item.quantity).padStart(qtyWidth);
+      lines.push(`${serial}${' '.repeat(columnGap)}${nameLines[0].padEnd(nameWidth)}${qty}`);
+      nameLines.slice(1).forEach((line) => {
+        lines.push(`${' '.repeat(serialWidth + columnGap)}${line}`);
+      });
       if (item.notes) {
-        kotText += `  Notes: ${item.notes}\n`;
+        wrapText(`Note: ${item.notes}`, nameWidth).forEach((line) => {
+          lines.push(`${' '.repeat(serialWidth + columnGap)}${line}`);
+        });
       }
-      kotText += `\n`;
     });
-    kotText += `----------------------------------------
-Powered by RestoByte
-----------------------------------------
-`;
-    return kotText;
+
+    lines.push(divider);
+    lines.push(centerText(`Total Items : ${kotData.items.length}`));
+    lines.push(divider);
+
+    return `${lines.join('\r\n')}\r\n${getEscPosBottomFeed(12)}`;
   };
+
+  const kotPrinters = printers.filter(
+    (printer) => printer.type === PrinterType.KOT || printer.autoPrintKOT
+  );
+  const directKotPrinters = kotPrinters.filter((printer) => printer.isActive);
+  const kotPrintersToUse = directKotPrinters.length > 0 ? directKotPrinters : kotPrinters;
 
   // Auto-print KOT if configured
   useEffect(() => {
     if (isOpen && kotData) {
-      const autoPrintPrinters = printers.filter(p => 
-        p.type === PrinterType.KOT && p.autoPrintKot && p.isActive
-      );
+      const autoPrintPrinters = kotPrintersToUse.filter((printer) => printer.autoPrintKOT);
       if (autoPrintPrinters.length > 0) {
         const timer = setTimeout(() => {
           const content = generatePlainTextKot();
-          autoPrintPrinters.forEach(printer => printKot(printer.id, content));
+          autoPrintPrinters.forEach((printer) => printKot(printer.id, content));
         }, 500);
         return () => clearTimeout(timer);
       }
     }
-  }, [isOpen, kotData, printers, printKot]);
-
-  if (!kotData) return null;
+  }, [isOpen, kotData, kotPrintersToUse, printKot]);
 
   const handlePrint = () => {
-    // Find active KOT printers
-    const activeKotPrinters = printers.filter(p => 
-      p.type === PrinterType.KOT && p.isActive
-    );
-    
-    if (activeKotPrinters.length === 0) {
+    if (kotPrintersToUse.length === 0) {
       // Fallback to browser print if no printers configured
       if (!kotRef.current) return;
       
@@ -79,8 +130,7 @@ Powered by RestoByte
         return;
       }
       
-      const activeKotPrinter = printers.find(p => p.type === PrinterType.KOT && p.isActive);
-      const paperWidth = activeKotPrinter?.paperSize === '58mm' ? '58mm' : '80mm';
+      const paperWidth = '80mm';
       
       printWindow.document.write(`
         <!DOCTYPE html>
@@ -103,14 +153,18 @@ Powered by RestoByte
               .text-center { text-align: center; }
               .flex { display: flex; }
               .justify-between { justify-content: space-between; }
-              .border-b { border-bottom: 1px dashed #000; margin: 8px 0; padding-bottom: 8px; }
+              .border-b { border-bottom: 1px solid #000; margin: 8px 0; padding-bottom: 8px; }
               .mt-2 { margin-top: 8px; }
               .font-bold { font-weight: bold; }
-              .text-xl { font-size: 16px; }
-              .item-notes { font-size: 10px; padding-left: 40px; font-style: italic; }
+              .text-xl { font-size: 18px; }
+              .item-notes { font-size: 10px; padding-left: 28px; font-style: italic; }
+              table { width: 100%; border-collapse: collapse; }
+              th, td { padding: 2px 0; }
+              .text-left { text-align: left; }
+              .text-right { text-align: right; }
               @media print {
                 body { margin: 0; padding: 5mm; }
-                @page { margin: 0; size: auto; }
+                @page { margin: 0; size: 80mm auto; }
               }
             </style>
           </head>
@@ -127,37 +181,57 @@ Powered by RestoByte
     } else {
       // Use our backend print function
       const content = generatePlainTextKot();
-      activeKotPrinters.forEach(printer => printKot(printer.id, content));
+      kotPrintersToUse.forEach((printer) => printKot(printer.id, content));
     }
   };
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="KOT Preview">
       <div className="font-mono text-gray-800">
-        <div ref={kotRef} id="kot-print-area" className="p-4 bg-gray-50 border border-dashed">
-          <div className="kot-header text-center mb-4">
-            <h3 className="text-xl font-bold">KITCHEN ORDER TICKET</h3>
-            <p className="text-sm">{kotData.kotNumber}</p>
+        <div ref={kotRef} id="kot-print-area" className="mx-auto w-full max-w-[300px] bg-white p-4 border border-gray-300">
+          <div className="kot-header text-center mb-3">
+            <h3 className="text-5xl font-black tracking-[0.2em]">KOT</h3>
           </div>
-          <div className="kot-details text-sm border-b border-dashed pb-2 mb-2">
-            <div className="flex justify-between"><span>Table:</span> <span className="font-semibold">{kotData.table || 'N/A'}</span></div>
-            <div className="flex justify-between"><span>Waiter:</span> <span className="font-semibold">{kotData.waiter || 'N/A'}</span></div>
-            <div className="flex justify-between"><span>Time:</span> <span className="font-semibold">{kotData.timestamp}</span></div>
+          <div className="mb-3 flex justify-between text-sm">
+            <span>{kotData.kotNumber}</span>
+            <span>{kotData.timestamp}</span>
           </div>
-          <div className="kot-items mt-2">
-            {kotData.items.map((item, index) => (
-              <div key={`${item.id}-${index}`} className="mb-2">
-                <div className="kot-item flex items-start text-lg">
-                  <div className="item-qty font-bold mr-3">{item.quantity}x</div>
-                  <div className="item-name font-semibold">{item.name}</div>
-                </div>
-                {item.notes && (
-                  <div className="item-notes text-sm text-gray-600 pl-10">
-                    &raquo; {item.notes}
-                  </div>
-                )}
-              </div>
-            ))}
+          <div className="border-t border-b border-black py-3 text-sm space-y-2">
+            <div className="break-words"><span className="font-medium">Customer :</span> <span>{kotData.customer || 'Walk-in Customer'}</span></div>
+            <div className="break-words"><span className="font-medium">Table No. :</span> <span>{kotData.table || 'N/A'}</span></div>
+            {kotData.waiter && <div className="break-words"><span className="font-medium">Waiter :</span> <span>{kotData.waiter}</span></div>}
+          </div>
+          <div className="mt-3">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-black">
+                  <th className="py-2 text-left font-medium">Sl.No</th>
+                  <th className="py-2 text-left font-medium">Item Name</th>
+                  <th className="py-2 text-right font-medium">Qty.</th>
+                </tr>
+              </thead>
+              <tbody>
+                {kotData.items.map((item, index) => (
+                  <React.Fragment key={`${item.id}-${index}`}>
+                    <tr>
+                      <td className="py-1 align-top">{index + 1}</td>
+                      <td className="py-1 align-top break-words">{item.name}</td>
+                      <td className="py-1 text-right align-top">{item.quantity}</td>
+                    </tr>
+                    {item.notes && (
+                      <tr>
+                        <td />
+                        <td className="pb-1 text-sm italic text-gray-600">Note: {item.notes}</td>
+                        <td />
+                      </tr>
+                    )}
+                  </React.Fragment>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="mt-3 border-t border-b border-black py-2 text-right text-lg font-bold">
+            Total Items : {kotData.items.length}
           </div>
         </div>
         <div className="mt-6 flex justify-end space-x-3">

@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useRestaurantData } from '@/hooks/useRestaurantData';
-import { ApplicationSettings } from '@/types';
+import { ApplicationSettings, PaperSize } from '@/types';
 import Card from '@/components/common/Card';
 import Input from '@/components/common/Input';
 import Button from '@/components/common/Button';
 import { FiSave, FiCheckCircle, FiSettings, FiGlobe, FiPrinter, FiShoppingCart } from 'react-icons/fi';
+import { clampCharsPerLine, getPaperSizeConfig } from '@/utils/printSettings';
 
 const AppSettingsPage: React.FC = () => {
     const { applicationSettings, updateApplicationSettings, customers } = useRestaurantData();
@@ -16,6 +17,10 @@ const AppSettingsPage: React.FC = () => {
         setLocalSettings(applicationSettings);
     }, [applicationSettings]);
 
+    const kotPaperSizeConfig = getPaperSizeConfig(localSettings.kotPaperSize);
+    const invoicePaperSizeConfig = getPaperSizeConfig(localSettings.invoicePaperSize);
+    const saleDetailsPaperSizeConfig = getPaperSizeConfig(localSettings.saleDetailsPaperSize);
+
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value, type } = e.target;
         
@@ -23,11 +28,67 @@ const AppSettingsPage: React.FC = () => {
             const checked = (e.target as HTMLInputElement).checked;
             setLocalSettings(prev => ({ ...prev, [name]: checked }));
         } else {
+            if (name === 'kotPaperSize') {
+                const nextPaperSize = value as PaperSize;
+                setLocalSettings(prev => ({
+                    ...prev,
+                    kotPaperSize: nextPaperSize,
+                    kotCharactersPerLine: clampCharsPerLine(prev.kotCharactersPerLine, nextPaperSize),
+                }));
+                return;
+            }
+
             // Handle number inputs specifically
-            const numericFields = ['decimalPlaces', 'kotCharactersPerLine'];
+            const numericFields = [
+                'decimalPlaces',
+                'kotCharactersPerLine',
+                'invoiceCharactersPerLine',
+                'saleDetailsCharactersPerLine',
+                'invoiceFontSize',
+                'invoiceSideMarginMm',
+            ];
             if (numericFields.includes(name)) {
+                if (name === 'kotCharactersPerLine') {
+                    setLocalSettings(prev => ({
+                        ...prev,
+                        kotCharactersPerLine: clampCharsPerLine(Number(value), prev.kotPaperSize),
+                    }));
+                    return;
+                }
+                if (name === 'invoiceCharactersPerLine') {
+                    setLocalSettings(prev => ({
+                        ...prev,
+                        invoiceCharactersPerLine: clampCharsPerLine(Number(value), prev.invoicePaperSize),
+                    }));
+                    return;
+                }
+                if (name === 'saleDetailsCharactersPerLine') {
+                    setLocalSettings(prev => ({
+                        ...prev,
+                        saleDetailsCharactersPerLine: clampCharsPerLine(Number(value), prev.saleDetailsPaperSize),
+                    }));
+                    return;
+                }
                 setLocalSettings(prev => ({ ...prev, [name]: Number(value) }));
             } else {
+                if (name === 'invoicePaperSize') {
+                    const nextPaperSize = value as PaperSize;
+                    setLocalSettings(prev => ({
+                        ...prev,
+                        invoicePaperSize: nextPaperSize,
+                        invoiceCharactersPerLine: clampCharsPerLine(prev.invoiceCharactersPerLine, nextPaperSize),
+                    }));
+                    return;
+                }
+                if (name === 'saleDetailsPaperSize') {
+                    const nextPaperSize = value as PaperSize;
+                    setLocalSettings(prev => ({
+                        ...prev,
+                        saleDetailsPaperSize: nextPaperSize,
+                        saleDetailsCharactersPerLine: clampCharsPerLine(prev.saleDetailsCharactersPerLine, nextPaperSize),
+                    }));
+                    return;
+                }
                 setLocalSettings(prev => ({ ...prev, [name]: value }));
             }
         }
@@ -104,10 +165,52 @@ const AppSettingsPage: React.FC = () => {
 
             {activeTab === 'print' && (
             <Card title="Print Settings" icon={<FiPrinter />}>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-4">
-                     <Input label="KOT Characters Per Line" name="kotCharactersPerLine" type="number" value={localSettings.kotCharactersPerLine} onChange={handleInputChange} min="20" max="80" containerClassName="mb-0"/>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
+                    <div>
+                        <label htmlFor="kotPaperSize" className="block text-sm font-medium text-gray-700 mb-1">KOT Paper Size</label>
+                        <select
+                            id="kotPaperSize"
+                            name="kotPaperSize"
+                            value={localSettings.kotPaperSize}
+                            onChange={handleInputChange}
+                            className="w-full p-2 border border-gray-300 rounded-md"
+                        >
+                            <option value={PaperSize['58mm']}>58mm</option>
+                            <option value={PaperSize['80mm']}>80mm</option>
+                            <option value={PaperSize.A4}>A4</option>
+                            <option value={PaperSize.Label}>Label</option>
+                        </select>
+                    </div>
+                    <Input
+                        label="KOT Characters Per Line"
+                        name="kotCharactersPerLine"
+                        type="number"
+                        value={localSettings.kotCharactersPerLine}
+                        onChange={handleInputChange}
+                        min={String(kotPaperSizeConfig.minCharsPerLine)}
+                        max={String(kotPaperSizeConfig.maxCharsPerLine)}
+                        containerClassName="mb-0"
+                    />
+                    <div>
+                        <label htmlFor="receiptPaperSize" className="block text-sm font-medium text-gray-700 mb-1">Receipt Paper Size</label>
+                        <select
+                            id="receiptPaperSize"
+                            name="receiptPaperSize"
+                            value={localSettings.receiptPaperSize}
+                            onChange={handleInputChange}
+                            className="w-full p-2 border border-gray-300 rounded-md"
+                        >
+                            <option value={PaperSize['58mm']}>58mm</option>
+                            <option value={PaperSize['80mm']}>80mm</option>
+                            <option value={PaperSize.A4}>A4</option>
+                            <option value={PaperSize.Label}>Label</option>
+                        </select>
+                    </div>
                 </div>
-                <p className="text-xs text-gray-500 p-4 pt-0">Set the number of characters per line for Kitchen Order Ticket (KOT) printers to ensure proper formatting.</p>
+                <p className="text-xs text-gray-500 p-4 pt-0">
+                    KOT width now follows the selected paper size. Recommended characters per line for {localSettings.kotPaperSize}: {kotPaperSizeConfig.recommendedCharsPerLine}
+                    {' '}({kotPaperSizeConfig.minCharsPerLine}-{kotPaperSizeConfig.maxCharsPerLine} supported).
+                </p>
             </Card>
             )}
 
@@ -116,6 +219,89 @@ const AppSettingsPage: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
                      <Input label="Invoice Title" name="invoiceTitle" type="text" value={localSettings.invoiceTitle || ''} onChange={handleInputChange} containerClassName="mb-0"/>
                      <Input label="Footer Text" name="invoiceFooterText" type="text" value={localSettings.invoiceFooterText || ''} onChange={handleInputChange} containerClassName="mb-0"/>
+                     <div>
+                        <label htmlFor="invoicePaperSize" className="block text-sm font-medium text-gray-700 mb-1">Invoice Paper Size</label>
+                        <select
+                            id="invoicePaperSize"
+                            name="invoicePaperSize"
+                            value={localSettings.invoicePaperSize}
+                            onChange={handleInputChange}
+                            className="w-full p-2 border border-gray-300 rounded-md"
+                        >
+                            <option value={PaperSize['58mm']}>58mm</option>
+                            <option value={PaperSize['80mm']}>80mm</option>
+                            <option value={PaperSize.A4}>A4</option>
+                            <option value={PaperSize.Label}>Label</option>
+                        </select>
+                    </div>
+                    <Input
+                        label="Invoice Characters Per Line"
+                        name="invoiceCharactersPerLine"
+                        type="number"
+                        value={localSettings.invoiceCharactersPerLine}
+                        onChange={handleInputChange}
+                        min={String(invoicePaperSizeConfig.minCharsPerLine)}
+                        max={String(invoicePaperSizeConfig.maxCharsPerLine)}
+                        containerClassName="mb-0"
+                    />
+                    <div>
+                        <label htmlFor="saleDetailsPaperSize" className="block text-sm font-medium text-gray-700 mb-1">Sale Details Paper Size</label>
+                        <select
+                            id="saleDetailsPaperSize"
+                            name="saleDetailsPaperSize"
+                            value={localSettings.saleDetailsPaperSize}
+                            onChange={handleInputChange}
+                            className="w-full p-2 border border-gray-300 rounded-md"
+                        >
+                            <option value={PaperSize['58mm']}>58mm</option>
+                            <option value={PaperSize['80mm']}>80mm</option>
+                            <option value={PaperSize.A4}>A4</option>
+                            <option value={PaperSize.Label}>Label</option>
+                        </select>
+                    </div>
+                    <Input
+                        label="Sale Details Characters Per Line"
+                        name="saleDetailsCharactersPerLine"
+                        type="number"
+                        value={localSettings.saleDetailsCharactersPerLine}
+                        onChange={handleInputChange}
+                        min={String(saleDetailsPaperSizeConfig.minCharsPerLine)}
+                        max={String(saleDetailsPaperSizeConfig.maxCharsPerLine)}
+                        containerClassName="mb-0"
+                    />
+                    <Input
+                        label="Invoice Font Size"
+                        name="invoiceFontSize"
+                        type="number"
+                        value={localSettings.invoiceFontSize}
+                        onChange={handleInputChange}
+                        min="8"
+                        max="24"
+                        containerClassName="mb-0"
+                    />
+                    <Input
+                        label="Invoice Side Margin (mm)"
+                        name="invoiceSideMarginMm"
+                        type="number"
+                        value={localSettings.invoiceSideMarginMm}
+                        onChange={handleInputChange}
+                        min="0"
+                        max="20"
+                        containerClassName="mb-0"
+                    />
+                    <div>
+                        <label htmlFor="invoiceDividerStyle" className="block text-sm font-medium text-gray-700 mb-1">Divider Style</label>
+                        <select
+                            id="invoiceDividerStyle"
+                            name="invoiceDividerStyle"
+                            value={localSettings.invoiceDividerStyle}
+                            onChange={handleInputChange}
+                            className="w-full p-2 border border-gray-300 rounded-md"
+                        >
+                            <option value="dashed">Dashed</option>
+                            <option value="solid">Solid</option>
+                        </select>
+                    </div>
                      
                      <div className="flex items-center gap-2">
                         <input 
@@ -142,6 +328,78 @@ const AppSettingsPage: React.FC = () => {
                     </div>
 
                     <div className="flex items-center gap-2">
+                        <input
+                            type="checkbox"
+                            id="invoiceShowRestaurantDetails"
+                            name="invoiceShowRestaurantDetails"
+                            checked={localSettings.invoiceShowRestaurantDetails ?? true}
+                            onChange={handleInputChange}
+                            className="w-4 h-4 text-sky-600 rounded border-gray-300 focus:ring-sky-500"
+                        />
+                        <label htmlFor="invoiceShowRestaurantDetails" className="text-sm font-medium text-gray-700">Show Restaurant Information</label>
+                    </div>
+
+                    {localSettings.invoiceShowRestaurantDetails && (
+                        <div className="col-span-1 md:col-span-2 ml-6 space-y-3 border-l-2 border-gray-200 pl-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        type="checkbox"
+                                        id="invoiceShowRestaurantName"
+                                        name="invoiceShowRestaurantName"
+                                        checked={localSettings.invoiceShowRestaurantName ?? true}
+                                        onChange={handleInputChange}
+                                        className="w-4 h-4 text-sky-600 rounded border-gray-300 focus:ring-sky-500"
+                                    />
+                                    <label htmlFor="invoiceShowRestaurantName" className="text-sm font-medium text-gray-700">Show Restaurant Name</label>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        type="checkbox"
+                                        id="invoiceShowRestaurantAddress"
+                                        name="invoiceShowRestaurantAddress"
+                                        checked={localSettings.invoiceShowRestaurantAddress ?? true}
+                                        onChange={handleInputChange}
+                                        className="w-4 h-4 text-sky-600 rounded border-gray-300 focus:ring-sky-500"
+                                    />
+                                    <label htmlFor="invoiceShowRestaurantAddress" className="text-sm font-medium text-gray-700">Show Restaurant Address</label>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        type="checkbox"
+                                        id="invoiceShowRestaurantPhone"
+                                        name="invoiceShowRestaurantPhone"
+                                        checked={localSettings.invoiceShowRestaurantPhone ?? true}
+                                        onChange={handleInputChange}
+                                        className="w-4 h-4 text-sky-600 rounded border-gray-300 focus:ring-sky-500"
+                                    />
+                                    <label htmlFor="invoiceShowRestaurantPhone" className="text-sm font-medium text-gray-700">Show Restaurant Phone</label>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        type="checkbox"
+                                        id="invoiceShowRestaurantEmail"
+                                        name="invoiceShowRestaurantEmail"
+                                        checked={localSettings.invoiceShowRestaurantEmail ?? true}
+                                        onChange={handleInputChange}
+                                        className="w-4 h-4 text-sky-600 rounded border-gray-300 focus:ring-sky-500"
+                                    />
+                                    <label htmlFor="invoiceShowRestaurantEmail" className="text-sm font-medium text-gray-700">Show Restaurant Email</label>
+                                </div>
+                            </div>
+                            <Input
+                                label="Custom Section"
+                                name="invoiceRestaurantSectionTitle"
+                                type="text"
+                                value={localSettings.invoiceRestaurantSectionTitle || ''}
+                                onChange={handleInputChange}
+                                placeholder="Optional custom text for restaurant info"
+                                containerClassName="mb-0"
+                            />
+                        </div>
+                    )}
+
+                    <div className="flex items-center gap-2">
                         <input 
                             type="checkbox" 
                             id="invoiceShowCustomerDetails" 
@@ -154,7 +412,15 @@ const AppSettingsPage: React.FC = () => {
                     </div>
 
                     {localSettings.invoiceShowCustomerDetails && (
-                        <div className="col-span-1 md:col-span-2 ml-6 space-y-2 border-l-2 border-gray-200 pl-4">
+                        <div className="col-span-1 md:col-span-2 ml-6 space-y-3 border-l-2 border-gray-200 pl-4">
+                            <Input
+                                label="Customer Section Title"
+                                name="invoiceCustomerSectionTitle"
+                                type="text"
+                                value={localSettings.invoiceCustomerSectionTitle || ''}
+                                onChange={handleInputChange}
+                                containerClassName="mb-0"
+                            />
                             <div className="flex items-center gap-2">
                                 <input 
                                     type="checkbox" 
@@ -333,6 +599,10 @@ const AppSettingsPage: React.FC = () => {
                         </div>
                     )}
                 </div>
+                <p className="text-xs text-gray-500 px-4 pb-4">
+                    Invoice width follows {localSettings.invoicePaperSize} with {invoicePaperSizeConfig.minCharsPerLine}-{invoicePaperSizeConfig.maxCharsPerLine} supported characters.
+                    {' '}Sale Details uses {localSettings.saleDetailsPaperSize} with {saleDetailsPaperSizeConfig.minCharsPerLine}-{saleDetailsPaperSizeConfig.maxCharsPerLine} supported characters.
+                </p>
             </Card>
             )}
             

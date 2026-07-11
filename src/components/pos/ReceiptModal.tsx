@@ -1,10 +1,11 @@
-import React, { useEffect, useRef } from 'react';
-import { Sale, SaleItem, Customer, Printer, PrinterType } from '../../types';
+import React, { useRef } from 'react';
+import { Sale, SaleItem, Customer, PrinterType } from '../../types';
 import Button from '../common/Button';
 import { FiPrinter, FiXCircle, FiDownload } from 'react-icons/fi';
 import { useRestaurantData } from '../../hooks/useRestaurantData';
 import html2pdf from 'html2pdf.js';
 import { QRCodeSVG } from 'qrcode.react';
+import { applyLeftMarginToText, getConfiguredLineWidth, getDividerLine, getEscPosBottomFeed, getEscPosEmphasizedTitle, getMarginSpaces } from '../../utils/printSettings';
 
 interface ReceiptModalProps {
   onClose: () => void;
@@ -16,21 +17,50 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ onClose, sale }) => {
   const currentOutlet = getSingleActiveOutlet();
   const receiptRef = useRef<HTMLDivElement>(null);
 
+  if (!sale) return null;
+
   const generatePlainTextInvoice = (): string => {
-    const outletName = currentOutlet?.restaurantName || websiteSettings.whiteLabel.appName || 'Demo Restaurant';
+    const marginSpaces = getMarginSpaces(applicationSettings.invoiceSideMarginMm);
+    const lineWidth = Math.max(24, getConfiguredLineWidth(
+      applicationSettings.invoicePaperSize,
+      applicationSettings.invoiceCharactersPerLine
+    ) - marginSpaces * 2);
+    const divider = getDividerLine(lineWidth, applicationSettings.invoiceDividerStyle);
+    const itemNameWidth = Math.max(12, lineWidth - 18);
+    const outletName = currentOutlet?.restaurantName || currentOutlet?.name || websiteSettings.whiteLabel.appName || 'Demo Restaurant';
     const outletAddress = currentOutlet?.address || websiteSettings.contactUsContent.address || 'Address not set';
     const outletPhone = currentOutlet?.phone || websiteSettings.contactUsContent.phone || 'Phone not set';
+    const outletEmail = currentOutlet?.email || websiteSettings.contactUsContent.email || '';
     const customer: Customer | undefined = sale.customerId ? customers.find(c => c.id === sale.customerId) : undefined;
-    let invoiceText = `
-----------------------------------------
-${outletName}
-${outletAddress}
-Tel: ${outletPhone}
-----------------------------------------
-
-${applicationSettings.invoiceTitle || 'INVOICE'}
-Bill No: DNBILL ${sale.id.slice(-4).toUpperCase()}
-`;
+    const showRestaurantDetails = applicationSettings.invoiceShowRestaurantDetails ?? true;
+    const showRestaurantName = applicationSettings.invoiceShowRestaurantName ?? true;
+    const showRestaurantAddress = applicationSettings.invoiceShowRestaurantAddress ?? true;
+    const showRestaurantPhone = applicationSettings.invoiceShowRestaurantPhone ?? true;
+    const showRestaurantEmail = applicationSettings.invoiceShowRestaurantEmail ?? true;
+    let invoiceText = `${divider}\n`;
+    if (showRestaurantDetails) {
+      if (showRestaurantName) invoiceText += getEscPosEmphasizedTitle(outletName, lineWidth) || `${outletName.toUpperCase()}\n`;
+      if (showRestaurantAddress) invoiceText += `${outletAddress}\n`;
+      if (showRestaurantPhone) invoiceText += `Tel: ${outletPhone}\n`;
+      if (showRestaurantEmail && outletEmail) invoiceText += `Email: ${outletEmail}\n`;
+      if (applicationSettings.invoiceRestaurantSectionTitle?.trim()) {
+        invoiceText += `${applicationSettings.invoiceRestaurantSectionTitle.trim()}\n`;
+      }
+      invoiceText += `${divider}\n`;
+    }
+    invoiceText += `\n${applicationSettings.invoiceTitle || 'INVOICE'}\n`;
+    invoiceText += `Bill No: DNBILL ${sale.id.slice(-4).toUpperCase()}\n`;
+    if (applicationSettings.invoiceShowCustomerDetails && customer) {
+      invoiceText += `${applicationSettings.invoiceCustomerSectionTitle || 'Customer Details'}\n`;
+      invoiceText += `${divider}\n`;
+      if (applicationSettings.invoiceShowCustomerName) invoiceText += `Name: ${customer.name}\n`;
+      if (applicationSettings.invoiceShowCustomerPhone && customer.phone) invoiceText += `Phone: ${customer.phone}\n`;
+      if (applicationSettings.invoiceShowCustomerEmail && customer.email) invoiceText += `Email: ${customer.email}\n`;
+      if (applicationSettings.invoiceShowCustomerAddress && customer.address) invoiceText += `Address: ${customer.address}\n`;
+      if (applicationSettings.invoiceShowCustomerCompany && customer.companyName) invoiceText += `Company: ${customer.companyName}\n`;
+      if (applicationSettings.invoiceShowCustomerVatPan && customer.vatPan) invoiceText += `VAT/PAN: ${customer.vatPan}\n`;
+      invoiceText += `${divider}\n`;
+    }
     if (sale.assignedTableName) {
       invoiceText += `Table: ${sale.assignedTableName}  Pax: ${sale.pax || 1}\n`;
     }
@@ -39,17 +69,17 @@ Bill No: DNBILL ${sale.id.slice(-4).toUpperCase()}
     }
     invoiceText += `Date: ${new Date(sale.saleDate).toLocaleString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}\n`;
     invoiceText += `Bill By: Admin\n\n`;
-    invoiceText += `----------------------------------------\n`;
-    invoiceText += `Item                     Qty   Rate   Amount\n`;
-    invoiceText += `----------------------------------------\n`;
+    invoiceText += `${divider}\n`;
+    invoiceText += `${'Item'.padEnd(itemNameWidth)}Qty   Rate   Amount\n`;
+    invoiceText += `${divider}\n`;
     sale.items.forEach(item => {
-      const name = item.name.substring(0, 22).padEnd(22);
+      const name = item.name.substring(0, itemNameWidth).padEnd(itemNameWidth);
       const qty = item.quantity.toString().padStart(3);
       const rate = item.price.toFixed(2).padStart(6);
       const amount = (item.price * item.quantity).toFixed(2).padStart(8);
       invoiceText += `${name}${qty} ${rate} ${amount}\n`;
     });
-    invoiceText += `----------------------------------------\n`;
+    invoiceText += `${divider}\n`;
     invoiceText += `Items: ${sale.items.length}     Sub Total: ${sale.subTotal.toFixed(2)}\n`;
     let totalTax = 0;
     sale.taxDetails.forEach(tax => {
@@ -64,48 +94,32 @@ Bill No: DNBILL ${sale.id.slice(-4).toUpperCase()}
       invoiceText += `Tip: ${sale.tipAmount.toFixed(2)}\n`;
     }
     invoiceText += `\nGrand Total: ${sale.totalAmount.toFixed(2)}\n`;
-    invoiceText += `----------------------------------------\n\n`;
+    invoiceText += `${divider}\n\n`;
     if (applicationSettings.invoiceShowPaymentDetails) {
       if (sale.paymentMethod) invoiceText += `Payment: ${sale.paymentMethod}\n`;
       invoiceText += `Paid: ${(sale.receivedAmount || sale.totalAmount).toFixed(2)}\n`;
-      if (sale.returnAmount > 0 || (sale.receivedAmount && sale.receivedAmount > sale.totalAmount)) {
-        invoiceText += `Change: ${(sale.returnAmount || (sale.receivedAmount || sale.totalAmount) - sale.totalAmount).toFixed(2)}\n`;
+      if ((sale.returnAmount ?? 0) > 0 || (sale.receivedAmount && sale.receivedAmount > sale.totalAmount)) {
+        invoiceText += `Change: ${((sale.returnAmount ?? 0) || (sale.receivedAmount || sale.totalAmount) - sale.totalAmount).toFixed(2)}\n`;
       }
       invoiceText += `\n`;
     }
     invoiceText += `${applicationSettings.invoiceFooterText || 'Thank you for your business!'}\n`;
     invoiceText += `Powered by RestoByte\n`;
-    invoiceText += `----------------------------------------\n`;
-    return invoiceText;
+    invoiceText += `${divider}\n`;
+    return `${applyLeftMarginToText(invoiceText, marginSpaces)}${getEscPosBottomFeed(12)}`;
   };
   
-  // Auto-print receipt if configured
-  useEffect(() => {
-    if (sale) {
-      const autoPrintPrinters = printers.filter(p => 
-        p.type === PrinterType.Receipt && p.autoPrintReceipt && p.isActive
-      );
-      if (autoPrintPrinters.length > 0) {
-        const timer = setTimeout(() => {
-          const content = generatePlainTextInvoice();
-          autoPrintPrinters.forEach(printer => printInvoice(printer.id, content));
-        }, 500);
-        return () => clearTimeout(timer);
-      }
-    }
-  }, [sale, printers, printInvoice]);
-
+  const receiptPrinters = printers.filter(
+    (printer) => printer.type === PrinterType.Receipt || printer.autoPrintReceipt
+  );
+  const directReceiptPrinters = receiptPrinters.filter((printer) => printer.isActive);
+  const receiptPrintersToUse = directReceiptPrinters.length > 0 ? directReceiptPrinters : receiptPrinters;
   if (!sale) return null;
 
   const customer: Customer | undefined = sale.customerId ? customers.find(c => c.id === sale.customerId) : undefined;
 
   const handlePrint = () => {
-    // Find active receipt printers
-    const activeReceiptPrinters = printers.filter(p => 
-      p.type === PrinterType.Receipt && p.isActive
-    );
-    
-    if (activeReceiptPrinters.length === 0) {
+    if (receiptPrintersToUse.length === 0) {
       // Fallback to browser print if no printers configured
       if (!receiptRef.current) return;
       
@@ -115,8 +129,9 @@ Bill No: DNBILL ${sale.id.slice(-4).toUpperCase()}
         return;
       }
       
-      const activeReceiptPrinter = printers.find(p => p.type === PrinterType.Receipt && p.isActive);
-      const paperWidth = activeReceiptPrinter?.paperSize === '58mm' ? '58mm' : '80mm';
+      const configuredReceiptPrinter = receiptPrinters[0];
+      const paperWidth = configuredReceiptPrinter?.paperSize || applicationSettings.invoicePaperSize || '80mm';
+      const borderStyle = applicationSettings.invoiceDividerStyle === 'solid' ? 'solid' : 'dashed';
       
       printWindow.document.write(`
         <!DOCTYPE html>
@@ -132,16 +147,16 @@ Bill No: DNBILL ${sale.id.slice(-4).toUpperCase()}
               }
               body {
                 width: ${paperWidth};
-                padding: 5mm;
-                font-size: 12px;
+                padding: ${applicationSettings.invoiceSideMarginMm}mm;
+                font-size: ${applicationSettings.invoiceFontSize}px;
                 line-height: 1.4;
               }
               .text-center { text-align: center; }
               .text-right { text-align: right; }
               .flex { display: flex; }
               .justify-between { justify-content: space-between; }
-              .border-t { border-top: 1px dashed #000; margin: 8px 0; padding-top: 8px; }
-              .border-b { border-bottom: 1px dashed #000; margin: 8px 0; padding-bottom: 8px; }
+              .border-t { border-top: 1px ${borderStyle} #000; margin: 8px 0; padding-top: 8px; }
+              .border-b { border-bottom: 1px ${borderStyle} #000; margin: 8px 0; padding-bottom: 8px; }
               .mt-2 { margin-top: 8px; }
               .mt-4 { margin-top: 16px; }
               .mb-2 { margin-bottom: 8px; }
@@ -152,7 +167,7 @@ Bill No: DNBILL ${sale.id.slice(-4).toUpperCase()}
               table { width: 100%; border-collapse: collapse; margin: 8px 0; }
               td { vertical-align: top; }
               @media print {
-                body { margin: 0; padding: 5mm; }
+                body { margin: 0; padding: ${applicationSettings.invoiceSideMarginMm}mm; font-size: ${applicationSettings.invoiceFontSize}px; }
                 @page { margin: 0; size: auto; }
               }
             </style>
@@ -170,7 +185,9 @@ Bill No: DNBILL ${sale.id.slice(-4).toUpperCase()}
     } else {
       // Use our backend print function
       const content = generatePlainTextInvoice();
-      activeReceiptPrinters.forEach(printer => printInvoice(printer.id, content));
+      receiptPrintersToUse.forEach((printer) => {
+        void printInvoice(printer.id, content);
+      });
     }
   };
 
@@ -181,22 +198,27 @@ Bill No: DNBILL ${sale.id.slice(-4).toUpperCase()}
     const options = {
       margin: 0.5,
       filename: `invoice-${sale.id.slice(-6).toUpperCase()}.pdf`,
-      image: { type: 'jpeg', quality: 0.98 },
+      image: { type: 'jpeg' as const, quality: 0.98 },
       html2canvas: { scale: 2, useCORS: true },
-      jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+      jsPDF: { unit: 'in' as const, format: 'letter' as const, orientation: 'portrait' as const }
     };
 
     html2pdf().set(options).from(receiptElement).save();
   };
 
-  const outletName = currentOutlet?.restaurantName || websiteSettings.whiteLabel.appName || 'Demo Restaurant';
+  const outletName = currentOutlet?.restaurantName || currentOutlet?.name || websiteSettings.whiteLabel.appName || 'Demo Restaurant';
   const outletAddress = currentOutlet?.address || websiteSettings.contactUsContent.address || 'Address not set';
   const outletPhone = currentOutlet?.phone || websiteSettings.contactUsContent.phone || 'Phone not set';
-  const outletEmail = websiteSettings.contactUsContent.email || 'info@restobyte.com';
+  const outletEmail = currentOutlet?.email || websiteSettings.contactUsContent.email || 'info@restobyte.com';
+  const showRestaurantDetails = applicationSettings.invoiceShowRestaurantDetails ?? true;
+  const showRestaurantName = applicationSettings.invoiceShowRestaurantName ?? true;
+  const showRestaurantAddress = applicationSettings.invoiceShowRestaurantAddress ?? true;
+  const showRestaurantPhone = applicationSettings.invoiceShowRestaurantPhone ?? true;
+  const showRestaurantEmail = applicationSettings.invoiceShowRestaurantEmail ?? true;
 
   // Calculate tax breakdown from real tax details
   let totalTax = 0;
-  const taxRows: JSX.Element[] = [];
+  const taxRows: React.ReactElement[] = [];
   sale.taxDetails.forEach(tax => {
     totalTax += tax.amount;
     if (tax.name.toLowerCase().includes('cgst')) {
@@ -225,26 +247,46 @@ Bill No: DNBILL ${sale.id.slice(-4).toUpperCase()}
 
   return (
     <div className="text-gray-700">
-      <div ref={receiptRef} id="receipt-content" className="bg-white p-4 rounded-lg max-w-md mx-auto">
+      <div
+        ref={receiptRef}
+        id="receipt-content"
+        className="bg-white rounded-lg max-w-md mx-auto"
+        style={{
+          padding: `${applicationSettings.invoiceSideMarginMm}mm`,
+          fontSize: `${applicationSettings.invoiceFontSize}px`,
+        }}
+      >
         {/* Header Section */}
         <div className="text-center mb-4">
             {(applicationSettings.invoiceShowLogo && (currentOutlet?.logoUrl || websiteSettings.whiteLabel.logoUrl)) && (
                 <img 
                     src={currentOutlet?.logoUrl || websiteSettings.whiteLabel.logoUrl} 
                     alt={outletName} 
-                    className="max-h-20 mx-auto mb-2"
+                    className="max-h-20 mx-auto mb-3"
                 />
             )}
-            <h2 className="text-2xl font-bold text-gray-700">{outletName}</h2>
-            <p className="text-sm text-gray-600 mt-1">{outletAddress}</p>
-            <p className="text-sm text-gray-600">Tel No.: {outletPhone}</p>
-            {outletEmail && <p className="text-sm text-gray-600">Email: {outletEmail}</p>}
+            {showRestaurantDetails && showRestaurantName && (
+              <h2
+                className="text-gray-700"
+                style={{ fontSize: '3rem', fontWeight: 900, lineHeight: 1.05, letterSpacing: '0.03em' }}
+              >
+                {outletName}
+              </h2>
+            )}
+            {showRestaurantDetails && showRestaurantAddress && <p className="text-sm text-gray-600 mt-1">{outletAddress}</p>}
+            {showRestaurantDetails && showRestaurantPhone && <p className="text-sm text-gray-600">Tel No.: {outletPhone}</p>}
+            {showRestaurantDetails && showRestaurantEmail && outletEmail && <p className="text-sm text-gray-600">Email: {outletEmail}</p>}
+            {showRestaurantDetails && applicationSettings.invoiceRestaurantSectionTitle?.trim() && (
+              <p className="text-sm font-semibold uppercase tracking-wide text-gray-500 mt-2">
+                {applicationSettings.invoiceRestaurantSectionTitle.trim()}
+              </p>
+            )}
         </div>
 
         {/* Customer Section */}
         {applicationSettings.invoiceShowCustomerDetails && customer && (
           <div className="border-t-2 border-b-2 border-gray-300 py-3 mb-4">
-            <h4 className="text-lg font-bold text-gray-800 mb-2">Customer Details</h4>
+            <h4 className="text-lg font-bold text-gray-800 mb-2">{applicationSettings.invoiceCustomerSectionTitle || 'Customer Details'}</h4>
             {applicationSettings.invoiceShowCustomerName && <p className="text-sm text-gray-700"><strong>Name:</strong> {customer.name}</p>}
             {applicationSettings.invoiceShowCustomerPhone && customer.phone && <p className="text-sm text-gray-700"><strong>Phone:</strong> {customer.phone}</p>}
             {applicationSettings.invoiceShowCustomerEmail && customer.email && <p className="text-sm text-gray-700"><strong>Email:</strong> {customer.email}</p>}
@@ -256,7 +298,12 @@ Bill No: DNBILL ${sale.id.slice(-4).toUpperCase()}
 
         {/* Order Type */}
         <div className="text-center my-2">
-          <h3 className="text-2xl font-bold text-gray-800 border-y-2 border-black py-2">{applicationSettings.invoiceTitle || sale.orderType || 'Invoice'}</h3>
+          <h3
+            className="text-gray-800 border-y-2 border-black py-2"
+            style={{ fontSize: '1.75rem', fontWeight: 800, lineHeight: 1.2 }}
+          >
+            {applicationSettings.invoiceTitle || sale.orderType || 'Invoice'}
+          </h3>
         </div>
 
         {/* Invoice Details */}
@@ -291,10 +338,10 @@ Bill No: DNBILL ${sale.id.slice(-4).toUpperCase()}
         <table className="w-full mb-4 border-t-2 border-b-2 border-black">
           <thead>
             <tr className="border-b-2 border-black">
-              <th className="text-left py-2 text-lg font-bold text-gray-800">Item Name</th>
-              <th className="text-center py-2 text-lg font-bold text-gray-800">Qty</th>
-              <th className="text-right py-2 text-lg font-bold text-gray-800">Rate</th>
-              <th className="text-right py-2 text-lg font-bold text-gray-800">Amount</th>
+              <th className="text-left py-2 text-gray-800" style={{ fontSize: '1.125rem', fontWeight: 800 }}>Item Name</th>
+              <th className="text-center py-2 text-gray-800" style={{ fontSize: '1.125rem', fontWeight: 800 }}>Qty</th>
+              <th className="text-right py-2 text-gray-800" style={{ fontSize: '1.125rem', fontWeight: 800 }}>Rate</th>
+              <th className="text-right py-2 text-gray-800" style={{ fontSize: '1.125rem', fontWeight: 800 }}>Amount</th>
             </tr>
           </thead>
           <tbody>
@@ -330,8 +377,8 @@ Bill No: DNBILL ${sale.id.slice(-4).toUpperCase()}
             </div>
           )}
           <div className="flex justify-between items-center mt-2 border-t-2 border-black pt-2">
-            <span className="text-2xl font-extrabold text-gray-900">Grand Total</span>
-            <span className="text-2xl font-extrabold text-gray-900">{sale.totalAmount.toFixed(2)}</span>
+            <span className="text-gray-900" style={{ fontSize: '1.75rem', fontWeight: 800, lineHeight: 1.2 }}>Grand Total</span>
+            <span className="text-gray-900" style={{ fontSize: '1.75rem', fontWeight: 800, lineHeight: 1.2 }}>{sale.totalAmount.toFixed(2)}</span>
           </div>
         </div>
 
@@ -344,9 +391,9 @@ Bill No: DNBILL ${sale.id.slice(-4).toUpperCase()}
             {applicationSettings.invoiceShowPaymentReference && sale.paymentReference && <p className="text-sm text-gray-700"><strong>Reference:</strong> {sale.paymentReference}</p>}
             {applicationSettings.invoiceShowReceivedAmount && <p className="text-sm text-gray-700"><strong>Received Amount:</strong> {(sale.receivedAmount || sale.totalAmount).toFixed(2)}</p>}
             {applicationSettings.invoiceShowReturnAmount && (
-                (sale.returnAmount > 0 || (sale.receivedAmount && sale.receivedAmount > sale.totalAmount)) && (
+                ((sale.returnAmount ?? 0) > 0 || (sale.receivedAmount && sale.receivedAmount > sale.totalAmount)) && (
                     <p className="text-sm text-gray-700">
-                        <strong>Return/Change Amount:</strong> {(sale.returnAmount || (sale.receivedAmount || sale.totalAmount) - sale.totalAmount).toFixed(2)}
+                        <strong>Return/Change Amount:</strong> {((sale.returnAmount ?? 0) || (sale.receivedAmount || sale.totalAmount) - sale.totalAmount).toFixed(2)}
                     </p>
                 )
             )}

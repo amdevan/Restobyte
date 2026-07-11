@@ -21,6 +21,7 @@ import KotModal from '@/components/pos/KotModal';
 import FeatureDisabledPage from '@/components/common/FeatureDisabledPage';
 import ItemCustomizationModal from '@/components/pos/ItemCustomizationModal'; // New
 import AiAssistantModal from '@/components/pos/AiAssistantModal'; // New
+import { applyLeftMarginToText, clampCharsPerLine, getConfiguredLineWidth, getDividerLine, getEscPosBottomFeed, getEscPosEmphasizedTitle, getMarginSpaces } from '@/utils/printSettings';
 import {
   FiShoppingCart, FiXCircle, FiSearch, FiZap
 } from 'react-icons/fi';
@@ -88,11 +89,14 @@ const PosPage: React.FC = () => {
     setActiveOutletIds,
     getSingleActiveOutlet,
     applicationSettings,
+    websiteSettings,
     recordSale,
     updateSale,
     sales,
     applyCustomerDueDelta,
-    printers
+    printers,
+    printInvoice,
+    printKot
   } = useRestaurantData();
 
   const navigate = useNavigate();
@@ -151,7 +155,256 @@ const PosPage: React.FC = () => {
 
   // Post-Sale State
   const [lastCompletedSale, setLastCompletedSale] = useState<Sale | null>(null);
-  
+
+  const generateKotPrintContent = useCallback((kot: KOT) => {
+    const lineWidth = clampCharsPerLine(applicationSettings?.kotCharactersPerLine, applicationSettings?.kotPaperSize);
+    const serialWidth = 4;
+    const columnGap = 1;
+    const qtyWidth = 4;
+    const nameWidth = lineWidth - serialWidth - columnGap - qtyWidth;
+    const divider = '-'.repeat(lineWidth);
+    const centerText = (value: string) => {
+      const text = value.trim();
+      if (!text) return '';
+      if (text.length >= lineWidth) return text;
+      const leftPad = Math.floor((lineWidth - text.length) / 2);
+      return `${' '.repeat(leftPad)}${text}`;
+    };
+    const formatTwoCol = (left: string, right: string) => {
+      const spaces = Math.max(1, lineWidth - left.length - right.length);
+      return `${left}${' '.repeat(spaces)}${right}`;
+    };
+    const wrapText = (value: string, width: number) => {
+      const words = value.trim().split(/\s+/).filter(Boolean);
+      const lines: string[] = [];
+      let current = '';
+
+      words.forEach((word) => {
+        const candidate = current ? `${current} ${word}` : word;
+        if (candidate.length <= width) {
+          current = candidate;
+        } else {
+          if (current) lines.push(current);
+          current = word;
+        }
+      });
+
+      if (current) lines.push(current);
+      return lines.length > 0 ? lines : [''];
+    };
+    const lines: string[] = [];
+    const formatLabelLine = (label: string, value: string) => {
+      const prefix = `${label} : `;
+      const wrapped = wrapText(value, Math.max(8, lineWidth - prefix.length));
+      lines.push(`${prefix}${wrapped[0]}`);
+      wrapped.slice(1).forEach((line) => {
+        lines.push(`${' '.repeat(prefix.length)}${line}`);
+      });
+    };
+
+    lines.push(getEscPosEmphasizedTitle('KOT', lineWidth) || centerText('KOT'));
+    lines.push(formatTwoCol(kot.kotNumber, kot.timestamp));
+    lines.push(divider);
+    formatLabelLine('Customer', kot.customer || 'Walk-in Customer');
+    formatLabelLine('Table No.', kot.table || 'N/A');
+    if (kot.waiter) {
+      formatLabelLine('Waiter', kot.waiter);
+    }
+    lines.push(divider);
+    lines.push(`${'Sl'.padEnd(serialWidth)}${' '.repeat(columnGap)}${'Item Name'.padEnd(nameWidth)}${'Qty.'.padStart(qtyWidth)}`);
+    lines.push(divider);
+
+    kot.items.forEach((item, index) => {
+      const serial = String(index + 1).padEnd(serialWidth);
+      const nameLines = wrapText(item.name, nameWidth);
+      const qty = String(item.quantity).padStart(qtyWidth);
+      lines.push(`${serial}${' '.repeat(columnGap)}${nameLines[0].padEnd(nameWidth)}${qty}`);
+      nameLines.slice(1).forEach((line) => {
+        lines.push(`${' '.repeat(serialWidth + columnGap)}${line}`);
+      });
+      if (item.notes) {
+        wrapText(`Note: ${item.notes}`, nameWidth).forEach((line) => {
+          lines.push(`${' '.repeat(serialWidth + columnGap)}${line}`);
+        });
+      }
+    });
+
+    lines.push(divider);
+    lines.push(centerText(`Total Items : ${kot.items.length}`));
+    lines.push(divider);
+
+    return `${lines.join('\r\n')}\r\n${getEscPosBottomFeed(12)}`;
+  }, [applicationSettings?.kotCharactersPerLine]);
+
+  const generateInvoicePrintContent = useCallback((sale: Sale) => {
+    const marginSpaces = getMarginSpaces(applicationSettings.invoiceSideMarginMm);
+    const lineWidth = Math.max(24, getConfiguredLineWidth(
+      applicationSettings.invoicePaperSize,
+      applicationSettings.invoiceCharactersPerLine
+    ) - marginSpaces * 2);
+    const divider = getDividerLine(lineWidth, applicationSettings.invoiceDividerStyle);
+    const itemNameWidth = Math.max(10, lineWidth - 17);
+    const outletName = singleActiveOutlet?.restaurantName || singleActiveOutlet?.name || websiteSettings.whiteLabel.appName || 'Demo Restaurant';
+    const outletAddress = singleActiveOutlet?.address || 'Address not set';
+    const outletPhone = singleActiveOutlet?.phone || 'Phone not set';
+    const outletEmail = singleActiveOutlet?.email || websiteSettings.contactUsContent.email || '';
+    const customer = sale.customerId ? customers.find((item) => item.id === sale.customerId) : undefined;
+    const showRestaurantDetails = applicationSettings.invoiceShowRestaurantDetails ?? true;
+    const showRestaurantName = applicationSettings.invoiceShowRestaurantName ?? true;
+    const showRestaurantAddress = applicationSettings.invoiceShowRestaurantAddress ?? true;
+    const showRestaurantPhone = applicationSettings.invoiceShowRestaurantPhone ?? true;
+    const showRestaurantEmail = applicationSettings.invoiceShowRestaurantEmail ?? true;
+
+    const centerText = (value: string) => {
+      const text = value.trim();
+      if (!text) return '';
+      if (text.length >= lineWidth) return `${text}\n`;
+      const leftPad = Math.floor((lineWidth - text.length) / 2);
+      return `${' '.repeat(leftPad)}${text}\n`;
+    };
+
+    const formatPair = (label: string, value: string) => {
+      const suffix = `: ${value}`;
+      const spaces = Math.max(1, lineWidth - label.length - suffix.length);
+      return `${label}${' '.repeat(spaces)}${suffix}\n`;
+    };
+
+    const formatItemsSummary = (count: number, subtotal: number) => {
+      const left = `Items/${count}`;
+      const middle = 'Sub Total';
+      const right = subtotal.toFixed(2);
+      const firstGap = Math.max(1, 17 - left.length);
+      const secondGap = Math.max(1, lineWidth - left.length - firstGap - middle.length - right.length);
+      return `${left}${' '.repeat(firstGap)}${middle}${' '.repeat(secondGap)}${right}\n`;
+    };
+
+    const formatMoneyLine = (label: string, amount: number) => {
+      const amountText = amount.toFixed(2);
+      const spaces = Math.max(1, lineWidth - label.length - amountText.length);
+      return `${label}${' '.repeat(spaces)}${amountText}\n`;
+    };
+
+    let invoiceText = `\n`;
+    if (showRestaurantDetails) {
+      if (showRestaurantName) {
+        invoiceText += getEscPosEmphasizedTitle(outletName, lineWidth) || centerText(outletName.toUpperCase());
+      }
+      if (showRestaurantAddress) invoiceText += centerText(outletAddress);
+      if (showRestaurantPhone) invoiceText += centerText(`Tel No.: ${outletPhone}`);
+      if (showRestaurantEmail && outletEmail) {
+        invoiceText += centerText(`Email: ${outletEmail}`);
+      }
+      if (applicationSettings.invoiceRestaurantSectionTitle?.trim()) {
+        invoiceText += centerText(applicationSettings.invoiceRestaurantSectionTitle.trim());
+      }
+      invoiceText += `${divider}\n\n`;
+    }
+    invoiceText += centerText(applicationSettings.invoiceTitle || sale.orderType || 'Invoice');
+    invoiceText += `${divider}\n`;
+
+    if (applicationSettings.invoiceShowCustomerDetails && customer) {
+      invoiceText += `${applicationSettings.invoiceCustomerSectionTitle || 'Customer Details'}\n`;
+      invoiceText += `${divider}\n`;
+      if (applicationSettings.invoiceShowCustomerName) invoiceText += formatPair('Name', customer.name);
+      if (applicationSettings.invoiceShowCustomerPhone && customer.phone) invoiceText += formatPair('Phone', customer.phone);
+      if (applicationSettings.invoiceShowCustomerEmail && customer.email) invoiceText += formatPair('Email', customer.email);
+      if (applicationSettings.invoiceShowCustomerAddress && customer.address) invoiceText += formatPair('Address', customer.address);
+      if (applicationSettings.invoiceShowCustomerCompany && customer.companyName) invoiceText += formatPair('Company', customer.companyName);
+      if (applicationSettings.invoiceShowCustomerVatPan && customer.vatPan) invoiceText += formatPair('VAT/PAN', customer.vatPan);
+      invoiceText += `${divider}\n`;
+    }
+
+    invoiceText += formatPair('Bill No', `DNBILL ${sale.id.slice(-4).toUpperCase()}`);
+    if (sale.assignedTableName) {
+      invoiceText += formatPair('Table Name', `${sale.assignedTableName}   Pax: ${sale.pax || 1}`);
+    }
+    if (sale.waiterName) {
+      invoiceText += formatPair('Waiter', sale.waiterName);
+    }
+    invoiceText += formatPair('Date & Time', new Date(sale.saleDate).toLocaleString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }));
+    invoiceText += formatPair('Bill By', 'Admin');
+    invoiceText += `${divider}\n`;
+    invoiceText += `${'Item Name'.padEnd(itemNameWidth)}Qty   Rate Amount\n`;
+    invoiceText += `${divider}\n`;
+
+    sale.items.forEach((item) => {
+      const name = item.name.substring(0, itemNameWidth).padEnd(itemNameWidth);
+      const qty = item.quantity.toString().padStart(4);
+      const rate = item.price.toFixed(2).padStart(6);
+      const amount = (item.price * item.quantity).toFixed(2).padStart(7);
+      invoiceText += `${name}${qty} ${rate} ${amount}\n`;
+    });
+
+    invoiceText += `${divider}\n`;
+    invoiceText += formatItemsSummary(sale.items.length, sale.subTotal);
+
+    if (applicationSettings.invoiceShowTaxBreakdown) {
+      sale.taxDetails.forEach((tax) => {
+        invoiceText += formatMoneyLine(`${tax.name} (${tax.rate}%)`, tax.amount);
+      });
+    }
+
+    if (sale.discountAmount && sale.discountAmount > 0) {
+      const discountVal = sale.discountType === 'percentage'
+        ? (sale.subTotal * sale.discountAmount) / 100
+        : sale.discountAmount;
+      invoiceText += formatMoneyLine('Discount', -discountVal);
+    }
+
+    if (sale.tipAmount && sale.tipAmount > 0) {
+      invoiceText += formatMoneyLine('Tip', sale.tipAmount);
+    }
+
+    invoiceText += `${divider}\n`;
+    invoiceText += formatMoneyLine('Grand Total', sale.totalAmount);
+    invoiceText += `\n`;
+
+    if (applicationSettings.invoiceShowPaymentDetails) {
+      invoiceText += `Payment Details\n`;
+      invoiceText += `${divider}\n`;
+      if (applicationSettings.invoiceShowPaymentMethod && sale.paymentMethod) {
+        invoiceText += formatPair('Payment Method', sale.paymentMethod);
+      }
+      if (applicationSettings.invoiceShowPaymentDate) {
+        invoiceText += formatPair('Payment Date', new Date(sale.paymentDate || sale.saleDate).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' }));
+      }
+      if (applicationSettings.invoiceShowPaymentReference && sale.paymentReference) {
+        invoiceText += formatPair('Reference', sale.paymentReference);
+      }
+      if (applicationSettings.invoiceShowReceivedAmount) {
+        invoiceText += formatPair('Received Amount', (sale.receivedAmount || sale.totalAmount).toFixed(2));
+      }
+      if (applicationSettings.invoiceShowReturnAmount && ((sale.returnAmount ?? 0) > 0 || ((sale.receivedAmount ?? 0) > sale.totalAmount))) {
+        invoiceText += formatPair('Return/Change Amount', ((sale.returnAmount ?? 0) || ((sale.receivedAmount || sale.totalAmount) - sale.totalAmount)).toFixed(2));
+      }
+      invoiceText += `\n`;
+    }
+
+    if (applicationSettings.invoiceShowReturnInformation && applicationSettings.invoiceReturnPolicyText) {
+      invoiceText += `Return Policy\n`;
+      invoiceText += `${divider}\n`;
+      invoiceText += `${applicationSettings.invoiceReturnPolicyText}\n\n`;
+    }
+
+    invoiceText += centerText(applicationSettings.invoiceFooterText || 'Thank you Visit Us Again!');
+    if (applicationSettings.invoiceShowQrCode) {
+      invoiceText += centerText(`Scan: /invoice/${sale.id}`);
+    }
+    invoiceText += `\n`;
+    invoiceText += centerText('Powered by Restobyte Software');
+    invoiceText += `${divider}\n`;
+
+    return `${applyLeftMarginToText(invoiceText, marginSpaces)}${getEscPosBottomFeed(12)}`;
+  }, [applicationSettings, customers, singleActiveOutlet, websiteSettings.contactUsContent.email, websiteSettings.whiteLabel.appName]);
+
+  const directKotPrinters = useMemo(
+    () => printers.filter((printer) => printer.isActive && (printer.type === 'Kitchen Order Ticket (KOT)' || printer.autoPrintKOT)),
+    [printers]
+  );
+  const autoPrintInvoicePrinters = useMemo(
+    () => printers.filter((printer) => printer.isActive && printer.autoPrintReceipt === true),
+    [printers]
+  );
   const categories = useMemo(() => {
     const categorySet = new Set<string>();
     for (const c of (foodMenuCategories || [])) categorySet.add(c.name);
@@ -253,13 +506,31 @@ const handleSendKot = useCallback(async () => {
     
     const kot: KOT = {
         kotNumber: `KOT-${Date.now().toString().slice(-5)}`,
+        customer: selectedCustomer?.name,
         table: selectedTable?.name,
         waiter: selectedWaiter?.name,
-        timestamp: new Date().toLocaleString(),
+        timestamp: (() => {
+          const now = new Date();
+          const datePart = now.toLocaleDateString('en-GB', {
+            day: '2-digit',
+            month: '2-digit',
+            year: '2-digit',
+          });
+          const timePart = now.toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true,
+          }).toUpperCase();
+          return `${datePart} ${timePart}`;
+        })(),
         items: newItems,
     };
     setKotData(kot);
     setIsKotModalOpen(true);
+    const kotPrintContent = generateKotPrintContent(kot);
+    directKotPrinters.forEach((printer) => {
+      void printKot(printer.id, kotPrintContent);
+    });
     playKotSentSound();
 
     setCurrentOrderItems(prevItems => 
@@ -270,7 +541,7 @@ const handleSendKot = useCallback(async () => {
   }, [
     currentOrderItems, orderType, selectedTable, selectedWaiter, singleActiveOutlet, editingSale,
     recordSale, updateSale, setEditingSale, discountType, discountAmount, pax,
-    selectedCustomer, orderNotes, selectedDeliveryPartner
+    selectedCustomer, orderNotes, selectedDeliveryPartner, generateKotPrintContent, directKotPrinters, printKot
   ]);
 
   useEffect(() => {
@@ -560,10 +831,16 @@ const handleSendKot = useCallback(async () => {
     setIsPaymentModalOpen(false);
     setLastCompletedSale(saleToProcess);
     setIsReceiptModalOpen(true);
+    if (autoPrintInvoicePrinters.length > 0) {
+      const invoicePrintContent = generateInvoicePrintContent(saleToProcess);
+      autoPrintInvoicePrinters.forEach((printer) => {
+        void printInvoice(printer.id, invoicePrintContent);
+      });
+    }
     clearOrder();
     playSaleFinalizedSound();
     
-  }, [currentOrderItems, orderType, pax, selectedTable, selectedWaiter, selectedCustomer, orderNotes, discountType, discountAmount, selectedDeliveryPartner, singleActiveOutlet, recordSale, updateSale, clearOrder, editingSale, applyCustomerDueDelta]);
+  }, [currentOrderItems, orderType, pax, selectedTable, selectedWaiter, selectedCustomer, orderNotes, discountType, discountAmount, selectedDeliveryPartner, singleActiveOutlet, recordSale, updateSale, clearOrder, editingSale, applyCustomerDueDelta, autoPrintInvoicePrinters, generateInvoicePrintContent, printInvoice]);
 
   if (!singleActiveOutlet) {
     return <FeatureDisabledPage type="selectOutlet" featureName="Point of Sale" />;

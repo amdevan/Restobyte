@@ -18,6 +18,7 @@ import Header from './Header';
 import Footer from './Footer';
 import { useRestaurantData } from '../../hooks/useRestaurantData';
 import { useAuth } from '../../hooks/useAuth';
+import { useIsInstalledApp } from '../../hooks/useIsInstalledApp';
 
 // Moved temporary icon definitions here
 const FiPercent: React.FC<{ className?: string, size?: string | number }> = ({ className, size }) => <span className={className} style={{ fontSize: size ? `${size}px` : undefined }}>%</span>;
@@ -174,6 +175,7 @@ const RestaurantLayout: React.FC<{ children: React.ReactNode }> = ({ children })
 
   const { user } = useAuth();
   const { getSingleActiveOutlet, hasPlanFeature } = useRestaurantData();
+  const isInstalledApp = useIsInstalledApp();
   const singleActiveOutlet = getSingleActiveOutlet();
   const isAggregateView = !singleActiveOutlet;
   const isCloudKitchen = singleActiveOutlet?.outletType === 'CloudKitchen';
@@ -579,17 +581,19 @@ const RestaurantLayout: React.FC<{ children: React.ReactNode }> = ({ children })
       </aside>
 
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header
-          title={currentPageLabel}
-          onToggleSidebar={() => {
-            if (window.innerWidth < 768) {
-              setIsMobileSidebarOpen(v => !v);
-            } else {
-              setIsSidebarCollapsed(v => !v);
-            }
-          }}
-          isSidebarCollapsed={isSidebarCollapsed || isMobileSidebarOpen}
-        />
+        {!isInstalledApp && (
+          <Header
+            title={currentPageLabel}
+            onToggleSidebar={() => {
+              if (window.innerWidth < 768) {
+                setIsMobileSidebarOpen(v => !v);
+              } else {
+                setIsSidebarCollapsed(v => !v);
+              }
+            }}
+            isSidebarCollapsed={isSidebarCollapsed || isMobileSidebarOpen}
+          />
+        )}
         <main className="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-6">
           {children}
         </main>

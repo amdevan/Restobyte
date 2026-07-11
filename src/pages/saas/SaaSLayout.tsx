@@ -10,7 +10,6 @@ import { FiGrid, FiUsers, FiCreditCard, FiDollarSign, FiSettings, FiLogOut, FiGl
 import { useAuth } from '../../hooks/useAuth';
 import Footer from '@/components/layout/Footer';
 import { getSaaSBasePath } from '@/utils/domain';
-import { useIsInstalledApp } from '@/hooks/useIsInstalledApp';
 
 interface NavLinkProps {
     to: string;
@@ -87,7 +86,6 @@ const SaaSLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { user, logout } = useAuth();
     const basePath = getSaaSBasePath();
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-    const isInstalledApp = useIsInstalledApp();
 
     return (
         <div className="flex h-screen bg-gray-200">
@@ -123,23 +121,21 @@ const SaaSLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 </div>
             </aside>
             <div className="flex-1 flex flex-col overflow-hidden">
-                {!isInstalledApp && (
-                    <header className="bg-white shadow-sm p-4 z-10 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <button
-                                type="button"
-                                onClick={() => setIsSidebarCollapsed(v => !v)}
-                                className="p-2 rounded-md hover:bg-gray-100 text-gray-700"
-                                aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-                            >
-                                {isSidebarCollapsed ? <FiMenu size={20} /> : <FiChevronLeft size={20} />}
-                            </button>
-                            <h1 className="text-xl font-semibold text-gray-800">
-                                Welcome, {user?.username || 'Super Admin'}!
-                            </h1>
-                        </div>
-                    </header>
-                )}
+                <header className="bg-white shadow-sm p-4 z-10 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <button
+                            type="button"
+                            onClick={() => setIsSidebarCollapsed(v => !v)}
+                            className="p-2 rounded-md hover:bg-gray-100 text-gray-700"
+                            aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                        >
+                            {isSidebarCollapsed ? <FiMenu size={20} /> : <FiChevronLeft size={20} />}
+                        </button>
+                        <h1 className="text-xl font-semibold text-gray-800">
+                            Welcome, {user?.username || 'Super Admin'}!
+                        </h1>
+                    </div>
+                </header>
                 <main className="flex-1 overflow-y-auto custom-scrollbar p-6">
                     {children}
                 </main>

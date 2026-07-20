@@ -10,6 +10,7 @@ import { useRestaurantData } from '../../hooks/useRestaurantData';
 import { Outlet } from '../../types';
 import Button from '../common/Button';
 import OutletSelector from '../common/OutletSelector';
+import { isNative } from '../../utils/capacitorService';
 
 
 const UserMenuDropdown: React.FC = () => {
@@ -100,10 +101,10 @@ const Header: React.FC<HeaderProps> = ({ title, onToggleSidebar, isSidebarCollap
         : `${window.location.origin}/public/restaurant`;
 
   return (
-    <header className="bg-white shadow-sm p-3 flex-shrink-0 grid grid-cols-3 items-center relative z-[1000] border-b">
+    <header className={`bg-white shadow-sm p-3 flex-shrink-0 grid items-center relative z-[1000] border-b ${isNative ? 'grid-cols-2' : 'grid-cols-3'}`}>
         {/* Left side: Title */}
         <div className="flex items-center space-x-4">
-            {onToggleSidebar && (
+            {onToggleSidebar && !isNative && (
                 <button
                     type="button"
                     onClick={onToggleSidebar}
@@ -113,11 +114,12 @@ const Header: React.FC<HeaderProps> = ({ title, onToggleSidebar, isSidebarCollap
                     {isSidebarCollapsed ? <FiMenu size={20} /> : <FiChevronLeft size={20} />}
                 </button>
             )}
-            <h1 className="text-xl font-semibold text-gray-800">{title}</h1>
+            <h1 className={`font-semibold text-gray-800 ${isNative ? 'text-base truncate' : 'text-xl'}`}>{title}</h1>
             {showOutletSelectorInHeader && <OutletSelector />}
         </div>
 
-        {/* Center: Global Action Bar */}
+        {/* Center: Global Action Bar — hidden on native (bottom nav provides POS/Tables/Reservations) */}
+        {!isNative && (
         <div className="flex justify-center">
             {visibleActions.length > 0 && (
                  <div className="flex items-center space-x-1 bg-gray-100 p-1.5 rounded-full shadow-sm">
@@ -136,6 +138,7 @@ const Header: React.FC<HeaderProps> = ({ title, onToggleSidebar, isSidebarCollap
                 </div>
             )}
         </div>
+        )}
 
         {/* Right side: User Menu */}
         <div className="flex items-center space-x-4 justify-end">

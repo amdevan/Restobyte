@@ -19,11 +19,13 @@ import PaymentModal from '@/components/pos/PaymentModal';
 import PosActionsPanel from '@/components/pos/PosActionsPanel';
 import KotModal from '@/components/pos/KotModal';
 import FeatureDisabledPage from '@/components/common/FeatureDisabledPage';
+import Money from '@/components/common/Money';
 import ItemCustomizationModal from '@/components/pos/ItemCustomizationModal'; // New
 import AiAssistantModal from '@/components/pos/AiAssistantModal'; // New
 import { applyLeftMarginToText, clampCharsPerLine, getConfiguredLineWidth, getDividerLine, getEscPosBottomFeed, getEscPosEmphasizedTitle, getMarginSpaces } from '@/utils/printSettings';
+import { isNative, vibrate } from '../utils/capacitorService';
 import {
-  FiShoppingCart, FiXCircle, FiSearch, FiZap
+  FiShoppingCart, FiXCircle, FiSearch, FiRefreshCw
 } from 'react-icons/fi';
 
 
@@ -123,6 +125,7 @@ const PosPage: React.FC = () => {
   const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
   const [isKotModalOpen, setIsKotModalOpen] = useState(false);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [cartOpen, setCartOpen] = useState(false); // mobile: floating cart sheet open?
   const [isCustomizationModalOpen, setIsCustomizationModalOpen] = useState(false); // New
   const [isAiAssistantOpen, setIsAiAssistantOpen] = useState(false); // New
 
@@ -391,7 +394,7 @@ const PosPage: React.FC = () => {
       invoiceText += centerText(`Scan: /invoice/${sale.id}`);
     }
     invoiceText += `\n`;
-    invoiceText += centerText('Powered by Restobyte Software');
+    invoiceText += centerText('Powered by RestoByte Software');
     invoiceText += `${divider}\n`;
 
     return `${applyLeftMarginToText(invoiceText, marginSpaces)}${getEscPosBottomFeed(12)}`;
@@ -863,6 +866,7 @@ const handleSendKot = useCallback(async () => {
         <PaymentModal isOpen={isPaymentModalOpen} onClose={() => setIsPaymentModalOpen(false)} orderItems={currentOrderItems} subTotal={subTotal} grandTotal={grandTotal} taxes={taxes} onFinalizeSale={handleFinalizeSale} />
       )}
       
+      {!isNative && (
       <div className="flex flex-1 overflow-hidden h-full">
         {/* Left Panel: Categories */}
         <aside className="w-1/5 lg:w-1/6 bg-white p-4 flex flex-col shadow-lg z-10">
@@ -891,14 +895,14 @@ const handleSendKot = useCallback(async () => {
                 </div>
             </main>
         </div>
-        
+
         {/* Right Panel: Cart */}
         <aside className="w-1/4 bg-white flex flex-col p-4 border-l">
             <div className="flex justify-between items-center mb-4 flex-shrink-0">
                 <h2 className="text-xl font-bold text-gray-800">{editingSale ? 'Update Order' : 'Current Order'}</h2>
                 <Button size="sm" variant="danger" onClick={() => clearOrder()} disabled={currentOrderItems.length === 0}><FiXCircle className="mr-1"/> Clear</Button>
             </div>
-            
+
             <CartHeader
                 orderType={orderType}
                 setOrderType={setOrderType}
@@ -914,7 +918,7 @@ const handleSendKot = useCallback(async () => {
                 selectedDeliveryPartner={selectedDeliveryPartner}
                 onDeliveryPartnerSelect={e => setSelectedDeliveryPartner(deliveryPartners.find(dp => dp.id === e.target.value) || null)}
             />
-            
+
             <CartItems items={currentOrderItems} onUpdateQuantity={handleUpdateQuantity} onEditItemNote={handleEditItemNote} />
 
             <div className="flex-shrink-0">
@@ -923,16 +927,116 @@ const handleSendKot = useCallback(async () => {
             </div>
         </aside>
       </div>
-      
-       <div className="fixed bottom-6 right-6 z-30">
-           <Button 
-               onClick={() => setIsAiAssistantOpen(true)} 
-               className="!rounded-full !p-4 !h-16 !w-16 shadow-lg bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-500" 
-               title="Open AI Assistant"
-           >
-               <FiZap size={28} />
-           </Button>
-       </div>
+      )}
+
+      {/* ===== Mobile-native POS layout ===== */}
+      {isNative && (
+        <div className="rb-pos-mobile">
+          {/* Menu (always mounted; cart floats above as a sheet) */}
+          <div className="rb-pos-mobile-menu">
+            {/* Search box */}
+            <div className="rb-pos-search">
+              <FiSearch size={16} className="rb-pos-search-icon" />
+              <input
+                type="text"
+                inputMode="search"
+                placeholder="Search food..."
+                value={menuSearchTerm}
+                onChange={e => setMenuSearchTerm(e.target.value)}
+                className="rb-pos-search-input"
+              />
+              {menuSearchTerm && (
+                <button
+                  type="button"
+                  onClick={() => { setMenuSearchTerm(''); vibrate(); }}
+                  className="rb-pos-search-clear"
+                  aria-label="Clear search"
+                >&times;</button>
+              )}
+            </div>
+
+            {/* Categories as horizontal chip scroll */}
+            <div className="rb-pos-cat-row">
+              <button
+                className={`rb-pos-cat-chip ${selectedCategory === 'All' ? 'rb-pos-cat-chip-active' : ''}`}
+                onClick={() => setSelectedCategory('All')}
+              >All</button>
+              {categories.filter(c => c !== 'All').map(cat => (
+                <button
+                  key={cat}
+                  className={`rb-pos-cat-chip ${selectedCategory === cat ? 'rb-pos-cat-chip-active' : ''}`}
+                  onClick={() => setSelectedCategory(cat)}
+                >{cat}</button>
+              ))}
+            </div>
+
+            <main className="rb-pos-mobile-grid">
+              <div className="grid grid-cols-3 gap-2.5">
+                {filteredMenu.map(item => (
+                  <PosMenuItemCard key={item.id} item={item} onAddItem={(it) => { handleAddItem(it); vibrate(); }} />
+                ))}
+              </div>
+            </main>
+
+            {/* Floating mini-cart bar — always visible at the bottom of the menu. */}
+            {currentOrderItems.length > 0 ? (
+              <button className="rb-pos-minicart" onClick={() => { setCartOpen(true); vibrate(); }}>
+                <span className="rb-pos-minicart-count">{currentOrderItems.length}</span>
+                <span className="rb-pos-minicart-label">View Order</span>
+                <span className="rb-pos-minicart-total"><Money amount={grandTotal} /></span>
+                <FiShoppingCart size={18} />
+              </button>
+            ) : (
+              <div className="rb-pos-minicart rb-pos-minicart-empty">No items in cart</div>
+            )}
+          </div>
+
+          {/* Floating cart sheet (overlay above the menu) */}
+          {cartOpen && (
+            <div className="rb-pos-cart-sheet" role="dialog" aria-modal="true">
+              <div className="rb-pos-cart-backdrop" onClick={() => setCartOpen(false)} />
+              <div className="rb-pos-cart-panel">
+                {editingSale && (
+                  <div className="rb-pos-edit-banner">
+                    <FiRefreshCw size={15} />
+                    <span>Updating order · {editingSale.assignedTableName || 'Table'}</span>
+                  </div>
+                )}
+                <div className="rb-pos-cart-bar">
+                  <button className="rb-pos-back" onClick={() => { setCartOpen(false); vibrate(); }}>‹ Close</button>
+                  <h2 className="rb-pos-cart-title">{editingSale ? 'Update Order' : 'Current Order'}</h2>
+                  <Button size="sm" variant="danger" onClick={() => clearOrder()} disabled={currentOrderItems.length === 0}><FiXCircle className="mr-1"/> Clear</Button>
+                </div>
+
+                <CartHeader
+                  orderType={orderType}
+                  setOrderType={setOrderType}
+                  selectedCustomer={selectedCustomer}
+                  selectedTable={selectedTable}
+                  selectedWaiter={selectedWaiter}
+                  onCustomerSelectClick={() => setIsCustomerModalOpen(true)}
+                  onTableSelect={(e) => setSelectedTable(tables.find(t=>t.id === e.target.value) || null)}
+                  onWaiterSelect={(e) => setSelectedWaiter(waiters.find(w=>w.id === e.target.value) || null)}
+                  tables={tables}
+                  waiters={activeWaiters}
+                  deliveryPartners={activeDeliveryPartners}
+                  selectedDeliveryPartner={selectedDeliveryPartner}
+                  onDeliveryPartnerSelect={e => setSelectedDeliveryPartner(deliveryPartners.find(dp => dp.id === e.target.value) || null)}
+                />
+
+                <div className="rb-pos-cart-items">
+                  <CartItems items={currentOrderItems} onUpdateQuantity={handleUpdateQuantity} onEditItemNote={handleEditItemNote} />
+                </div>
+
+                <div className="rb-pos-cart-foot">
+                  <CartSummary subTotal={subTotal} discountValue={discountValue} taxes={taxes} grandTotal={grandTotal} onDiscountClick={() => setIsDiscountModalOpen(true)} />
+                  <CartActions onGoToPayment={() => setIsPaymentModalOpen(true)} onSendKot={handleSendKot} isCartEmpty={currentOrderItems.length === 0} hasNewItems={hasNewItems} />
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };

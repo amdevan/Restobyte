@@ -8,12 +8,15 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation, Outlet, useNavigat
 
 import { RestaurantDataProvider, useRestaurantData } from './hooks/useRestaurantData';
 import { AuthProvider, useAuth } from './hooks/useAuth';
+import MobileProvider from './hooks/useMobileApp';
 import { isSaaSDomain } from '@/utils/domain';
 
 import RestaurantLayout from './components/layout/RestaurantLayout';
 import Spinner from './components/common/Spinner';
 import FeatureDisabledPage from './components/common/FeatureDisabledPage';
+import NativeAuthScreen from './components/auth/NativeAuthScreen';
 import PublicLayout from '@/components/public/PublicLayout';
+import { isNative } from '@/utils/capacitorService';
 import PublicHomePage from '@/pages/public/PublicHomePage';
 import PublicMenuPage from '@/pages/public/PublicMenuPage';
 import PublicAboutPage from '@/pages/public/PublicAboutPage';
@@ -66,6 +69,7 @@ const TablesPage = React.lazy(() => import('./pages/TablesPage'));
 const ReservationsPage = React.lazy(() => import('./pages/ReservationsPage'));
 const PricingPage = React.lazy(() => import('./pages/PricingPage'));
 const PosPage = React.lazy(() => import('./pages/PosPage'));
+const RunningOrdersPage = React.lazy(() => import('./pages/RunningOrdersPage'));
 const AddFoodMenuCategoryActualPage = React.lazy(() => import('./pages/item/AddFoodMenuCategoryPage'));
 const ListFoodMenuCategoryActualPage = React.lazy(() => import('./pages/item/ListFoodMenuCategoryPage'));
 const ListPreMadeFoodActualPage = React.lazy(() => import('./pages/item/ListPreMadeFoodPage'));
@@ -173,15 +177,24 @@ const AuthAwareLanding: React.FC = () => {
     if (isAuthenticated) {
         return <Navigate to={user?.isSuperAdmin ? "/saas/dashboard" : "/app/dashboard"} replace />;
     }
+    // On the native mobile app, skip the marketing landing page and go straight to login.
+    // Web visitors (and dev-preview via ?native=1) still see LandingPage below.
+    if (isNative) {
+        return <Navigate to="/login" replace />;
+    }
     return <LandingPage />;
 }
 
 const AuthSwitchWrapper: React.FC<{ mode: 'login' | 'register' }> = ({ mode }) => {
     const navigate = useNavigate();
-    return mode === 'login' ? (
-        <LoginPage onSwitchToRegister={() => navigate('/register')} />
-    ) : (
-        <RegisterPage onSwitchToLogin={() => navigate('/login')} />
+    return (
+        <NativeAuthScreen>
+            {mode === 'login' ? (
+                <LoginPage onSwitchToRegister={() => navigate('/register')} />
+            ) : (
+                <RegisterPage onSwitchToLogin={() => navigate('/login')} />
+            )}
+        </NativeAuthScreen>
     );
 }
 
@@ -214,7 +227,10 @@ const ProtectedRoute: React.FC<{ children: React.ReactElement; requiredPermissio
 const RestaurantPanelRoutes = () => {
     const { getSingleActiveOutlet, hasPlanFeature } = useRestaurantData();
     const location = useLocation();
-    const isFullScreenPage = location.pathname.startsWith('/app/panel/pos') || location.pathname.startsWith('/app/tables') || location.pathname.startsWith('/app/panel/kitchen-display') || location.pathname.startsWith('/app/panel/customer-display');
+    // On the web app, these operational screens take over the full viewport
+    // (no sidebar). On the native mobile app, they MUST keep RestaurantLayout
+    // so the bottom navigation bar and mobile chrome remain available.
+    const isFullScreenPage = !isNative && (location.pathname.startsWith('/app/panel/pos') || location.pathname.startsWith('/app/tables') || location.pathname.startsWith('/app/panel/kitchen-display') || location.pathname.startsWith('/app/panel/customer-display'));
 
     const singleActiveOutlet = getSingleActiveOutlet();
     const isAggregateView = !singleActiveOutlet;
@@ -262,6 +278,7 @@ const RestaurantPanelRoutes = () => {
             <Route path="tables" element={<OperationalPage page={<TablesPage />} featureName="Table Management" cloudKitchenDisabled requiredFeatureKey="tables" />} />
             <Route path="reservations" element={<OperationalPage page={<ReservationsPage />} featureName="Reservations" cloudKitchenDisabled requiredFeatureKey="reservations" />} />
             <Route path="pricing" element={<PricingPage />} />
+            <Route path="running-orders" element={<OperationalPage page={<RunningOrdersPage />} featureName="Running Orders" requiredFeatureKey="pos" />} />
             <Route path="panel/pos" element={<OperationalPage page={<PosPage />} featureName="Point of Sale" requiredFeatureKey="pos" />} />
             <Route path="panel/pos/:tableId" element={<OperationalPage page={<PosPage />} featureName="Point of Sale" requiredFeatureKey="pos" />} />
             <Route path="panel/kitchen-display" element={<OperationalPage page={<KitchenDisplayPage />} featureName="Kitchen Display" requiredFeatureKey="kds" />} />
@@ -558,7 +575,9 @@ const App: React.FC = () => {
       <ScrollPositionManager />
       <AuthProvider>
         <RestaurantDataProvider>
-          <AppContent />
+          <MobileProvider>
+            <AppContent />
+          </MobileProvider>
         </RestaurantDataProvider>
       </AuthProvider>
     </BrowserRouter>

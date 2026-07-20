@@ -196,7 +196,7 @@ const SaleDetailsModal: React.FC<SaleDetailsModalProps> = ({ isOpen, onClose, sa
 
     invoiceText += centerText(applicationSettings.invoiceFooterText || 'Thank you Visit Us Again!');
     invoiceText += `\n`;
-    invoiceText += centerText('Powered by Restobyte Software');
+    invoiceText += centerText('Powered by RestoByte Software');
     invoiceText += `${divider}\n`;
 
     return `${applyLeftMarginToText(invoiceText, marginSpaces)}${getEscPosBottomFeed(12)}`;
@@ -450,7 +450,7 @@ const SaleDetailsModal: React.FC<SaleDetailsModalProps> = ({ isOpen, onClose, sa
                   </div>
                 </div>
             )}
-            <p className="text-xs text-gray-500 mt-4">Powered by Restobyte Software</p>
+            <p className="text-xs text-gray-500 mt-4">Powered by RestoByte Software</p>
           </div>
       </div>
 

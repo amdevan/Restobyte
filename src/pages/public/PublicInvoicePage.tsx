@@ -262,7 +262,7 @@ const PublicInvoicePage: React.FC = () => {
                 />
               </div>
             </div>
-            <p className="text-xs text-gray-500 mt-4">Powered by Restobyte Software</p>
+            <p className="text-xs text-gray-500 mt-4">Powered by RestoByte Software</p>
           </div>
         </div>
       </div>

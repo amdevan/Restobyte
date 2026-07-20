@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { FiX } from 'react-icons/fi';
+import { isNative } from '../../utils/capacitorService';
 
 interface ModalProps {
   isOpen: boolean;
@@ -22,6 +23,36 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, size = 
     '2xl': 'max-w-2xl',
     full: 'w-full h-full max-w-none max-h-none', // Classes for full size
   };
+
+  // Native: render as a slide-up bottom sheet for a premium mobile feel.
+  if (isNative) {
+    return (
+      <div className="rb-modal-sheet-root" onClick={onClose}>
+        <div
+          className="rb-modal-sheet"
+          onClick={(e) => e.stopPropagation()}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="rb-modal-sheet-handle" />
+          <div className="rb-modal-sheet-header">
+            <h3 className="rb-modal-sheet-title">{title}</h3>
+            <button
+              onClick={onClose}
+              className="rb-modal-sheet-close"
+              aria-label="Close modal"
+            >
+              <FiX size={18} />
+            </button>
+          </div>
+          <div className="rb-modal-sheet-body">
+            {children}
+          </div>
+          <div className="rb-modal-sheet-safe" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex justify-center items-center z-50 p-4">

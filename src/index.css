@@ -1,6 +1,4 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 /* Mobile Scanner Transparency */
 body.scanner-active {
@@ -324,3 +322,2467 @@ body.scanner-active #root {
 .reveal-delay-300 { transition-delay: 300ms; }
 .reveal-delay-400 { transition-delay: 400ms; }
 .reveal-delay-500 { transition-delay: 500ms; }
+
+/* ============================================================
+   Mobile / Capacitor optimizations
+   ============================================================ */
+
+/* Respect device safe areas (notch, home indicator) */
+.safe-top { padding-top: env(safe-area-inset-top); }
+.safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+.safe-left { padding-left: env(safe-area-inset-left); }
+.safe-right { padding-right: env(safe-area-inset-right); }
+.safe-all {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+/* Larger touch targets for mobile */
+@media (max-width: 768px) {
+  button,
+  .btn,
+  [role="button"],
+  a.nav-link,
+  .touch-target {
+    min-height: 44px;
+  }
+
+  /* Avoid accidental zoom on input focus in iOS */
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+
+  /* Tighter, denser layout on phones */
+  .container {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+}
+
+/* Remove the grey tap highlight on mobile Safari/Chrome */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Enable momentum scrolling inside scroll containers */
+.scroll-native {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
+
+/* Hide the web text selection caret flash on tap for app-like feel */
+.app-like,
+.app-like * {
+  -webkit-touch-callout: none;
+  user-select: none;
+}
+
+/* Allow text selection only where needed */
+.selectable {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+/* Prevent the whole page from bouncing/pull-to-refresh behind the app */
+html,
+body {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
+  overscroll-behavior: none;
+  -webkit-text-size-adjust: 100%;
+}
+
+#root {
+  height: 100%;
+  width: 100%;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Tablet layout tweaks */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .tablet-comfortable {
+    gap: 1rem;
+  }
+}
+
+/* ============================================================
+   Premium Mobile Bottom Navigation (native app only)
+   Glassmorphism, active pill indicator, safe-area aware.
+   ============================================================ */
+
+/* When the bottom nav is present, pad the scrollable main so
+   content isn't hidden behind the fixed bar. */
+.rb-main-has-bottom-nav {
+  padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)) !important;
+}
+
+/* The fixed bottom navigation bar. */
+.rb-bottom-nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 50;
+  /* Frosted-glass effect over the page content. */
+  background: rgba(255, 255, 255, 0.82);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  backdrop-filter: saturate(180%) blur(20px);
+  border-top: 1px solid rgba(15, 23, 42, 0.06);
+  box-shadow: 0 -8px 24px -8px rgba(15, 23, 42, 0.12);
+  /* Animate in from the bottom on mount. */
+  animation: rb-nav-slide-up 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes rb-nav-slide-up {
+  from { transform: translateY(100%); opacity: 0; }
+  to   { transform: translateY(0);     opacity: 1; }
+}
+
+.rb-bottom-nav-inner {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  width: 100%;
+  height: 62px;
+  padding: 0 6px;
+}
+
+/* iOS home-indicator gap below the bar. */
+.rb-bottom-nav-safe {
+  height: env(safe-area-inset-bottom, 0px);
+}
+
+.rb-bottom-tab {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  height: 100%;
+  border: 0;
+  background: transparent;
+  color: #64748b; /* slate-500 */
+  -webkit-tap-highlight-color: transparent;
+  transition: color 0.18s ease, transform 0.18s ease;
+  cursor: pointer;
+  user-select: none;
+}
+
+.rb-bottom-tab:active {
+  transform: scale(0.92);
+}
+
+/* Active state — primary amber accent. */
+.rb-bottom-tab-active {
+  color: #d97706; /* amber-600 — RestoByte brand */
+}
+
+.rb-bottom-tab-active .rb-bottom-tab-icon {
+  /* Lift the icon slightly toward the active pill. */
+  transform: translateY(-1px);
+}
+
+/* Pill indicator that sits behind the active icon. */
+.rb-bottom-tab-indicator {
+  position: absolute;
+  top: 5px;
+  width: 44px;
+  height: 30px;
+  border-radius: 9999px;
+  background: rgba(217, 119, 6, 0.16); /* amber-600 tint */
+  opacity: 0;
+  transform: scale(0.6);
+  transition: opacity 0.22s ease, transform 0.22s ease;
+}
+
+.rb-bottom-tab-active .rb-bottom-tab-indicator {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.rb-bottom-tab-icon {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 30px;
+  transition: transform 0.18s ease;
+}
+
+.rb-bottom-tab-label {
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  transition: opacity 0.18s ease;
+}
+
+.rb-bottom-tab-active .rb-bottom-tab-label {
+  font-weight: 700;
+}
+
+/* ----------------------------------------------------------
+   "More" slide-up sheet
+   ---------------------------------------------------------- */
+.rb-bottom-sheet-root {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.rb-bottom-sheet-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+  animation: rb-fade-in 0.2s ease;
+}
+
+.rb-bottom-sheet {
+  position: relative;
+  width: 100%;
+  max-width: 520px;
+  background: #ffffff;
+  border-top-left-radius: 20px;
+  border-top-right-radius: 20px;
+  box-shadow: 0 -12px 40px -8px rgba(15, 23, 42, 0.25);
+  animation: rb-sheet-up 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+}
+
+@keyframes rb-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes rb-sheet-up {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+.rb-bottom-sheet-handle {
+  width: 40px;
+  height: 4px;
+  border-radius: 9999px;
+  background: #cbd5e1; /* slate-300 */
+  margin: 10px auto 6px;
+}
+
+.rb-bottom-sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 18px 10px;
+}
+
+.rb-bottom-sheet-body {
+  padding: 4px 18px 14px;
+  max-height: 70vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.rb-bottom-sheet-safe {
+  height: env(safe-area-inset-bottom, 0px);
+}
+
+/* Grid of secondary items inside the More sheet. */
+.rb-more-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 6px;
+  border-radius: 14px;
+  background: #f8fafc; /* slate-50 */
+  border: 1px solid #f1f5f9; /* slate-100 */
+  color: #334155; /* slate-700 */
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.14s ease, background 0.14s ease;
+  cursor: pointer;
+  user-select: none;
+}
+
+.rb-more-tile:active {
+  transform: scale(0.95);
+  background: #f1f5f9; /* slate-100 */
+}
+
+.rb-more-tile-icon {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0; /* slate-200 */
+  color: #d97706; /* amber-600 — RestoByte brand */
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.rb-more-tile-label {
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.1;
+  text-align: center;
+  color: #475569; /* slate-600 */
+}
+
+/* Item Management grouped block — spans the full 3-col grid width. */
+.rb-more-group {
+  grid-column: 1 / -1;
+  background: #f8fafc;
+  border: 1px solid #eef2f7;
+  border-radius: 16px;
+  padding: 10px;
+}
+.rb-more-group .rb-more-tile {
+  width: 100%;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+.rb-more-subgrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-top: 8px;
+}
+.rb-more-subtile {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.14s ease, transform 0.1s ease;
+}
+.rb-more-subtile:active { transform: scale(0.98); background: #e0f2fe; }
+.rb-more-subtile svg { color: #0ea5e9; flex: 0 0 auto; }
+
+/* User card + logout row at the bottom of the More sheet. */
+.rb-more-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: 14px;
+  background: #f8fafc;
+  border: 1px solid #f1f5f9;
+}
+
+.rb-more-logout {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+  font-size: 12px;
+  font-weight: 600;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.14s ease, background 0.14s ease;
+  cursor: pointer;
+}
+
+.rb-more-logout:active {
+  transform: scale(0.95);
+  background: #fee2e2;
+}
+
+/* ============================================================
+   Premium Native Auth Screen (login / register on mobile)
+   Full-screen gradient + branding + frosted card.
+   ============================================================ */
+
+.rb-native-auth-screen {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  /* RestoByte brand: deep maroon → amber gradient (matches logo palette). */
+  background: linear-gradient(160deg, #5a1a0a 0%, #8b2d1d 32%, #c2410c 68%, #f59e0b 100%);
+  overflow: hidden;
+  animation: rb-auth-fade-in 0.4s ease;
+}
+
+@keyframes rb-auth-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Floating decorative blobs for depth. */
+.rb-native-auth-blob {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(48px);
+  opacity: 0.5;
+  pointer-events: none;
+  animation: rb-auth-blob-float 14s ease-in-out infinite;
+}
+
+.rb-native-auth-blob-1 {
+  width: 300px; height: 300px;
+  top: -80px; left: -60px;
+  background: radial-gradient(circle, #fbbf24 0%, transparent 70%);
+}
+
+.rb-native-auth-blob-2 {
+  width: 340px; height: 340px;
+  bottom: -100px; right: -80px;
+  background: radial-gradient(circle, #f97316 0%, transparent 70%);
+  animation-delay: -4s;
+}
+
+.rb-native-auth-blob-3 {
+  width: 220px; height: 220px;
+  top: 40%; right: -40px;
+  background: radial-gradient(circle, #d97706 0%, transparent 70%);
+  animation-delay: -8s;
+}
+
+@keyframes rb-auth-blob-float {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50%      { transform: translate(16px, -20px) scale(1.08); }
+}
+
+/* Branding header above the card. */
+.rb-native-auth-header {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  margin-bottom: 28px;
+  animation: rb-auth-slide-down 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes rb-auth-slide-down {
+  from { opacity: 0; transform: translateY(-16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.rb-native-auth-logo-ring {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 120px;
+  height: 120px;
+  border-radius: 32px;
+  /* Solid white box so the logo reads clearly against the dark gradient. */
+  background: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 16px 40px -8px rgba(90, 26, 10, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  margin-bottom: 16px;
+  padding: 18px;
+}
+
+.rb-native-auth-logo {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 14px;
+}
+
+.rb-native-auth-title {
+  color: #ffffff;
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 0 0 6px;
+  text-shadow: 0 2px 8px rgba(90, 26, 10, 0.4);
+}
+
+.rb-native-auth-tagline {
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 13.5px;
+  font-weight: 500;
+  margin: 0;
+  letter-spacing: 0.01em;
+}
+
+/* Frosted card containing the form (the LoginPage children). */
+.rb-native-auth-card-wrap {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 380px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: rb-auth-slide-up 0.55s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
+}
+
+@keyframes rb-auth-slide-up {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.rb-native-auth-card {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.96);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  border-radius: 24px;
+  padding: 24px;
+  box-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+
+/* The LoginPage component renders its own max-w-md card with bg-white rounded-2xl.
+   Inside the native wrapper, we override its background/border-radius so it
+   blends into the frosted shell — no double-card look. */
+.rb-native-auth-card > div {
+  background: transparent !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+  max-width: 100% !important;
+  box-shadow: none !important;
+}
+
+/* Hide the LoginPage's redundant logo + tagline (the native header already shows them). */
+.rb-native-auth-card > div > div:first-child {
+  display: none !important;
+}
+
+.rb-native-auth-footer {
+  margin-top: 20px;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+
+/* ============================================================
+   Global mobile polish — touch targets, typography, cards
+   Applied only inside the native app (body.is-native).
+   ============================================================ */
+
+/* Larger, more comfortable primary buttons on native. */
+body.is-native .btn-primary,
+body.is-native button.bg-sky-600 {
+  min-height: 48px;
+  border-radius: 14px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  box-shadow: 0 6px 16px -6px rgba(217, 119, 6, 0.5);
+  transition: transform 0.14s ease, box-shadow 0.14s ease;
+}
+
+body.is-native .btn-primary:active,
+body.is-native button.bg-sky-600:active {
+  transform: scale(0.97);
+  box-shadow: 0 2px 6px -2px rgba(217, 119, 6, 0.5);
+}
+
+/* Inputs — rounder, taller, with a subtle focus ring. */
+body.is-native input[type="text"],
+body.is-native input[type="email"],
+body.is-native input[type="password"],
+body.is-native input[type="number"],
+body.is-native input[type="tel"],
+body.is-native input[type="search"],
+body.is-native select,
+body.is-native textarea {
+  min-height: 48px;
+  border-radius: 12px;
+  transition: box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+body.is-native input:focus,
+body.is-native select:focus,
+body.is-native textarea:focus {
+  box-shadow: 0 0 0 4px rgba(217, 119, 6, 0.15); /* amber-600 ring */
+}
+
+/* Register form: group fields into branded fieldsets. */
+.rb-register-form .rb-fieldset {
+  border: 1px solid #f1f5f9;
+  border-radius: 14px;
+  padding: 14px 14px 4px;
+  margin: 0;
+  background: #ffffff;
+}
+.rb-register-form .rb-fieldset-legend {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #d97706; /* amber-600 — brand */
+  padding: 0 8px;
+}
+.rb-register-form .rb-fieldset > div + div {
+  margin-top: 12px;
+}
+
+/* Cards — softer shadows, rounder corners on native. */
+body.is-native .shadow-lg {
+  box-shadow: 0 4px 16px -4px rgba(15, 23, 42, 0.08), 0 1px 2px rgba(15, 23, 42, 0.04) !important;
+  border-radius: 16px;
+}
+
+body.is-native .rounded-xl {
+  border-radius: 16px;
+}
+
+/* ============================================================
+   MOBILE APP — global native overrides
+   Everything below ONLY applies inside the native app (body.is-native).
+   All overrides use !important so they beat Tailwind utility classes
+   regardless of source order. No :has() / modern selectors (older
+   Android WebViews don't support them).
+   ============================================================ */
+
+/* Smooth fade-in for route changes on native (feels app-like, not web-like). */
+body.is-native #root > * {
+  animation: rb-route-fade 0.28s ease;
+}
+
+@keyframes rb-route-fade {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ---------- Typography ---------- */
+/* Page titles (e.g. "Food Menu", "Reservation Management") are text-3xl
+   on web. On a phone that's far too large and crowds the action button.
+   Force a compact app-like size. */
+body.is-native h1 {
+  font-size: 1.25rem !important;
+  line-height: 1.3 !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.02em !important;
+}
+
+body.is-native h2 {
+  font-size: 1.05rem !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.015em !important;
+}
+
+body.is-native h3 {
+  font-size: 0.95rem !important;
+  font-weight: 600 !important;
+}
+
+/* ---------- Page header rows ---------- */
+/* The common pattern is a flex row with justify-between holding an <h1> +
+   a primary button. On a 360px screen that crowds badly — let it wrap and
+   give the button full width on the second line (easy tap target). */
+body.is-native .flex.justify-between.items-center {
+  flex-wrap: wrap !important;
+  gap: 12px !important;
+}
+
+body.is-native .flex.justify-between.items-center > button {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+/* Any header bar: compact + safe-area aware + frosted so content scrolls
+   underneath (app-like), not a hard white block. */
+body.is-native header {
+  flex-wrap: wrap !important;
+  gap: 12px !important;
+  height: auto !important;
+  min-height: auto !important;
+  padding-top: max(0.75rem, env(safe-area-inset-top, 0px)) !important;
+  padding-bottom: 0.5rem !important;
+}
+
+/* A header that also carries a sticky shadow: keep it frosted on native. */
+body.is-native header.bg-white.shadow-sm {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 30 !important;
+  background: rgba(255, 255, 255, 0.92) !important;
+  -webkit-backdrop-filter: saturate(180%) blur(12px) !important;
+  backdrop-filter: saturate(180%) blur(12px) !important;
+}
+
+/* Sub-headers / inline control rows wrap gracefully. */
+body.is-native .flex.items-center.space-x-4 {
+  flex-wrap: wrap !important;
+  gap: 0.5rem 1rem !important;
+}
+
+/* ============================================================
+   Tables — turn clunky horizontal-scroll tables into a smooth,
+   app-like list on native.
+   ============================================================ */
+
+/* Cards that wrap a table: remove the inner padding so the table can
+   span edge-to-edge with sticky headers. */
+body.is-native .overflow-x-auto {
+  -webkit-overflow-scrolling: touch !important;
+  overscroll-behavior-x: contain !important;
+  scrollbar-width: none !important;
+}
+body.is-native .overflow-x-auto::-webkit-scrollbar { display: none !important; }
+
+/* The actual <table> inside a Card — make it scroll smoothly and give
+   the header row a frosted sticky look so users don't lose context. */
+body.is-native table {
+  min-width: 100% !important;
+  border-collapse: collapse !important;
+}
+
+body.is-native thead tr {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 2 !important;
+  background: #f8fafc !important;
+  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.06) !important;
+}
+
+body.is-native thead th {
+  font-size: 11px !important;
+  letter-spacing: 0.04em !important;
+  text-transform: uppercase !important;
+  color: #64748b !important;
+  padding: 12px 14px !important;
+}
+
+body.is-native tbody tr {
+  transition: background 0.14s ease !important;
+}
+
+body.is-native tbody tr:active {
+  background: #f1f5f9 !important;
+}
+
+body.is-native tbody td {
+  padding: 14px !important;
+  font-size: 14px !important;
+  vertical-align: middle !important;
+}
+
+/* ============================================================
+   Cards — consistent spacing, tap feedback, softer look
+   ============================================================ */
+
+body.is-native .bg-white.shadow-lg,
+body.is-native .bg-white.rounded-xl {
+  border-radius: 16px !important;
+}
+
+/* Any element that looks like a tappable card gets a gentle press
+   feedback (scale down briefly). Targets TableCard, MenuItemCard, etc. */
+body.is-native .shadow-md:active,
+body.is-native .shadow-lg:active,
+body.is-native .shadow-sm:active {
+  transform: scale(0.985) !important;
+  transition: transform 0.12s ease !important;
+}
+
+/* Cards with onClick (cursor-pointer) get a stronger press cue. */
+body.is-native .cursor-pointer {
+  transition: transform 0.14s ease, box-shadow 0.14s ease !important;
+}
+body.is-native .cursor-pointer:active {
+  transform: scale(0.97) !important;
+}
+
+/* ---------- Stat / metric card grids ----------
+   The Dashboard scatters stat cards in a 12-col web grid that becomes
+   a cramped 1-col on mobile. Force a comfortable 2-column grid with
+   generous gaps so numbers are legible and tappable. */
+body.is-native .grid.grid-cols-1,
+body.is-native .grid.grid-cols-2,
+/* Generic high-column grids collapse to 2 on phone — EXCEPT the table grid
+   and POS food grid which set their own column counts (3) below. */
+body.is-native .grid.grid-cols-4:not(.grid-cols-3),
+body.is-native .grid.grid-cols-5,
+body.is-native .grid.grid-cols-6,
+body.is-native .grid.grid-cols-12 {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 12px !important;
+}
+
+/* Big stat numbers shouldn't overflow a 2-col phone card. */
+body.is-native .text-4xl,
+body.is-native .text-3xl {
+  font-size: 1.75rem !important;
+  line-height: 1.1 !important;
+}
+
+/* Page-level content wrapper: comfortable side padding on native. */
+body.is-native main > div {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+/* ============================================================
+   Empty states — friendlier, more app-like
+   ============================================================ */
+
+/* "No tables found", "No menu items yet", "No reservations yet" lines.
+   Center them, give them an icon-ish dot, and pad them like a hero. */
+body.is-native .text-gray-500.text-center {
+  padding: 48px 16px;
+  font-size: 15px;
+  line-height: 1.5;
+  color: #94a3b8;
+}
+
+/* ============================================================
+   Skeleton / loading shimmer — used by loading states
+   ============================================================ */
+
+.rb-skeleton {
+  position: relative;
+  overflow: hidden;
+  background: #e2e8f0;
+  border-radius: 8px;
+}
+
+.rb-skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.6),
+    transparent
+  );
+  animation: rb-skeleton-shimmer 1.4s infinite;
+}
+
+@keyframes rb-skeleton-shimmer {
+  100% { transform: translateX(100%); }
+}
+
+.rb-skeleton-row {
+  height: 14px;
+  margin-bottom: 10px;
+  border-radius: 6px;
+}
+
+.rb-skeleton-card {
+  height: 120px;
+  border-radius: 14px;
+}
+
+/* ============================================================
+   Native bottom-sheet Modal (replaces centered modal on mobile)
+   The Modal component reads `isNative` and adds these classes.
+   This CSS gives the sheet its slide-up, rounded-top, grabber look.
+   ============================================================ */
+
+.rb-modal-sheet-root {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.5);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+  animation: rb-fade-in 0.2s ease;
+}
+
+.rb-modal-sheet {
+  position: relative;
+  width: 100%;
+  max-width: 520px;
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  border-top-left-radius: 22px;
+  border-top-right-radius: 22px;
+  box-shadow: 0 -12px 40px -8px rgba(15, 23, 42, 0.3);
+  animation: rb-sheet-up 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+}
+
+.rb-modal-sheet-handle {
+  width: 40px;
+  height: 4px;
+  border-radius: 9999px;
+  background: #cbd5e1;
+  margin: 10px auto 0;
+  flex-shrink: 0;
+}
+
+.rb-modal-sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 18px 12px;
+  flex-shrink: 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.rb-modal-sheet-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.rb-modal-sheet-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 9999px;
+  background: #f1f5f9;
+  color: #64748b;
+  border: 0;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.14s ease, transform 0.14s ease;
+}
+
+.rb-modal-sheet-close:active {
+  transform: scale(0.9);
+  background: #e2e8f0;
+}
+
+.rb-modal-sheet-body {
+  padding: 18px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  flex: 1 1 auto;
+}
+
+.rb-modal-sheet-safe {
+  height: env(safe-area-inset-bottom, 0px);
+  flex-shrink: 0;
+}
+
+/* ============================================================
+   Mobile table filter chip row (TablesPage) — horizontal scroll
+   of status chips, styled to match the premium bottom nav.
+   ============================================================ */
+
+.rb-mobile-filter-row {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  padding: 2px 0 6px;
+  width: 100%;
+}
+
+.rb-mobile-filter-row::-webkit-scrollbar { display: none; }
+
+.rb-mobile-chip {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 9999px;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  color: #475569;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.16s ease, color 0.16s ease, transform 0.12s ease;
+  cursor: pointer;
+  user-select: none;
+}
+
+.rb-mobile-chip:active { transform: scale(0.94); }
+
+.rb-mobile-chip-active {
+  background: #0ea5e9;
+  border-color: #0ea5e9;
+  color: #ffffff;
+  box-shadow: 0 4px 12px -4px rgba(14, 165, 233, 0.5);
+}
+
+.rb-mobile-chip-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 9999px;
+  background: currentColor;
+  opacity: 0.7;
+}
+
+/* ============================================================
+   Mobile TablesPage sub-header (search + filter chips)
+   Sits directly under the MobilePageHeader on native.
+   ============================================================ */
+
+.rb-mobile-subheader {
+  position: sticky;
+  top: 0;
+  z-index: 15;
+  background: #ffffff;
+  padding: 10px 14px 8px;
+  border-bottom: 1px solid #f1f5f9;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Break a page out of the layout main's 16px horizontal padding so it
+   goes edge-to-edge (full-bleed) on native. The negative margins exactly
+   counteract `p-4`, so no horizontal scrollbar is introduced. */
+body.is-native .rb-page-full {
+  margin-left: -16px;
+  margin-right: -16px;
+}
+
+.rb-mobile-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.rb-mobile-search-icon {
+  position: absolute;
+  left: 12px;
+  color: #94a3b8;
+  pointer-events: none;
+}
+
+.rb-mobile-search-input {
+  width: 100%;
+  height: 40px;
+  padding: 0 36px 0 36px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  font-size: 15px;
+  color: #0f172a;
+  -webkit-appearance: none;
+  appearance: none;
+  outline: none;
+  transition: border-color 0.16s ease, background 0.16s ease;
+}
+
+.rb-mobile-search-input:focus {
+  border-color: #0ea5e9;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.15);
+}
+
+.rb-mobile-search-clear {
+  position: absolute;
+  right: 8px;
+  width: 26px;
+  height: 26px;
+  border-radius: 9999px;
+  border: none;
+  background: #e2e8f0;
+  color: #475569;
+  font-size: 18px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.rb-mobile-search-clear:active { transform: scale(0.9); }
+
+/* ============================================================
+   Mobile POS (Order) layout — tabbed Menu / Order views
+   ============================================================ */
+
+.rb-pos-mobile {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.rb-pos-mobile-menu {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  position: relative;
+}
+
+.rb-pos-cat-row {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 10px 14px;
+  background: #ffffff;
+  border-bottom: 1px solid #f1f5f9;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.rb-pos-cat-row::-webkit-scrollbar { display: none; }
+
+/* Search box in mobile POS menu */
+.rb-pos-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 10px 14px;
+  background: #ffffff;
+  border-bottom: 1px solid #f1f5f9;
+}
+.rb-pos-search-icon {
+  position: absolute;
+  left: 26px;
+  color: #94a3b8;
+  pointer-events: none;
+}
+.rb-pos-search-input {
+  width: 100%;
+  height: 40px;
+  padding: 0 36px 0 38px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  font-size: 15px;
+  color: #0f172a;
+  -webkit-appearance: none;
+  appearance: none;
+  outline: none;
+  transition: border-color 0.16s ease, background 0.16s ease;
+}
+.rb-pos-search-input:focus {
+  border-color: #0ea5e9;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.15);
+}
+.rb-pos-search-clear {
+  position: absolute;
+  right: 22px;
+  width: 26px;
+  height: 26px;
+  border-radius: 9999px;
+  border: none;
+  background: #e2e8f0;
+  color: #475569;
+  font-size: 18px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.rb-pos-search-clear:active { transform: scale(0.9); }
+
+/* Compact food cards on native (3-per-row) */
+body.is-native .rb-pos-mobile-grid .grid.grid-cols-3 .relative .h-28 {
+  height: 76px;
+}
+body.is-native .rb-pos-mobile-grid .grid.grid-cols-3 .p-3 {
+  padding: 8px;
+}
+body.is-native .rb-pos-mobile-grid .grid.grid-cols-3 h3.text-sm {
+  font-size: 12px;
+  line-height: 1.15;
+}
+body.is-native .rb-pos-mobile-grid .grid.grid-cols-3 p.text-sm {
+  font-size: 12px;
+}
+
+.rb-pos-cat-chip {
+  flex: 0 0 auto;
+  padding: 8px 16px;
+  border-radius: 9999px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.rb-pos-cat-chip:active { transform: scale(0.96); }
+.rb-pos-cat-chip-active {
+  background: #0ea5e9;
+  border-color: #0ea5e9;
+  color: #ffffff;
+}
+
+.rb-pos-mobile-grid {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 12px 14px 88px;
+  background: #f8fafc;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Floating mini-cart bar — always visible at the bottom of the menu screen. */
+.rb-pos-minicart {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: calc(12px + env(safe-area-inset-bottom));
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 52px;
+  padding: 0 16px;
+  border: none;
+  border-radius: 16px;
+  background: #0ea5e9;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 700;
+  box-shadow: 0 10px 24px rgba(14, 165, 233, 0.42);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.rb-pos-minicart:active { transform: scale(0.985); }
+.rb-pos-minicart-count {
+  min-width: 26px;
+  height: 26px;
+  padding: 0 6px;
+  border-radius: 9999px;
+  background: #f59e0b;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.rb-pos-minicart-label {
+  flex: 1 1 auto;
+  text-align: left;
+  white-space: nowrap;
+}
+.rb-pos-minicart-total {
+  font-size: 15px;
+  font-weight: 800;
+}
+.rb-pos-minicart-empty {
+  justify-content: center;
+  background: #e2e8f0;
+  color: #64748b;
+  font-weight: 600;
+  font-size: 14px;
+  box-shadow: none;
+  cursor: default;
+}
+
+/* Floating cart sheet — overlay above the menu. */
+.rb-pos-cart-sheet {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+.rb-pos-cart-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  animation: rb-fade 0.18s ease;
+}
+@keyframes rb-fade { from { opacity: 0; } to { opacity: 1; } }
+.rb-pos-cart-panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  max-height: 88%;
+  background: #f8fafc;
+  border-radius: 20px 20px 0 0;
+  box-shadow: 0 -8px 28px rgba(15, 23, 42, 0.22);
+  animation: rb-slide-up 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes rb-slide-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+/* Cart action buttons — 5-col grid (2 KOT + 3 Payment). Uses a dedicated
+   class so the generic native "grid-cols-5 -> 2 columns" collapse rule
+   does NOT touch it. Both buttons stay visible and correctly sized. */
+.rb-cart-actions {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 16px;
+}
+.rb-cart-actions-kot { grid-column: span 2 / span 2; }
+.rb-cart-actions-pay {
+  grid-column: span 3 / span 3;
+  width: 100%;
+  font-size: 16px;
+  padding-top: 12px;
+  padding-bottom: 12px;
+  background: #16a34a;
+  color: #ffffff;
+}
+.rb-cart-actions-pay:hover { background: #15803d; }
+.rb-cart-actions-pay:focus { box-shadow: 0 0 0 2px rgba(22, 163, 74, 0.4); }
+.rb-cart-actions-pay:disabled { opacity: 0.55; }
+
+/* Edit-mode banner shown when updating an existing order */
+.rb-pos-edit-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: #0ea5e9;
+  color: #ffffff;
+  font-size: 13.5px;
+  font-weight: 700;
+}
+.rb-pos-edit-banner svg { flex: 0 0 auto; }
+
+/* Customer name box in the cart header. On native we shrink the
+   padding + bottom margin so the order form feels tighter. */
+.rb-cart-customer { padding: 12px; margin-bottom: 12px; }
+body.is-native .rb-cart-customer {
+  padding: 8px 10px;
+  margin-bottom: 8px;
+}
+
+.rb-pos-cart-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 14px;
+  background: #ffffff;
+  border-bottom: 1px solid #f1f5f9;
+  flex-shrink: 0;
+}
+.rb-pos-back {
+  border: none;
+  background: transparent;
+  color: #0ea5e9;
+  font-size: 16px;
+  font-weight: 600;
+  padding: 6px 4px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.rb-pos-cart-title {
+  flex: 1 1 auto;
+  text-align: center;
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.rb-pos-cart-items {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 12px 14px;
+  background: #f8fafc;
+  -webkit-overflow-scrolling: touch;
+}
+
+.rb-pos-cart-foot {
+  flex-shrink: 0;
+  background: #ffffff;
+  border-top: 1px solid #f1f5f9;
+  padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
+  box-shadow: 0 -2px 8px rgba(15, 23, 42, 0.05);
+}
+/* On Android Capacitor the system navigation bar (~48px) overlaps the
+   bottom of the WebView and env(safe-area-inset-bottom) reports 0, which
+   hid the KOT/Payment buttons. Add a hard minimum bottom padding so the
+   action buttons sit above the nav bar. The empty space below the buttons
+   is covered by the nav bar overlay, so no visual gap is visible. */
+body.is-native .rb-pos-cart-foot {
+  padding-bottom: calc(10px + max(56px, env(safe-area-inset-bottom, 0px)));
+}
+
+/* ============================================================
+   Mobile Table cards — compact, 3-in-1-row footer
+   ============================================================ */
+
+.rb-table-foot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 7px 4px;
+  border: 1px solid #e2e8f0;
+  border-radius: 9px;
+  background: #f8fafc;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.1s ease, background 0.14s ease, border-color 0.14s ease;
+}
+.rb-table-foot:active { transform: scale(0.97); background: #e2e8f0; }
+.rb-table-foot-primary {
+  background: #0ea5e9;
+  border-color: #0ea5e9;
+  color: #ffffff;
+}
+.rb-table-foot-primary:active { background: #0284c7; }
+.rb-table-foot-active {
+  background: #fef3c7;
+  border-color: #f59e0b;
+  color: #b45309;
+}
+
+/* ============================================================
+   Mobile Table cards — compact, square-ish, 3-per-row
+   ============================================================ */
+
+.rb-table-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 9px 9px 8px 9px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  overflow: hidden;
+  min-height: 108px;
+  aspect-ratio: 1 / 0.92;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.12s ease, box-shadow 0.18s ease;
+}
+.rb-table-card:active {
+  transform: scale(0.98);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+}
+
+/* Subtle status-tinted background so status is visible at a glance. */
+.rb-table-card-free      { background: #f0fdf4; border-color: #bbf7d0; }
+.rb-table-card-occupied  { background: #fef2f2; border-color: #fecaca; }
+.rb-table-card-reserved  { background: #fffbeb; border-color: #fde68a; }
+
+/* Top row: status pill (left) + badges (right). */
+.rb-table-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  margin-bottom: 5px;
+  min-height: 20px;
+}
+
+/* Status pill — colored uppercase badge. */
+.rb-table-card-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 7px;
+  border-radius: 9999px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+.rb-table-card-status svg { width: 10px; height: 10px; }
+.rb-table-card-status-free      { background: #dcfce7; color: #15803d; }
+.rb-table-card-status-occupied  { background: #fee2e2; color: #b91c1c; }
+.rb-table-card-status-reserved  { background: #fef3c7; color: #b45309; }
+
+/* Top-right small badges (assistance + food ready). */
+.rb-table-card-badges {
+  display: flex;
+  gap: 3px;
+  align-items: center;
+}
+.rb-table-card-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 9999px;
+  border: 0;
+  color: #ffffff;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.18);
+}
+.rb-table-card-badge-warn  { background: #f59e0b; }
+.rb-table-card-badge-green { background: #22c55e; }
+
+/* Card body (name + meta + bill). */
+.rb-table-card-body {
+  flex: 1;
+  min-width: 0;
+}
+.rb-table-card-name {
+  font-size: 15px;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.1;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rb-table-card-info {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 3px;
+  font-size: 11px;
+  color: #64748b;
+  flex-wrap: wrap;
+}
+.rb-table-card-guests {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-weight: 600;
+}
+.rb-table-card-timer {
+  display: inline-flex;
+  padding: 1px 6px;
+  border-radius: 9999px;
+  background: #fee2e2;
+  color: #b91c1c;
+  font-size: 10px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.rb-table-card-bill {
+  margin-top: 5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 7px;
+  border-radius: 7px;
+  background: #ffffff;
+  color: #0f172a;
+  font-size: 12px;
+  font-weight: 800;
+  border: 1px solid #e2e8f0;
+}
+.rb-table-card-bill-icon { color: #64748b; }
+
+/* Footer actions (3 compact buttons in 1 row). */
+.rb-table-card-foot {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 4px;
+  margin-top: 7px;
+}
+.rb-table-card-foot .rb-table-foot {
+  padding: 5px 2px;
+  font-size: 10.5px;
+  border-radius: 7px;
+  border-width: 1px;
+}
+
+/* ============================================================
+   Mobile Tables — summary stat tiles (tappable filter)
+   ============================================================ */
+
+.rb-table-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 7px;
+  padding: 0 12px 10px;
+}
+.rb-table-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 8px 4px 7px;
+  border-radius: 12px;
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.12s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+.rb-table-stat:active { transform: scale(0.96); }
+.rb-table-stat-active {
+  border-width: 2px;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.1);
+}
+.rb-table-stat-count {
+  font-size: 19px;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.rb-table-stat-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 9.5px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+.rb-table-stat-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 9999px;
+  display: inline-block;
+}
+
+/* ============================================================
+   Mobile Tables — collapsible area sections
+   ============================================================ */
+
+.rb-area {
+  background: #ffffff;
+  border: 1px solid #f1f5f9;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+/* On native the tables page goes edge-to-edge: area cards are flush
+   with the screen sides (no radius / no side borders) so the page
+   reads as full-width bands stacked vertically. */
+body.is-native .rb-area {
+  border-radius: 0;
+  border-left: none;
+  border-right: none;
+  box-shadow: none;
+}
+.rb-area-head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 14px 16px;
+  background: #ffffff;
+  border: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  text-align: left;
+}
+.rb-area-head:active { background: #f8fafc; }
+.rb-area-head-static { cursor: default; }
+.rb-area-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+}
+.rb-area-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+}
+.rb-area-progress {
+  width: 56px;
+  height: 5px;
+  border-radius: 9999px;
+  background: #f1f5f9;
+  overflow: hidden;
+}
+.rb-area-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #f59e0b, #ef4444);
+  border-radius: 9999px;
+  transition: width 0.3s ease;
+}
+.rb-area-count {
+  font-size: 12px;
+  font-weight: 700;
+  color: #475569;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.rb-area-chevron {
+  margin-left: 2px;
+  color: #94a3b8;
+  transition: transform 0.18s ease;
+  font-size: 14px;
+}
+.rb-area-chevron-collapsed { transform: rotate(-90deg); }
+.rb-area-body {
+  padding: 4px 14px 16px;
+}
+
+/* ============================================================
+   Running Orders page (mobile) — tappable list cards
+   ============================================================ */
+
+.rb-ro-card {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  background: #ffffff;
+  border: 1px solid #f1f5f9;
+  border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.14s ease, transform 0.1s ease;
+}
+.rb-ro-card:active { transform: scale(0.985); background: #f8fafc; }
+
+.rb-ro-card-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.rb-ro-icon {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: #e0f2fe;
+  color: #0284c7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.rb-ro-icon-amber { background: #fef3c7; color: #d97706; }
+.rb-ro-icon-emerald { background: #d1fae5; color: #059669; }
+
+.rb-ro-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+}
+.rb-ro-title-icon { color: #94a3b8; }
+
+.rb-ro-sub {
+  margin-top: 2px;
+  font-size: 12.5px;
+  color: #64748b;
+}
+.rb-ro-dot { margin: 0 6px; color: #cbd5e1; }
+
+.rb-ro-amount {
+  flex: 0 0 auto;
+  font-size: 15px;
+  font-weight: 700;
+  color: #0ea5e9;
+}
+.rb-ro-tag {
+  flex: 0 0 auto;
+  font-size: 12px;
+  font-weight: 700;
+  color: #d97706;
+  background: #fef3c7;
+  padding: 4px 10px;
+  border-radius: 9999px;
+}
+.rb-ro-time {
+  flex: 0 0 auto;
+  font-size: 14px;
+  font-weight: 700;
+  color: #059669;
+}
+.rb-ro-empty {
+  padding: 20px;
+  text-align: center;
+  color: #94a3b8;
+  font-size: 14px;
+  background: #ffffff;
+  border: 1px dashed #e2e8f0;
+  border-radius: 14px;
+}
+
+/* ============================================================
+   Mobile reservation cards — stack rows as compact tappable cards
+   (The ReservationsPage uses this layout on native.)
+   ============================================================ */
+
+.rb-reservation-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+  border-radius: 14px;
+  background: #ffffff;
+  border: 1px solid #f1f5f9;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  transition: transform 0.14s ease, box-shadow 0.14s ease;
+}
+
+.rb-reservation-card:active {
+  transform: scale(0.99);
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
+}
+
+.rb-reservation-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.rb-reservation-card-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.2;
+}
+
+.rb-reservation-card-meta {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 10px;
+  font-size: 13px;
+  color: #64748b;
+}
+
+.rb-reservation-card-meta b {
+  font-weight: 600;
+  color: #334155;
+}
+
+.rb-reservation-card-actions {
+  display: flex;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #f1f5f9;
+}
+
+/* ============================================================
+   Misc native polish
+   ============================================================ */
+
+/* Selects — native dropdowns get a taller, rounder look + chevron. */
+body.is-native select {
+  appearance: none;
+  -webkit-appearance: none;
+  min-height: 44px;
+  padding: 0 36px 0 12px;
+  border-radius: 12px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px;
+}
+
+/* Sticky page header bars (TablesPage uses bg-white shadow-sm) get a
+   slightly frosted look on native so content scrolls under them. */
+body.is-native header.bg-white.shadow-sm {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: rgba(255, 255, 255, 0.9);
+  -webkit-backdrop-filter: saturate(180%) blur(12px);
+  backdrop-filter: saturate(180%) blur(12px);
+}
+
+/* Inputs with a left icon — keep the icon vertically centered when we
+   bump input height to 48px. */
+body.is-native .relative .absolute.inset-y-0.left-0 {
+  display: flex;
+  align-items: center;
+}
+
+/* Long-press / text selection: keep the app-like feel but allow it in
+   form fields and content areas that explicitly opt in (.selectable). */
+body.is-native input,
+body.is-native textarea,
+body.is-native [contenteditable],
+body.is-native .selectable {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+/* Prevent layout shift when the soft keyboard opens: keep the root
+   scroll container stable instead of jumping. */
+body.is-native #root {
+  scroll-behavior: smooth;
+}
+
+/* Scrollbars: hide them entirely on native for an app feel — users
+   scroll with touch, not with scrollbars. */
+body.is-native ::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+body.is-native * {
+  scrollbar-width: none;
+}
+
+/* ============================================================
+   NATIVE COMPACT PAGE HEADER (replaces the web <Header>)
+   The full web header is hidden on native; this slim bar gives a
+   glanceable title + outlet switcher + user/logout.
+   ============================================================ */
+.rb-mobile-header {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: rgba(255, 255, 255, 0.92);
+  -webkit-backdrop-filter: saturate(180%) blur(12px);
+  backdrop-filter: saturate(180%) blur(12px);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+  padding: 10px 16px 8px;
+}
+.rb-mobile-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.rb-mobile-header-title {
+  font-size: 17px;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rb-mobile-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.rb-mobile-header-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  background: #f1f5f9;
+  color: #475569;
+  border: 0;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.14s ease, transform 0.12s ease;
+}
+.rb-mobile-header-icon:active {
+  transform: scale(0.92);
+  background: #e2e8f0;
+}
+.rb-mobile-header-icon {
+  position: relative;
+}
+.rb-mobile-header-badge {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: 9999px;
+  background: #ef4444;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 17px;
+  text-align: center;
+  border: 2px solid #ffffff;
+}
+.rb-mobile-header-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 9999px;
+  border: 2px solid #e0f2fe;
+}
+.rb-mobile-header-badge-cal {
+  background: #059669;
+}
+
+/* ============================================================
+   Notification popover (header bell hub)
+   ============================================================ */
+
+.rb-notif-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 248px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  box-shadow: 0 16px 40px -8px rgba(15, 23, 42, 0.25);
+  z-index: 60;
+  overflow: hidden;
+  animation: rb-notif-in 0.14s ease;
+}
+@keyframes rb-notif-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.rb-notif-popover-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid #f1f5f9;
+}
+.rb-notif-popover-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  color: #64748b;
+  -webkit-tap-highlight-color: transparent;
+}
+.rb-notif-popover-close:active { background: #f1f5f9; }
+.rb-notif-popover-body {
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.rb-notif-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 10px;
+  border-radius: 12px;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.14s ease;
+}
+.rb-notif-row:active { background: #f8fafc; }
+.rb-notif-row-empty { opacity: 0.55; }
+.rb-notif-row-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+.rb-notif-row-label {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 600;
+  color: #334155;
+}
+.rb-notif-row-count {
+  min-width: 24px;
+  height: 24px;
+  padding: 0 7px;
+  border-radius: 9999px;
+  background: #e2e8f0;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 24px;
+  text-align: center;
+}
+.rb-notif-row-count-active {
+  background: #ef4444;
+  color: #ffffff;
+}
+
+/* ============================================================
+   Notification badge on More-sheet tiles
+   ============================================================ */
+
+.rb-more-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 9999px;
+  background: #ef4444;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+  border: 2px solid #f8fafc;
+}
+
+/* ============================================================
+   HOME / DASHBOAR — premium mobile metrics
+   ============================================================ */
+
+/* The dashboard wraps stat cards in a 12-col web grid; force a clean
+   2-column layout so numbers stay legible on a phone. */
+body.is-native .grid.grid-cols-1.sm\:grid-cols-2.md\:grid-cols-3,
+body.is-native .grid.grid-cols-1.sm\:grid-cols-2.md\:grid-cols-3.lg\:grid-cols-4,
+body.is-native .grid.grid-cols-1.sm\:grid-cols-2.md\:grid-cols-3.lg\:grid-cols-4.xl\:grid-cols-4 {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+}
+
+/* Stat cards: shorter, rounded, with a subtle tint so they read as
+   tappable tiles rather than a dense desktop report. */
+body.is-native .grid.grid-cols-1.sm\:grid-cols-2.md\:grid-cols-3.lg\:grid-cols-4 .bg-white,
+body.is-native .rb-stat-card {
+  border-radius: 16px !important;
+  padding: 14px !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05) !important;
+}
+body.is-native .rb-stat-card .text-2xl,
+body.is-native .rb-stat-card .text-3xl {
+  font-size: 1.4rem !important;
+  line-height: 1.1 !important;
+}
+
+/* The date-filter + action bar at the top of the dashboard: stack the
+   period chips and the action buttons into a tidy column. */
+body.is-native .flex.flex-wrap.gap-3.justify-between.items-center {
+  flex-direction: column !important;
+  align-items: stretch !important;
+  gap: 10px !important;
+}
+body.is-native .flex.flex-wrap.gap-2.justify-end {
+  justify-content: stretch !important;
+  width: 100% !important;
+}
+body.is-native .flex.flex-wrap.gap-2.justify-end > button {
+  flex: 1 1 auto !important;
+}
+
+/* The big "AI Daily Insight" + recent-activity column should become
+   a stacked section under the stat grid on native. */
+body.is-native .grid.grid-cols-1.xl\:grid-cols-4 {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 14px !important;
+}
+body.is-native .xl\:col-span-3 {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+body.is-native .xl\:sticky.xl\:top-6.self-start {
+  position: static !important;
+}
+
+/* Sales Trend card: full width, comfortable (the parent column already
+   stacks on native, so this just ensures single-column). */
+body.is-native .items-stretch.grid {
+  grid-template-columns: 1fr !important;
+}
+
+/* ============================================================
+   TABLES — 2-column tappable grid
+   ============================================================ */
+body.is-native .grid.grid-cols-1.sm\:grid-cols-2.md\:grid-cols-4.lg\:grid-cols-5.xl\:grid-cols-6 {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+}
+
+/* ============================================================
+   ORDER / POS — give the operational screen room
+   (bottom nav already present). Full-width panels, no cramped
+   desktop split unless the page itself makes a 2-col on wide.
+   ============================================================ */
+body.is-native main.rb-native-main {
+  padding-top: 0 !important;
+}
+body.is-native .rb-native-main > .flex.h-screen {
+  height: auto !important;
+  min-height: calc(100vh - 130px) !important;
+}
+/* POS category rail / item grid: keep readable on phone. */
+body.is-native .grid.grid-cols-2,
+body.is-native .grid.grid-cols-3,
+body.is-native .grid.grid-cols-4,
+body.is-native .grid.grid-cols-5,
+body.is-native .grid.grid-cols-6 {
+  gap: 8px !important;
+}
+
+/* ============================================================
+   Report Dashboard (mobile) — sticky search + collapsible
+   category accordions + tappable report rows with icons.
+   ============================================================ */
+
+.rb-report-search-wrap {
+  position: sticky;
+  top: 0;
+  z-index: 15;
+  background: #ffffff;
+  padding: 10px 14px 8px;
+  border-bottom: 1px solid #f1f5f9;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+}
+.rb-report-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+.rb-report-search-icon {
+  position: absolute;
+  left: 12px;
+  color: #94a3b8;
+  pointer-events: none;
+}
+.rb-report-search-input {
+  width: 100%;
+  height: 40px;
+  padding: 0 36px 0 36px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  font-size: 15px;
+  color: #0f172a;
+  outline: none;
+  -webkit-appearance: none;
+}
+.rb-report-search-input:focus {
+  border-color: #0ea5e9;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.12);
+}
+.rb-report-search-clear {
+  position: absolute;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: none;
+  background: #e2e8f0;
+  color: #64748b;
+  border-radius: 9999px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.rb-report-search-meta {
+  margin-top: 6px;
+  padding-left: 2px;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.rb-report-list {
+  padding: 12px 0 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.rb-report-cat {
+  background: #ffffff;
+  border: 1px solid #f1f5f9;
+  border-radius: 14px;
+  overflow: hidden;
+}
+.rb-report-cat-head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: #ffffff;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+}
+.rb-report-cat-head:active { background: #f8fafc; }
+.rb-report-cat-icon {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.rb-report-cat-title {
+  flex: 1 1 auto;
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+}
+.rb-report-cat-count {
+  flex: 0 0 auto;
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748b;
+  background: #f1f5f9;
+  padding: 3px 9px;
+  border-radius: 9999px;
+  font-variant-numeric: tabular-nums;
+}
+.rb-report-cat-chevron {
+  flex: 0 0 auto;
+  color: #94a3b8;
+  transition: transform 0.18s ease;
+  transform: rotate(-90deg);
+}
+.rb-report-cat-chevron-open { transform: rotate(0deg); }
+
+.rb-report-cat-body {
+  border-top: 1px solid #f1f5f9;
+  padding: 4px 0;
+}
+.rb-report-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  text-decoration: none;
+  color: #0f172a;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.12s ease;
+}
+.rb-report-row:active { background: #f8fafc; }
+.rb-report-row + .rb-report-row { border-top: 1px solid #f8fafc; }
+.rb-report-row-icon {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f8fafc;
+  border-radius: 8px;
+}
+.rb-report-row-name {
+  flex: 1 1 auto;
+  font-size: 14.5px;
+  font-weight: 600;
+  color: #1e293b;
+}
+.rb-report-row-arrow {
+  flex: 0 0 auto;
+  color: #cbd5e1;
+  transform: rotate(-90deg);
+}
+
+.rb-report-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 48px 20px;
+  color: #94a3b8;
+  text-align: center;
+}
+.rb-report-empty p { font-size: 14px; margin: 0; }
+
+/* ============================================================
+   Settings hub — quick links to every settings sub-page
+   ============================================================ */
+
+.rb-settings-link {
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.1s ease, box-shadow 0.16s ease, border-color 0.16s ease, background 0.16s ease;
+}
+.rb-settings-link:active {
+  transform: scale(0.98);
+  box-shadow: 0 2px 8px rgba(217, 119, 6, 0.12);
+}
+.rb-settings-link-icon {
+  transition: color 0.16s ease, background 0.16s ease;
+}
+.rb-settings-link:hover .rb-settings-link-icon {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+/* On native, stretch the link grid to a single column and tighten spacing
+   so all settings are easy to reach with a thumb. */
+body.is-native .rb-settings-link {
+  padding: 12px 14px;
+}
+body.is-native .rb-settings-link-icon {
+  width: 40px;
+  height: 40px;
+}
+
+/* ============================================================
+   Payment screen — native mobile improvements
+   The default layout is a two-column desktop grid. On native we stack
+   everything vertically and make the controls thumb-friendly.
+   ============================================================ */
+
+/* Larger, clearer amount input on native */
+body.is-native .rb-pay-amount {
+  font-size: 2.25rem;
+  padding-top: 0.875rem;
+  padding-bottom: 0.875rem;
+  background: #f8fafc;
+  border-radius: 14px;
+}
+
+/* Numpad keys — bigger tap targets */
+body.is-native .rb-pay-key {
+  border-radius: 14px;
+  font-weight: 700;
+  font-size: 1.5rem;
+  background: #ffffff;
+}
+
+/* Sticky confirm bar that sits above the Android nav bar */
+body.is-native .rb-pay-foot {
+  position: sticky;
+  bottom: 0;
+  margin-top: 16px;
+  padding: 12px 0 calc(12px + max(56px, env(safe-area-inset-bottom, 0px)));
+  background: linear-gradient(to top, #ffffff 70%, rgba(255, 255, 255, 0));
+  border-top: 1px solid #f1f5f9;
+}
+
+/* Full-width, prominent confirm button in the brand accent */
+body.is-native .rb-pay-confirm {
+  width: 100%;
+  padding-top: 16px;
+  padding-bottom: 16px;
+  font-size: 1.125rem;
+  font-weight: 700;
+  border-radius: 14px;
+  background: #d97706;
+  color: #ffffff;
+  box-shadow: 0 10px 24px -8px rgba(217, 119, 6, 0.55);
+}
+body.is-native .rb-pay-confirm:hover { background: #b45309; }
+
+

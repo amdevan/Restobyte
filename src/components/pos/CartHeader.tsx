@@ -67,7 +67,7 @@ const CartHeader: React.FC<CartHeaderProps> = ({
         <Button size="sm" variant={orderType === 'WhatsApp' ? 'primary' : 'secondary'} className="!rounded-md flex-1" onClick={() => setOrderType('WhatsApp')} leftIcon={<FiMessageSquare size={14}/>}>WhatsApp</Button>
       </div>
 
-      <div className="p-3 bg-sky-50 rounded-lg mb-3 border border-sky-100">
+      <div className="rb-cart-customer p-3 bg-sky-50 rounded-lg mb-3 border border-sky-100">
         <div className="flex justify-between items-center">
             <div className="flex items-center">
                 <FiUser className="mr-2 text-sky-700"/>

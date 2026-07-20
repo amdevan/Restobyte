@@ -1,11 +1,47 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useRestaurantData } from '@/hooks/useRestaurantData';
 import { ApplicationSettings, PaperSize } from '@/types';
 import Card from '@/components/common/Card';
 import Input from '@/components/common/Input';
 import Button from '@/components/common/Button';
-import { FiSave, FiCheckCircle, FiSettings, FiGlobe, FiPrinter, FiShoppingCart } from 'react-icons/fi';
+import { FiSave, FiCheckCircle, FiSettings, FiGlobe, FiPrinter, FiShoppingCart, FiChevronRight, FiVolume2, FiTool, FiMonitor, FiPercent, FiDollarSign, FiTag, FiCreditCard, FiArchive, FiTruck, FiMapPin, FiGrid, FiLayout, FiCoffee, FiUsers } from 'react-icons/fi';
 import { clampCharsPerLine, getPaperSizeConfig } from '@/utils/printSettings';
+
+// Quick links to every settings sub-page so the native Settings tab becomes a
+// single hub from which all configuration is reachable.
+const SETTINGS_LINK_GROUPS: { title: string; items: { label: string; path: string; icon: React.ReactElement }[] }[] = [
+  {
+    title: 'General',
+    items: [
+      { label: 'Sound Settings', path: '/app/settings/sound-settings', icon: <FiVolume2 /> },
+      { label: 'White Label', path: '/app/settings/white-label', icon: <FiTool /> },
+      { label: 'Tax Setting', path: '/app/settings/tax-setting', icon: <FiPercent /> },
+      { label: 'Payment Methods', path: '/app/settings/list-payment-method', icon: <FiCreditCard /> },
+    ],
+  },
+  {
+    title: 'Hardware & Money',
+    items: [
+      { label: 'Printer', path: '/app/settings/list-printer', icon: <FiPrinter /> },
+      { label: 'Counter', path: '/app/settings/list-counter', icon: <FiMonitor /> },
+      { label: 'Multiple Currencies', path: '/app/settings/list-multiple-currency', icon: <FiDollarSign /> },
+      { label: 'Expense Categories', path: '/app/settings/expense-categories', icon: <FiTag /> },
+      { label: 'Denominations', path: '/app/settings/list-denomination', icon: <FiArchive /> },
+      { label: 'Delivery Partners', path: '/app/settings/list-delivery-partner', icon: <FiTruck /> },
+    ],
+  },
+  {
+    title: 'Floor & Staff',
+    items: [
+      { label: 'Areas/Floors', path: '/app/settings/list-area-floor', icon: <FiMapPin /> },
+      { label: 'Table', path: '/app/settings/list-table', icon: <FiGrid /> },
+      { label: 'Floor/Area Plan Design', path: '/app/settings/floor-area-plan-design', icon: <FiLayout /> },
+      { label: 'Manage Kitchens', path: '/app/settings/kitchens', icon: <FiCoffee /> },
+      { label: 'Manage Waiters', path: '/app/settings/waiters', icon: <FiUsers /> },
+    ],
+  },
+];
 
 const AppSettingsPage: React.FC = () => {
     const { applicationSettings, updateApplicationSettings, customers } = useRestaurantData();
@@ -132,6 +168,34 @@ const AppSettingsPage: React.FC = () => {
                 </div>
               )}
             </div>
+
+            <Card title="All Settings" icon={<FiSettings />}>
+                <div className="p-4 space-y-5">
+                    {SETTINGS_LINK_GROUPS.map((group) => (
+                        <div key={group.title}>
+                            <h3 className="text-xs font-bold uppercase tracking-wide text-gray-400 mb-2">{group.title}</h3>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                {group.items.map((item) => {
+                                    const Icon = item.icon;
+                                    return (
+                                        <Link
+                                            key={item.path}
+                                            to={item.path}
+                                            className="rb-settings-link flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-3 py-2.5 hover:border-amber-300 hover:bg-amber-50 transition-colors"
+                                        >
+                                            <span className="rb-settings-link-icon flex items-center justify-center w-9 h-9 rounded-lg bg-gray-100 text-gray-600">
+                                                {Icon}
+                                            </span>
+                                            <span className="flex-1 text-sm font-medium text-gray-700">{item.label}</span>
+                                            <FiChevronRight className="text-gray-400" size={18} />
+                                        </Link>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </Card>
 
             {activeTab === 'general' && (
             <Card title="Localization & Formatting" icon={<FiGlobe />}>

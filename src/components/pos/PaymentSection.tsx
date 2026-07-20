@@ -7,6 +7,7 @@ import { FiDollarSign, FiTrash2, FiCheckCircle } from 'react-icons/fi';
 import { useRestaurantData } from '@/hooks/useRestaurantData';
 import { formatMoney, fromBase, toBase } from '@/utils/currency';
 import FonepayQRModal from '@/components/payments/FonepayQRModal';
+import { isNative } from '@/utils/capacitorService';
 
 interface PaymentSectionProps {
   grandTotal: number;
@@ -127,14 +128,14 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({ grandTotal, onFi
 
   return (
     <div className="h-full flex flex-col">
-      <div className="flex space-x-6 flex-grow">
+      <div className={`flex flex-grow ${isNative ? 'flex-col gap-4' : 'space-x-6'}`}>
         {/* Left Side: Methods and Summary */}
-        <div className="w-1/2 flex flex-col">
+        <div className={`${isNative ? 'w-full flex flex-col' : 'w-1/2 flex flex-col'}`}>
           <div className="grid grid-cols-4 gap-3 mb-4">
             {PAYMENT_METHODS.map(method => (
-                <Button key={method} size="lg" variant={paymentMethod === method ? 'primary' : 'outline'} onClick={() => setPaymentMethod(method)}>{method}</Button>
+                <Button key={method} size="lg" variant={paymentMethod === method ? 'primary' : 'outline'} onClick={() => setPaymentMethod(method)} className={isNative ? '!py-3 !text-base' : ''}>{method}</Button>
             ))}
-            <Button size="lg" variant="outline" className="border-dashed" onClick={onAddTip}>Add Tip</Button>
+            <Button size="lg" variant="outline" className={`border-dashed ${isNative ? '!py-3 !text-base' : ''}`} onClick={onAddTip}>Add Tip</Button>
           </div>
           <div className="flex items-center justify-between mb-2">
             <label className="text-sm text-gray-600">Currency</label>
@@ -144,13 +145,13 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({ grandTotal, onFi
               ))}
             </select>
           </div>
-          <Input label="Amount" value={amount} onChange={(e) => setAmount(e.target.value)} className="text-3xl font-mono text-right py-3" leftIcon={<span className="font-bold">{selectedCurrency?.symbol || '$'}</span>} disabled={paymentMethod === 'Due'} />
+          <Input label="Amount" value={amount} onChange={(e) => setAmount(e.target.value)} className={`text-3xl font-mono text-right py-3 ${isNative ? 'rb-pay-amount' : ''}`} leftIcon={<span className="font-bold">{selectedCurrency?.symbol || '$'}</span>} disabled={paymentMethod === 'Due'} />
           {paymentMethod === 'Fonepay' && (
             <Button className="mt-2" size="lg" variant="secondary" onClick={openFonepayQR} disabled={!amount || parseFloat(amount) <= 0}>
               Scan Fonepay QR
             </Button>
           )}
-          
+
            {partialPayments.length > 0 && (
                 <div className="mt-2 text-xs space-y-1">
                     {partialPayments.map((p, i) => (
@@ -168,7 +169,7 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({ grandTotal, onFi
             <div className="flex justify-between"><span className="text-gray-600">Total Bill</span><span>{formatMoney(grandTotal, selectedCurrency, applicationSettings)}</span></div>
             <div className="flex justify-between"><span className="text-gray-600">Amount Paid</span><span>{formatMoney(displayTotalPaidBase, selectedCurrency, applicationSettings)}</span></div>
             {displayBalanceBase >= 0 ? (
-                <div className={`flex justify-between font-bold text-red-500`}>
+                <div className={`flex justify-between font-bold ${displayBalanceBase > 0.001 ? 'text-red-500' : 'text-gray-700'}`}>
                     <span>Due Amount</span>
                     <span>{formatMoney(displayBalanceBase, selectedCurrency, applicationSettings)}</span>
                 </div>
@@ -182,28 +183,28 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({ grandTotal, onFi
         </div>
 
         {/* Right Side: Quick Cash and Numpad */}
-        <div className="w-1/2">
+        <div className={`${isNative ? 'w-full' : 'w-1/2'}`}>
             <div className="grid grid-cols-2 gap-3 mb-3">
                 {[50, 100, 500, 1000].map(val => {
                   const label = applicationSettings.currencySymbolPosition === 'after'
                     ? `${val.toFixed(2)}${selectedCurrency?.symbol || '$'}`
                     : `${selectedCurrency?.symbol || '$'}${val.toFixed(2)}`;
                   return (
-                    <Button key={val} size="lg" variant="outline" onClick={() => setAmount(val.toFixed(2))} disabled={paymentMethod === 'Due'}>{label}</Button>
+                    <Button key={val} size="lg" variant="outline" onClick={() => setAmount(val.toFixed(2))} disabled={paymentMethod === 'Due'} className={isNative ? '!py-3 !text-base' : ''}>{label}</Button>
                   );
                 })}
             </div>
             <div className="grid grid-cols-3 gap-3">
                 {[1, 2, 3, 4, 5, 6, 7, 8, 9, '.', 0].map(key => (
-                    <Button key={key} size="lg" variant="outline" className="py-5 text-2xl" onClick={() => handleNumpadClick(key)} disabled={paymentMethod === 'Due'}>{key}</Button>
+                    <Button key={key} size="lg" variant="outline" className={`py-5 text-2xl ${isNative ? 'rb-pay-key !py-4' : ''}`} onClick={() => handleNumpadClick(key)} disabled={paymentMethod === 'Due'}>{key}</Button>
                 ))}
-                <Button size="lg" variant="outline" className="py-5 text-2xl" onClick={() => handleNumpadClick('del')} disabled={paymentMethod === 'Due'}><FiTrash2 /></Button>
+                <Button size="lg" variant="outline" className={`py-5 text-2xl ${isNative ? 'rb-pay-key !py-4' : ''}`} onClick={() => handleNumpadClick('del')} disabled={paymentMethod === 'Due'}><FiTrash2 /></Button>
             </div>
         </div>
       </div>
-      <div className="mt-6 pt-4 border-t flex justify-end">
-        <Button 
-          className="w-full !text-lg !py-3 bg-violet-600 hover:bg-violet-700 focus:ring-violet-500" 
+      <div className={`${isNative ? 'rb-pay-foot' : 'mt-6 pt-4 border-t flex justify-end'}`}>
+        <Button
+          className={`${isNative ? 'rb-pay-confirm' : 'w-full !text-lg !py-3 bg-violet-600 hover:bg-violet-700 focus:ring-violet-500'}`}
           onClick={handleFinalizeSale}
           leftIcon={<FiCheckCircle />}
         >

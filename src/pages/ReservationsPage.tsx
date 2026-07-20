@@ -1,7 +1,7 @@
 
 
 import React, { useState, useMemo } from 'react';
-import { FiPlusCircle, FiEdit, FiTrash2 } from 'react-icons/fi';
+import { FiPlusCircle, FiEdit, FiTrash2, FiUsers, FiGrid, FiFileText } from 'react-icons/fi';
 import AddReservationForm from '@/components/reservations/AddReservationForm';
 import Modal from '@/components/common/Modal';
 import Button from '@/components/common/Button';
@@ -9,6 +9,8 @@ import Card from '@/components/common/Card';
 import { useRestaurantData } from '../hooks/useRestaurantData';
 import { Reservation } from '../types';
 import FeatureDisabledPage from '@/components/common/FeatureDisabledPage';
+import { isNative } from '../utils/capacitorService';
+import { useMobile } from '../hooks/useMobileApp';
 
 const ReservationRow: React.FC<{ reservation: Reservation; onEdit: (res: Reservation) => void; onDelete: (id: string) => void; tableName: string | undefined }> = ({ reservation, onEdit, onDelete, tableName }) => {
   return (
@@ -28,11 +30,39 @@ const ReservationRow: React.FC<{ reservation: Reservation; onEdit: (res: Reserva
   );
 };
 
+/** Compact tappable card for a single reservation — used on native mobile. */
+const ReservationCardMobile: React.FC<{ reservation: Reservation; onEdit: (res: Reservation) => void; onDelete: (id: string) => void; tableName: string | undefined }> = ({ reservation, onEdit, onDelete, tableName }) => {
+  return (
+    <div className="rb-reservation-card">
+      <div className="rb-reservation-card-top">
+        <div>
+          <p className="rb-reservation-card-name">{reservation.customerName}</p>
+          <p className="text-xs text-sky-600 font-medium mt-1">
+            {new Date(reservation.dateTime).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+          </p>
+        </div>
+        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-sky-50 text-sky-700 text-xs font-semibold">
+          <FiUsers size={12} /> {reservation.partySize}
+        </span>
+      </div>
+      <div className="rb-reservation-card-meta">
+        <FiGrid size={14} /> <b>{tableName || 'Not Assigned'}</b>
+        {reservation.notes ? (<><FiFileText size={14} /> <span className="truncate">{reservation.notes}</span></>) : null}
+      </div>
+      <div className="rb-reservation-card-actions">
+        <Button onClick={() => onEdit(reservation)} variant="secondary" size="sm" className="flex-1" leftIcon={<FiEdit size={14} />}>Edit</Button>
+        <Button onClick={() => onDelete(reservation.id)} variant="danger" size="sm" className="flex-1" leftIcon={<FiTrash2 size={14} />}>Delete</Button>
+      </div>
+    </div>
+  );
+};
+
 
 const ReservationsPage: React.FC = () => {
   const { reservations, tables, addReservation, updateReservation, deleteReservation: removeReservation, getSingleActiveOutlet } = useRestaurantData();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingReservation, setEditingReservation] = useState<Reservation | null>(null);
+  const { haptic } = useMobile();
 
   const outlet = getSingleActiveOutlet();
 
@@ -83,15 +113,34 @@ const ReservationsPage: React.FC = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-semibold text-gray-800">Reservation Management</h1>
-        <Button onClick={() => handleOpenModal()} leftIcon={<FiPlusCircle size={20}/>} variant="primary">
-          Add New Reservation
+        <Button
+          onClick={() => { handleOpenModal(); haptic('light'); }}
+          leftIcon={<FiPlusCircle size={20}/>}
+          variant="primary"
+        >
+          {isNative ? 'Add' : 'Add New Reservation'}
         </Button>
       </div>
 
-      <Card className="overflow-x-auto">
-        {sortedReservations.length === 0 ? (
+      {sortedReservations.length === 0 ? (
+        <Card>
           <p className="text-gray-500 text-center py-10">No reservations yet. Add your first one!</p>
-        ) : (
+        </Card>
+      ) : isNative ? (
+        // Native: stacked tappable cards — much friendlier than a horizontal-scroll table.
+        <div className="space-y-3">
+          {sortedReservations.map(res => (
+            <ReservationCardMobile
+              key={res.id}
+              reservation={res}
+              onEdit={handleOpenModal}
+              onDelete={handleDeleteReservation}
+              tableName={getTableName(res.tableId)}
+            />
+          ))}
+        </div>
+      ) : (
+        <Card className="overflow-x-auto">
           <table className="w-full min-w-max">
             <thead>
               <tr className="bg-gray-100 border-b border-gray-300">
@@ -115,8 +164,8 @@ const ReservationsPage: React.FC = () => {
               ))}
             </tbody>
           </table>
-        )}
-      </Card>
+        </Card>
+      )}
 
       <Modal isOpen={isModalOpen} onClose={handleCloseModal} title={editingReservation ? "Edit Reservation" : "Add New Reservation"} size="lg">
         <AddReservationForm 

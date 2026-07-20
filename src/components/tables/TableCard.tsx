@@ -7,6 +7,7 @@ import { Table, TableStatus, Sale } from '../../types';
 import { useRestaurantData } from '../../hooks/useRestaurantData';
 import Button from '../common/Button';
 import Modal from '../common/Modal'; // For TableNotesModal
+import { isNative, vibrate } from '../../utils/capacitorService';
 import { 
     FiUsers, FiCircle, FiCheckCircle, FiClock as FiClockIcon, FiMapPin, FiDollarSign, 
     FiShoppingCart, FiFileText, FiArrowRightCircle, FiEdit2, FiMessageSquare, FiBell, FiShoppingBag
@@ -133,97 +134,157 @@ const TableCard: React.FC<TableCardProps> = ({ table, onStatusChange }) => {
 
   return (
     <>
-      <TableNotesModal 
+      <TableNotesModal
         isOpen={isNotesModalOpen}
         onClose={() => setIsNotesModalOpen(false)}
         onSave={handleNotesSave}
         initialNotes={table.notes}
         tableName={table.name}
       />
-      <div className={`relative rounded-lg overflow-hidden shadow-md border ${borderColor} ${bgColor} transition-shadow duration-300 hover:shadow-lg`}>
-        <div className="absolute top-2 right-2 flex flex-col space-y-1.5">
+      {isNative ? (
+        <div
+          className={`rb-table-card rb-table-card-${table.status.toLowerCase()}`}
+          onClick={() => { navigate(`/app/panel/pos/${table.id}`); vibrate(); }}
+        >
+          {/* Top row: status pill (left) + badges (right) */}
+          <div className="rb-table-card-top">
+            <span className={`rb-table-card-status rb-table-card-status-${table.status.toLowerCase()}`}>
+              {icon}
+              <span>{table.status}</span>
+            </span>
+            <div className="rb-table-card-badges">
+              {table.assistanceRequested && (
+                <span className="rb-table-card-badge rb-table-card-badge-warn" title="Assistance requested">
+                  <FiBell size={10} />
+                </span>
+              )}
+              {table.foodReady && (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); resolveFoodReady(table.id); vibrate(); }}
+                  className="rb-table-card-badge rb-table-card-badge-green"
+                  title="Food ready"
+                >
+                  <FiShoppingBag size={11} />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Body — just name + capacity */}
+          <div className="rb-table-card-body">
+            <h3 className="rb-table-card-name">{table.name}</h3>
+            <div className="rb-table-card-info">
+              <span className="rb-table-card-guests">
+                <FiUsers size={11} /> {table.capacity}
+              </span>
+            </div>
+          </div>
+
+          {/* Footer: 2 compact actions (Notes + Assist). Card click opens menu. */}
+          <div className="rb-table-card-foot">
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); setIsNotesModalOpen(true); vibrate(); }}
+              className="rb-table-foot"
+            >
+              Notes
+            </button>
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); handleToggleAssistance(); vibrate(); }}
+              className={`rb-table-foot ${table.assistanceRequested ? 'rb-table-foot-active' : ''}`}
+            >
+              Assist
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className={`relative rounded-lg overflow-hidden shadow-md border ${borderColor} ${bgColor} transition-shadow duration-300 hover:shadow-lg`}>
+          <div className="absolute top-2 right-2 flex flex-col space-y-1.5">
             <div className={`p-1.5 rounded-full text-white/80 ${table.status === TableStatus.Free ? 'bg-green-500' : table.status === TableStatus.Occupied ? 'bg-red-500' : 'bg-amber-500'}`}>
               <FiCircle size={10} />
             </div>
              {table.foodReady && (
-                <button 
+                <button
                     onClick={() => resolveFoodReady(table.id)}
-                    className="p-1.5 rounded-full bg-green-500 text-white" 
+                    className="p-1.5 rounded-full bg-green-500 text-white"
                     title="Food is ready for pickup!">
                     <FiShoppingBag size={12} />
                 </button>
             )}
-        </div>
-        
-        {/* Assistance Bell */}
-        {table.assistanceRequested && (
+          </div>
+
+          {/* Assistance Bell */}
+          {table.assistanceRequested && (
             <div className="absolute top-2 left-2 p-1.5 rounded-full bg-amber-500 text-white" title={`Assistance requested at ${new Date(table.assistanceRequestedAt!).toLocaleTimeString()}`}>
                 <FiBell size={12} />
             </div>
-        )}
+          )}
 
 
-        <div className="p-3 flex flex-col h-full">
-          <div className="flex-grow">
-            <h3 className="text-lg font-bold text-gray-800">{table.name}</h3>
-            <div className="flex items-center text-xs text-gray-500 mt-1">
-              <FiUsers size={12} className="mr-1.5" />
-              <span>{table.capacity} Guests</span>
-            </div>
-             <div className="flex items-center text-xs text-gray-400 mt-1">
-              <FiMapPin size={12} className="mr-1.5" />
-              <span>{areaName}</span>
-            </div>
-            
-            <div className={`mt-2 flex items-center text-xs font-semibold ${textColor}`}>
-              {icon}
-              <span className="ml-1.5">{table.status}</span>
-              {table.status === TableStatus.Occupied && timer && (
-                <span className="ml-2 font-mono text-xs px-1.5 py-0.5 bg-red-100 rounded-full">{timer}</span>
+          <div className="p-3 flex flex-col h-full">
+            <div className="flex-grow">
+              <h3 className="text-lg font-bold text-gray-800">{table.name}</h3>
+              <div className="flex items-center text-xs text-gray-500 mt-1">
+                <FiUsers size={12} className="mr-1.5" />
+                <span>{table.capacity} Guests</span>
+              </div>
+               <div className="flex items-center text-xs text-gray-400 mt-1">
+                <FiMapPin size={12} className="mr-1.5" />
+                <span>{areaName}</span>
+              </div>
+
+              <div className={`mt-2 flex items-center text-xs font-semibold ${textColor}`}>
+                {icon}
+                <span className="ml-1.5">{table.status}</span>
+                {table.status === TableStatus.Occupied && timer && (
+                  <span className="ml-2 font-mono text-xs px-1.5 py-0.5 bg-red-100 rounded-full">{timer}</span>
+                )}
+              </div>
+
+              {openBillAmount > 0 && (
+                  <div className="mt-2 flex items-center bg-gray-200/50 p-1.5 rounded-md">
+                      <FiDollarSign size={14} className="text-gray-600 mr-1.5 flex-shrink-0" />
+                      <span className="text-gray-800 font-bold text-base"><Money amount={openBillAmount} /></span>
+                  </div>
               )}
             </div>
 
-            {openBillAmount > 0 && (
-                <div className="mt-2 flex items-center bg-gray-200/50 p-1.5 rounded-md">
-                    <FiDollarSign size={14} className="text-gray-600 mr-1.5 flex-shrink-0" />
-                    <span className="text-gray-800 font-bold text-base"><Money amount={openBillAmount} /></span>
-                </div>
-            )}
-          </div>
-          
-          <div className="mt-3 pt-3 border-t border-gray-300/50 space-y-1.5">
-            <div className="grid grid-cols-2 gap-1.5">
-                <Button variant="secondary" size="sm" onClick={() => navigate(`/app/panel/pos/${table.id}`)} leftIcon={<FiShoppingCart size={14}/>}>
-                    Go to POS
-                </Button>
-                <div className="relative">
-                    <select
-                        value={table.status}
-                        onChange={(e) => onStatusChange(table.id, e.target.value as TableStatus)}
-                        className="w-full h-full text-center appearance-none px-2 py-1 text-sm border border-gray-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500"
-                    >
-                        <option value={TableStatus.Free}>Free</option>
-                        <option value={TableStatus.Occupied}>Occupied</option>
-                        <option value={TableStatus.Reserved}>Reserved</option>
-                    </select>
-                </div>
-            </div>
-             <div className="grid grid-cols-2 gap-1.5">
-                 <Button variant="outline" size="sm" onClick={() => setIsNotesModalOpen(true)} leftIcon={<FiEdit2 size={14} />}>
-                    Notes
-                </Button>
-                 <Button 
-                    variant={table.assistanceRequested ? 'primary' : 'outline'} 
-                    size="sm" 
-                    onClick={handleToggleAssistance} 
-                    leftIcon={<FiBell size={14}/>}
-                >
-                    Assist
-                </Button>
+            <div className="mt-2.5 pt-2.5 border-t border-gray-300/50">
+              <div className="grid grid-cols-2 gap-1.5">
+                  <Button variant="secondary" size="sm" onClick={() => navigate(`/app/panel/pos/${table.id}`)} leftIcon={<FiShoppingCart size={14}/>}>
+                      Go to POS
+                  </Button>
+                  <div className="relative">
+                      <select
+                          value={table.status}
+                          onChange={(e) => onStatusChange(table.id, e.target.value as TableStatus)}
+                          className="w-full h-full text-center appearance-none px-2 py-1 text-sm border border-gray-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500"
+                      >
+                          <option value={TableStatus.Free}>Free</option>
+                          <option value={TableStatus.Occupied}>Occupied</option>
+                          <option value={TableStatus.Reserved}>Reserved</option>
+                      </select>
+                  </div>
+              </div>
+              <div className="grid grid-cols-2 gap-1.5">
+                  <Button variant="outline" size="sm" onClick={() => setIsNotesModalOpen(true)} leftIcon={<FiEdit2 size={14} />}>
+                      Notes
+                  </Button>
+                  <Button
+                      variant={table.assistanceRequested ? 'primary' : 'outline'}
+                      size="sm"
+                      onClick={handleToggleAssistance}
+                      leftIcon={<FiBell size={14}/>}
+                  >
+                      Assist
+                  </Button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
     </>
   );
 };

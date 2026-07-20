@@ -16,8 +16,11 @@ import {
 } from 'react-icons/fi';
 import Header from './Header';
 import Footer from './Footer';
+import MobileBottomNav from './MobileBottomNav';
+import MobilePageHeader from './MobilePageHeader';
 import { useRestaurantData } from '../../hooks/useRestaurantData';
 import { useAuth } from '../../hooks/useAuth';
+import { isNative } from '../../utils/capacitorService';
 
 // Moved temporary icon definitions here
 const FiPercent: React.FC<{ className?: string, size?: string | number }> = ({ className, size }) => <span className={className} style={{ fontSize: size ? `${size}px` : undefined }}>%</span>;
@@ -413,6 +416,7 @@ const RestaurantLayout: React.FC<{ children: React.ReactNode }> = ({ children })
 
     // Fallbacks for dynamic routes or routes not in the sidebar
     if (currentPath.startsWith('/app/panel/pos/')) return 'Point of Sale';
+    if (currentPath === '/app/running-orders') return 'Running Orders';
     if (currentPath.startsWith('/app/purchase/add')) return 'Add New Purchase';
     if (currentPath === '/app/settings') return 'Application Settings';
     if (currentPath === '/app/stock') return 'View Stock Levels';
@@ -445,15 +449,16 @@ const RestaurantLayout: React.FC<{ children: React.ReactNode }> = ({ children })
 
   return (
     <div className="flex h-screen bg-gray-100">
-      {/* Mobile Sidebar Overlay */}
-      {isMobileSidebarOpen && (
+      {/* Mobile Sidebar Overlay (desktop/tablet only — on native the bottom nav replaces the sidebar) */}
+      {isMobileSidebarOpen && !isNative && (
         <div
           className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
           onClick={() => setIsMobileSidebarOpen(false)}
         />
       )}
 
-      {/* Sidebar */}
+      {/* Sidebar — hidden on native mobile; MobileBottomNav replaces it */}
+      {!isNative && (
       <aside
         className={`
           fixed md:relative z-50 md:z-0
@@ -577,23 +582,31 @@ const RestaurantLayout: React.FC<{ children: React.ReactNode }> = ({ children })
           </div>
         </nav>
       </aside>
+      )}
 
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header
-          title={currentPageLabel}
-          onToggleSidebar={() => {
-            if (window.innerWidth < 768) {
-              setIsMobileSidebarOpen(v => !v);
-            } else {
-              setIsSidebarCollapsed(v => !v);
-            }
-          }}
-          isSidebarCollapsed={isSidebarCollapsed || isMobileSidebarOpen}
-        />
-        <main className="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-6">
+        {/* On native the bottom nav replaces the sidebar, and a compact in-page
+            header (see MobilePageHeader) replaces this top bar, so we hide it. */}
+        {!isNative && (
+          <Header
+            title={currentPageLabel}
+            onToggleSidebar={() => {
+              if (window.innerWidth < 768) {
+                setIsMobileSidebarOpen(v => !v);
+              } else {
+                setIsSidebarCollapsed(v => !v);
+              }
+            }}
+            isSidebarCollapsed={isSidebarCollapsed || isMobileSidebarOpen}
+          />
+        )}
+        <main className={`flex-1 overflow-y-auto custom-scrollbar p-4 md:p-6 ${isNative ? 'rb-main-has-bottom-nav rb-native-main' : ''}`}>
+          {isNative && <MobilePageHeader title={currentPageLabel} />}
           {children}
         </main>
-        <Footer />
+        {/* On native, the Footer is replaced by the MobileBottomNav. */}
+        {!isNative && <Footer />}
+        <MobileBottomNav />
       </div>
     </div>
   );

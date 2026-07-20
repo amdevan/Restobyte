@@ -36,7 +36,10 @@ const LoginPage: React.FC<LoginPageProps> = ({ onSwitchToRegister }) => {
   return (
     <div className="w-full max-w-md p-4 bg-white rounded-2xl space-y-6">
         <div className="text-center">
-            <img src="/logo.png" alt="RestoByte" className="h-16 mx-auto mb-2" />
+            <img src="/icons/icon logo.png" alt="RestoByte" className="h-24 w-24 mx-auto mb-3 object-contain" />
+            <h1 className="text-2xl font-extrabold text-gray-800">
+                Resto<span className="text-amber-600">Byte</span>
+            </h1>
             <p className="text-gray-500 mt-2">Sign in to your dashboard</p>
         </div>
         <form onSubmit={handleLogin} className="space-y-4">
@@ -75,7 +78,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onSwitchToRegister }) => {
             </Button>
         </form>
         <div className="text-center text-xs text-gray-400 pt-4 border-t">
-            <p>Don't have an account? <button type="button" onClick={onSwitchToRegister} className="font-semibold text-sky-600 hover:underline">Start Free Trial</button></p>
+            <p>Don't have an account? <button type="button" onClick={onSwitchToRegister} className="font-semibold text-amber-600 hover:underline">Start Free Trial</button></p>
         </div>
     </div>
   );

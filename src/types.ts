@@ -1201,4 +1201,8 @@ export interface RestaurantDataContextType {
     addAddonGroup: (group: Omit<AddonGroup, 'id'>) => void;
     updateAddonGroup: (group: AddonGroup) => void;
     deleteAddonGroup: (groupId: string) => void;
+
+    // Live data refresh — re-pull order/table sources for real-time views.
+    lastUpdated: Date | null;
+    refreshData: () => Promise<void>;
 }

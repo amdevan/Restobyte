@@ -30,11 +30,18 @@ function nativeDefaultApiBaseUrl(): string {
   return 'http://localhost:3000/api';
 }
 
+// Resolve the native API base URL at MODULE TOP-LEVEL (unconditionally) so Vite
+// statically inlines VITE_NATIVE_API_URL into the bundle. If this were only read
+// inside the `if (Capacitor.isNativePlatform())` branch, the minifier would
+// dead-code-eliminate it during the web build and the production URL would be lost.
+const NATIVE_API_BASE_URL: string =
+  (import.meta.env.VITE_NATIVE_API_URL as string | undefined)
+    ? normalizeApiBaseUrl(import.meta.env.VITE_NATIVE_API_URL as string)
+    : nativeDefaultApiBaseUrl();
+
 function resolveApiBaseUrl(): string {
-  // Native builds: prefer an explicit native override, otherwise the platform default.
   if (Capacitor.isNativePlatform()) {
-    if (viteEnv?.VITE_NATIVE_API_URL) return normalizeApiBaseUrl(viteEnv.VITE_NATIVE_API_URL);
-    return nativeDefaultApiBaseUrl();
+    return NATIVE_API_BASE_URL;
   }
   // Web: prefer VITE_API_URL, otherwise dev/prod fallback.
   if (viteEnv?.VITE_API_URL) return normalizeApiBaseUrl(viteEnv.VITE_API_URL);

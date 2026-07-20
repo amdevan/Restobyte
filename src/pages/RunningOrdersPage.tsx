@@ -1,8 +1,8 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useRestaurantData } from '../hooks/useRestaurantData';
 import { isNative, vibrate } from '../utils/capacitorService';
-import { FiActivity, FiUser, FiClock, FiGrid, FiShoppingCart, FiBell } from 'react-icons/fi';
+import { FiActivity, FiUser, FiClock, FiGrid, FiShoppingCart, FiBell, FiRefreshCw } from 'react-icons/fi';
 import Money from '../components/common/Money';
 
 interface RunningOrdersPageProps {}
@@ -22,7 +22,30 @@ const timeSince = (dateString?: string) => {
 
 const RunningOrdersPage: React.FC<RunningOrdersPageProps> = () => {
   const navigate = useNavigate();
-  const { sales, tables, reservations } = useRestaurantData();
+  const { sales, tables, reservations, refreshData, lastUpdated } = useRestaurantData();
+
+  // Live mode: poll the server every 8s while this screen is open so orders,
+  // waiter calls and reservations update in real time.
+  const [now, setNow] = useState(Date.now());
+  const [refreshing, setRefreshing] = useState(false);
+
+  const doRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await refreshData();
+    setRefreshing(false);
+  }, [refreshData]);
+
+  useEffect(() => {
+    let active = true;
+    const tick = setInterval(() => {
+      if (!active) return;
+      refreshData();
+      setNow(Date.now());
+    }, 8000);
+    const clock = setInterval(() => setNow(Date.now()), 1000);
+    refreshData(); // immediate first pull
+    return () => { active = false; clearInterval(tick); clearInterval(clock); };
+  }, [refreshData]);
 
   const runningOrders = useMemo(
     () =>
@@ -51,15 +74,35 @@ const RunningOrdersPage: React.FC<RunningOrdersPageProps> = () => {
     else navigate('/app/panel/pos');
   };
 
+  // "Updated Xs ago" relative label.
+  const updatedAgo = useMemo(() => {
+    if (!lastUpdated) return '';
+    const secs = Math.max(0, Math.floor((now - new Date(lastUpdated).getTime()) / 1000));
+    if (secs < 2) return 'just now';
+    if (secs < 60) return `${secs}s ago`;
+    const mins = Math.floor(secs / 60);
+    return `${mins}m ago`;
+  }, [lastUpdated, now]);
+
   return (
     <div className="flex flex-col h-full bg-gray-100">
-      {!isNative && (
-        <header className="bg-white shadow-sm p-4 flex items-center z-20 flex-shrink-0">
-          <h1 className="text-xl font-semibold text-gray-800 flex items-center">
-            <FiActivity className="mr-3 text-sky-600" /> Running Orders
-          </h1>
-        </header>
-      )}
+      <header className="rb-live-header">
+        <div className="rb-live-title">
+          <span className="rb-live-dot" />
+          <span className="rb-live-title-text">Live Orders</span>
+          {!isNative && <span className="rb-live-sub">Running Orders</span>}
+        </div>
+        <div className="rb-live-meta">
+          <span className="rb-live-updated">{updatedAgo ? `Updated ${updatedAgo}` : ''}</span>
+          <button
+            onClick={doRefresh}
+            className={`rb-live-refresh ${refreshing ? 'rb-live-refresh-spin' : ''}`}
+            aria-label="Refresh now"
+          >
+            <FiRefreshCw size={16} />
+          </button>
+        </div>
+      </header>
 
       <main className="flex-1 overflow-y-auto p-4 space-y-6">
         {/* Running Orders */}

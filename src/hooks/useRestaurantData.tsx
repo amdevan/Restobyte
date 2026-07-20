@@ -915,6 +915,9 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
 
     const [reservations, setReservations] = useState<Reservation[]>([]);
     const [sales, setSales] = useState<Sale[]>([]);
+    // Live-sync bookkeeping: timestamp + tick so consumers can poll refreshData().
+    const lastUpdatedRef = useRef<Date | null>(null);
+    const [lastUpdatedTick, setLastUpdatedTick] = useState(0);
     const [customerPayments, setCustomerPayments] = useState<CustomerPayment[]>([]);
     const [preMadeFoodItems, setPreMadeFoodItems] = useState<PreMadeFoodItem[]>([]);
     const [stockItems, setStockItems] = useState<StockItem[]>(initialStockItems);
@@ -3989,6 +3992,19 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         addAddonGroup: (group) => setAddonGroups(prev => [...prev, { ...group, id: `ag-${Date.now()}` }]),
         updateAddonGroup: (group) => setAddonGroups(prev => prev.map(g => g.id === group.id ? group : g)),
         deleteAddonGroup: (id) => setAddonGroups(prev => prev.filter(g => g.id !== id)),
+
+        // Live data refresh — re-pull the order/table sources so a "Live" view
+        // can poll in the background and stay in sync with the server.
+        lastUpdated: lastUpdatedRef.current,
+        refreshData: async () => {
+            try {
+                await Promise.all([fetchSales(), fetchTables()]);
+                lastUpdatedRef.current = new Date();
+                setLastUpdatedTick(t => t + 1);
+            } catch (err) {
+                console.error('refreshData failed:', err);
+            }
+        },
     };
 
     return (

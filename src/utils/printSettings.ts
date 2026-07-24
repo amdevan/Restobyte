@@ -114,7 +114,11 @@ export const getEscPosEmphasizedTitle = (text: string, lineWidth: number): strin
   const useDoubleSize = upperText.length <= estimatedDoubleWidthCapacity;
   const sizeMode = useDoubleSize ? '\x11' : '\x01';
 
-  return `${ESC}@${ESC}a\x01${ESC}E\x01${GS}!${sizeMode}${upperText}${LF}${GS}!\x00${ESC}E\x00${ESC}a\x00${LF}`;
+  // Center the text within the line width
+  const padding = Math.max(0, Math.floor((lineWidth - upperText.length) / 2));
+  const centeredText = ' '.repeat(padding) + upperText;
+
+  return `${ESC}@${ESC}a\x01${ESC}E\x01${GS}!${sizeMode}${centeredText}${LF}${GS}!\x00${ESC}E\x00${ESC}a\x00${LF}`;
 };
 
 export const getEscPosBottomFeed = (lines: number = 12): string => {

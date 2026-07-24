@@ -84,6 +84,9 @@ const SaleDetailsModal: React.FC<SaleDetailsModalProps> = ({ isOpen, onClose, sa
       }
       invoiceText += `${divider}\n\n`;
     }
+    // Add KOT header
+    invoiceText += centerText('KOT');
+    invoiceText += `${divider}\n`;
     invoiceText += centerText(applicationSettings.invoiceTitle || sale.orderType || 'Invoice');
     invoiceText += `${divider}\n`;
 

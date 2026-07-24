@@ -48,6 +48,9 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ onClose, sale }) => {
       }
       invoiceText += `${divider}\n`;
     }
+    // Add KOT header
+    invoiceText += `KOT\n`;
+    invoiceText += `${divider}\n`;
     invoiceText += `\n${applicationSettings.invoiceTitle || 'INVOICE'}\n`;
     invoiceText += `Bill No: DNBILL ${sale.id.slice(-4).toUpperCase()}\n`;
     if (applicationSettings.invoiceShowCustomerDetails && customer) {

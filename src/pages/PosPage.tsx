@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useRestaurantData } from '../hooks/useRestaurantData';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { MenuItem as MenuItemType, SaleItem, Customer, Waiter, Table, DeliveryPartner, Sale, TableStatus, SaleTaxDetail, PartialPayment, KOT, Split, Variation } from '../types';
@@ -86,9 +86,6 @@ const PosPage: React.FC = () => {
     tables,
     waiters,
     deliveryPartners,
-    outlets,
-    activeOutletIds,
-    setActiveOutletIds,
     getSingleActiveOutlet,
     applicationSettings,
     websiteSettings,
@@ -106,15 +103,32 @@ const PosPage: React.FC = () => {
   
   const singleActiveOutlet = getSingleActiveOutlet();
 
-  useEffect(() => {
-    if (activeOutletIds.length === 1) return;
-    if ((outlets || []).length === 0) return;
+  // Keep the latest data in refs so the order-load effect below does
+  // NOT have to depend on them. Previously the effect depended on
+  // `sales/tables/waiters/customers/singleActiveOutlet`, and
+  // `getSingleActiveOutlet()` returns a fresh reference on every
+  // render — so the effect re-fired on EVERY render and called
+  // clearOrder(), wiping the cart continuously (looked like
+  // flicker + "can't add items"). Loading/clearing the order must
+  // only react to a change in the *table* being viewed.
+  const salesRef = useRef(sales);
+  const tablesRef = useRef(tables);
+  const waitersRef = useRef(waiters);
+  const customersRef = useRef(customers);
+  const deliveryPartnersRef = useRef(deliveryPartners);
+  const outletRef = useRef(singleActiveOutlet);
+  salesRef.current = sales;
+  tablesRef.current = tables;
+  waitersRef.current = waiters;
+  customersRef.current = customers;
+  deliveryPartnersRef.current = deliveryPartners;
+  outletRef.current = singleActiveOutlet;
 
-    const preferredId = activeOutletIds.find(id => outlets.some(o => o.id === id)) || outlets[0]?.id;
-    if (preferredId && (activeOutletIds.length !== 1 || activeOutletIds[0] !== preferredId)) {
-      setActiveOutletIds([preferredId]);
-    }
-  }, [activeOutletIds, outlets, setActiveOutletIds]);
+
+  // Outlet selection is now handled in the context provider to prevent
+  // cascading context updates that cause flickering on navigation.
+  // Previously this effect called setActiveOutletIds which triggered
+  // fetchTables/fetchSales in the context, causing re-renders.
   
   // UI State
   const [selectedCategory, setSelectedCategory] = useState('All');
@@ -205,6 +219,10 @@ const PosPage: React.FC = () => {
       });
     };
 
+    // Add restaurant name at top of KOT
+    const outletName = singleActiveOutlet?.restaurantName || singleActiveOutlet?.name || websiteSettings.whiteLabel.appName || 'Demo Restaurant';
+    lines.push(centerText(outletName.toUpperCase()));
+    lines.push(divider);
     lines.push(getEscPosEmphasizedTitle('KOT', lineWidth) || centerText('KOT'));
     lines.push(formatTwoCol(kot.kotNumber, kot.timestamp));
     lines.push(divider);
@@ -302,6 +320,7 @@ const PosPage: React.FC = () => {
       }
       invoiceText += `${divider}\n\n`;
     }
+
     invoiceText += centerText(applicationSettings.invoiceTitle || sale.orderType || 'Invoice');
     invoiceText += `${divider}\n`;
 
@@ -365,7 +384,13 @@ const PosPage: React.FC = () => {
     if (applicationSettings.invoiceShowPaymentDetails) {
       invoiceText += `Payment Details\n`;
       invoiceText += `${divider}\n`;
-      if (applicationSettings.invoiceShowPaymentMethod && sale.paymentMethod) {
+      // Show all payment methods if customer paid with multiple methods
+      if (sale.partialPayments && sale.partialPayments.length > 1) {
+        sale.partialPayments.forEach((payment) => {
+          invoiceText += formatMoneyLine(payment.method, payment.amount);
+        });
+        invoiceText += `${divider}\n`;
+      } else if (applicationSettings.invoiceShowPaymentMethod && sale.paymentMethod) {
         invoiceText += formatPair('Payment Method', sale.paymentMethod);
       }
       if (applicationSettings.invoiceShowPaymentDate) {
@@ -376,6 +401,14 @@ const PosPage: React.FC = () => {
       }
       if (applicationSettings.invoiceShowReceivedAmount) {
         invoiceText += formatPair('Received Amount', (sale.receivedAmount || sale.totalAmount).toFixed(2));
+      }
+      // Show paid amount and due amount for partial payments
+      if (sale.isSettled === false && sale.receivedAmount !== undefined) {
+        const dueAmount = sale.totalAmount - sale.receivedAmount;
+        if (dueAmount > 0) {
+          invoiceText += formatMoneyLine('Paid Amount', sale.receivedAmount);
+          invoiceText += formatMoneyLine('Due Amount', dueAmount);
+        }
       }
       if (applicationSettings.invoiceShowReturnAmount && ((sale.returnAmount ?? 0) > 0 || ((sale.receivedAmount ?? 0) > sale.totalAmount))) {
         invoiceText += formatPair('Return/Change Amount', ((sale.returnAmount ?? 0) || ((sale.receivedAmount || sale.totalAmount) - sale.totalAmount)).toFixed(2));
@@ -577,10 +610,14 @@ const handleSendKot = useCallback(async () => {
 
 
   useEffect(() => {
-    if (tableId && singleActiveOutlet?.outletType !== 'CloudKitchen') {
-      const tableFromUrl = tables.find(t => t.id === tableId);
+    // IMPORTANT: depend ONLY on tableId (and clearOrder). The order
+    // lookup values (sales/tables/waiters/customers/outlet) are read
+    // from refs so a background data refresh can never re-trigger this
+    // effect and wipe the cart mid-use.
+    if (tableId && outletRef.current?.outletType !== 'CloudKitchen') {
+      const tableFromUrl = tablesRef.current.find(t => t.id === tableId);
       if (tableFromUrl) {
-          const openOrderForTable = sales.find(s => s.assignedTableId === tableId && !(s.isClosed ?? s.isSettled));
+          const openOrderForTable = salesRef.current.find(s => s.assignedTableId === tableId && !(s.isClosed ?? s.isSettled));
           
           if (openOrderForTable) {
             // Load existing order
@@ -588,8 +625,8 @@ const handleSendKot = useCallback(async () => {
             setCurrentOrderItems(openOrderForTable.items.map(item => ({...item, status: 'sent', lineId: `line-${item.id}-${Math.random()}`})));
             setOrderType(openOrderForTable.orderType as any);
             setSelectedTable(tableFromUrl);
-            setSelectedWaiter(waiters.find(w => w.id === openOrderForTable.waiterId) || null);
-            setSelectedCustomer(customers.find(c => c.id === openOrderForTable.customerId) || null);
+            setSelectedWaiter(waitersRef.current.find(w => w.id === openOrderForTable.waiterId) || null);
+            setSelectedCustomer(customersRef.current.find(c => c.id === openOrderForTable.customerId) || null);
             setOrderNotes(openOrderForTable.orderNotes || '');
             setDiscountType(openOrderForTable.discountType || null);
             setDiscountAmount(openOrderForTable.discountAmount || 0);
@@ -601,10 +638,12 @@ const handleSendKot = useCallback(async () => {
              setOrderType('Dine In');
           }
       }
-    } else {
-        clearOrder();
     }
-  }, [tableId, tables, sales, singleActiveOutlet, waiters, customers, clearOrder]);
+    // NOTE: We intentionally do NOT clear the order when tableId is empty.
+    // The cart state is local to PosPage and is reset when the component
+    // remounts (e.g., when navigating back from Running Orders).
+    // Calling clearOrder() here would wipe the cart when the user adds items.
+  }, [tableId, clearOrder]);
   
   const handleAddItem = useCallback((itemToAdd: MenuItemType) => {
     const hasVariations = itemToAdd.variations && itemToAdd.variations.length > 1;
@@ -681,19 +720,30 @@ const handleSendKot = useCallback(async () => {
     });
   }, []);
 
-  const handleEditItemNote = (item: OrderItem) => {
+  const handleEditItemNote = useCallback((item: OrderItem) => {
     if (item.status === 'sent') return;
     setEditingNoteItem(item);
     setIsNoteModalOpen(true);
-  };
+  }, []);
   
-  const handleSaveItemNote = (lineId: string, newNote: string) => {
+  const handleSaveItemNote = useCallback((lineId: string, newNote: string) => {
     setCurrentOrderItems(prev => (prev || []).map(item =>
       item.lineId === lineId ? { ...item, notes: newNote.trim() || undefined } : item
     ));
     setIsNoteModalOpen(false);
     setEditingNoteItem(null);
-  };
+  }, []);
+
+  const handleOpenCustomerModal = useCallback(() => setIsCustomerModalOpen(true), []);
+  const handleOpenDiscountModal = useCallback(() => setIsDiscountModalOpen(true), []);
+  const handleOpenPaymentModal = useCallback(() => setIsPaymentModalOpen(true), []);
+  const handleClearOrder = useCallback(() => clearOrder(), [clearOrder]);
+  const handleTableSelect = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => 
+    setSelectedTable(tablesRef.current.find(t => t.id === e.target.value) || null), []);
+  const handleWaiterSelect = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => 
+    setSelectedWaiter(waitersRef.current.find(w => w.id === e.target.value) || null), []);
+  const handleDeliveryPartnerSelect = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => 
+    setSelectedDeliveryPartner(deliveryPartnersRef.current.find(dp => dp.id === e.target.value) || null), []);
 
   const mergedMenuItems = useMemo(() => {
     const normalizedPreMade = (preMadeFoodItems || []).map(item => {
@@ -900,7 +950,7 @@ const handleSendKot = useCallback(async () => {
         <aside className="w-1/4 bg-white flex flex-col p-4 border-l">
             <div className="flex justify-between items-center mb-4 flex-shrink-0">
                 <h2 className="text-xl font-bold text-gray-800">{editingSale ? 'Update Order' : 'Current Order'}</h2>
-                <Button size="sm" variant="danger" onClick={() => clearOrder()} disabled={currentOrderItems.length === 0}><FiXCircle className="mr-1"/> Clear</Button>
+                <Button size="sm" variant="danger" onClick={handleClearOrder} disabled={currentOrderItems.length === 0}><FiXCircle className="mr-1"/> Clear</Button>
             </div>
 
             <CartHeader
@@ -909,21 +959,23 @@ const handleSendKot = useCallback(async () => {
                 selectedCustomer={selectedCustomer}
                 selectedTable={selectedTable}
                 selectedWaiter={selectedWaiter}
-                onCustomerSelectClick={() => setIsCustomerModalOpen(true)}
-                onTableSelect={(e) => setSelectedTable(tables.find(t=>t.id === e.target.value) || null)}
-                onWaiterSelect={(e) => setSelectedWaiter(waiters.find(w=>w.id === e.target.value) || null)}
+                onCustomerSelectClick={handleOpenCustomerModal}
+                onTableSelect={handleTableSelect}
+                onWaiterSelect={handleWaiterSelect}
                 tables={tables}
                 waiters={activeWaiters}
                 deliveryPartners={activeDeliveryPartners}
                 selectedDeliveryPartner={selectedDeliveryPartner}
-                onDeliveryPartnerSelect={e => setSelectedDeliveryPartner(deliveryPartners.find(dp => dp.id === e.target.value) || null)}
+                onDeliveryPartnerSelect={handleDeliveryPartnerSelect}
+                sales={sales}
+                currentOutlet={singleActiveOutlet}
             />
 
             <CartItems items={currentOrderItems} onUpdateQuantity={handleUpdateQuantity} onEditItemNote={handleEditItemNote} />
 
             <div className="flex-shrink-0">
-                <CartSummary subTotal={subTotal} discountValue={discountValue} taxes={taxes} grandTotal={grandTotal} onDiscountClick={() => setIsDiscountModalOpen(true)} />
-                <CartActions onGoToPayment={() => setIsPaymentModalOpen(true)} onSendKot={handleSendKot} isCartEmpty={currentOrderItems.length === 0} hasNewItems={hasNewItems} />
+                <CartSummary subTotal={subTotal} discountValue={discountValue} taxes={taxes} grandTotal={grandTotal} onDiscountClick={handleOpenDiscountModal} />
+                <CartActions onGoToPayment={handleOpenPaymentModal} onSendKot={handleSendKot} isCartEmpty={currentOrderItems.length === 0} hasNewItems={hasNewItems} />
             </div>
         </aside>
       </div>
@@ -1005,7 +1057,7 @@ const handleSendKot = useCallback(async () => {
                 <div className="rb-pos-cart-bar">
                   <button className="rb-pos-back" onClick={() => { setCartOpen(false); vibrate(); }}>‹ Close</button>
                   <h2 className="rb-pos-cart-title">{editingSale ? 'Update Order' : 'Current Order'}</h2>
-                  <Button size="sm" variant="danger" onClick={() => clearOrder()} disabled={currentOrderItems.length === 0}><FiXCircle className="mr-1"/> Clear</Button>
+                  <Button size="sm" variant="danger" onClick={handleClearOrder} disabled={currentOrderItems.length === 0}><FiXCircle className="mr-1"/> Clear</Button>
                 </div>
 
                 <CartHeader
@@ -1014,14 +1066,16 @@ const handleSendKot = useCallback(async () => {
                   selectedCustomer={selectedCustomer}
                   selectedTable={selectedTable}
                   selectedWaiter={selectedWaiter}
-                  onCustomerSelectClick={() => setIsCustomerModalOpen(true)}
-                  onTableSelect={(e) => setSelectedTable(tables.find(t=>t.id === e.target.value) || null)}
-                  onWaiterSelect={(e) => setSelectedWaiter(waiters.find(w=>w.id === e.target.value) || null)}
+                  onCustomerSelectClick={handleOpenCustomerModal}
+                  onTableSelect={handleTableSelect}
+                  onWaiterSelect={handleWaiterSelect}
                   tables={tables}
                   waiters={activeWaiters}
                   deliveryPartners={activeDeliveryPartners}
                   selectedDeliveryPartner={selectedDeliveryPartner}
-                  onDeliveryPartnerSelect={e => setSelectedDeliveryPartner(deliveryPartners.find(dp => dp.id === e.target.value) || null)}
+                  onDeliveryPartnerSelect={handleDeliveryPartnerSelect}
+                  sales={sales}
+                  currentOutlet={singleActiveOutlet}
                 />
 
                 <div className="rb-pos-cart-items">
@@ -1029,8 +1083,8 @@ const handleSendKot = useCallback(async () => {
                 </div>
 
                 <div className="rb-pos-cart-foot">
-                  <CartSummary subTotal={subTotal} discountValue={discountValue} taxes={taxes} grandTotal={grandTotal} onDiscountClick={() => setIsDiscountModalOpen(true)} />
-                  <CartActions onGoToPayment={() => setIsPaymentModalOpen(true)} onSendKot={handleSendKot} isCartEmpty={currentOrderItems.length === 0} hasNewItems={hasNewItems} />
+                  <CartSummary subTotal={subTotal} discountValue={discountValue} taxes={taxes} grandTotal={grandTotal} onDiscountClick={handleOpenDiscountModal} />
+                  <CartActions onGoToPayment={handleOpenPaymentModal} onSendKot={handleSendKot} isCartEmpty={currentOrderItems.length === 0} hasNewItems={hasNewItems} />
                 </div>
               </div>
             </div>

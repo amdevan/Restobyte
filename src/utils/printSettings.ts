@@ -119,8 +119,10 @@ export const getEscPosEmphasizedTitle = (text: string, lineWidth: number): strin
 
 export const getEscPosBottomFeed = (lines: number = 12): string => {
   const ESC = '\x1B';
+  const GS = '\x1D';
   const safeLines = Math.max(3, Math.min(24, Math.round(lines)));
-  return `${ESC}d${String.fromCharCode(safeLines)}`;
+  // Feed lines then cut the paper (GS V 0 = full cut)
+  return `${ESC}d${String.fromCharCode(safeLines)}${GS}V\x00`;
 };
 
 const escapeHtml = (value: string): string =>

@@ -157,7 +157,13 @@ const SaleDetailsModal: React.FC<SaleDetailsModalProps> = ({ isOpen, onClose, sa
     if (applicationSettings.invoiceShowPaymentDetails) {
       invoiceText += `Payment Details\n`;
       invoiceText += `${divider}\n`;
-      if (applicationSettings.invoiceShowPaymentMethod && sale.paymentMethod) {
+      // Show all payment methods if customer paid with multiple methods
+      if (sale.partialPayments && sale.partialPayments.length > 1) {
+        sale.partialPayments.forEach((payment) => {
+          invoiceText += formatMoneyLine(payment.method, payment.amount);
+        });
+        invoiceText += `${divider}\n`;
+      } else if (applicationSettings.invoiceShowPaymentMethod && sale.paymentMethod) {
         invoiceText += formatPair('Payment Method', sale.paymentMethod);
       }
       if (applicationSettings.invoiceShowPaymentDate) {
@@ -175,6 +181,14 @@ const SaleDetailsModal: React.FC<SaleDetailsModalProps> = ({ isOpen, onClose, sa
       }
       if (applicationSettings.invoiceShowReceivedAmount) {
         invoiceText += formatPair('Received Amount', (sale.receivedAmount || sale.totalAmount).toFixed(2));
+      }
+      // Show paid amount and due amount for partial payments
+      if (sale.isSettled === false && sale.receivedAmount !== undefined) {
+        const dueAmount = sale.totalAmount - sale.receivedAmount;
+        if (dueAmount > 0) {
+          invoiceText += formatMoneyLine('Paid Amount', sale.receivedAmount);
+          invoiceText += formatMoneyLine('Due Amount', dueAmount);
+        }
       }
       if (
         applicationSettings.invoiceShowReturnAmount &&
@@ -220,19 +234,44 @@ const SaleDetailsModal: React.FC<SaleDetailsModalProps> = ({ isOpen, onClose, sa
     });
   };
 
-  const handleDownloadReceipt = () => {
+  const handleDownloadReceipt = async () => {
     const contentElement = document.getElementById('sale-details-content');
     if(!contentElement) return;
+
+    // Handle image loading errors to prevent html2pdf from hanging
+    const images = contentElement.querySelectorAll('img');
+    images.forEach(img => {
+      img.onerror = () => {
+        // Replace broken image with a placeholder text
+        const span = document.createElement('span');
+        span.textContent = '[Image not available]';
+        span.className = 'text-gray-400 text-xs';
+        img.parentNode?.replaceChild(span, img);
+      };
+    });
 
     const options = {
       margin: 0.5,
       filename: `invoice-${sale.id.slice(-6).toUpperCase()}.pdf`,
       image: { type: 'jpeg' as const, quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true },
+      html2canvas: { scale: 2, useCORS: false, logging: false, allowTaint: true },
       jsPDF: { unit: 'in' as const, format: 'letter' as const, orientation: 'portrait' as const }
     };
 
-    html2pdf().set(options).from(contentElement).save();
+    try {
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('PDF generation timed out')), 15000)
+      );
+      await Promise.race([
+        html2pdf().set(options).from(contentElement).save(),
+        timeoutPromise
+      ]);
+    } catch (err) {
+      console.error('Failed to download invoice:', err);
+      // Fallback to browser print
+      window.print();
+    }
   };
 
   const outletName = currentOutlet?.restaurantName || currentOutlet?.name || websiteSettings.whiteLabel.appName || 'Demo Restaurant';
@@ -415,6 +454,16 @@ const SaleDetailsModal: React.FC<SaleDetailsModalProps> = ({ isOpen, onClose, sa
           <div className="border-t-2 border-b-2 border-gray-300 py-3 mb-4">
             <h4 className="text-lg font-bold text-gray-800 mb-2">Payment Details</h4>
             {applicationSettings.invoiceShowPaymentMethod && sale.paymentMethod && <p className="text-sm text-gray-700"><strong>Payment Method:</strong> {sale.paymentMethod}</p>}
+            {sale.partialPayments && sale.partialPayments.length > 0 && (
+              <div className="mt-2">
+                <strong className="text-sm text-gray-700">Partial Payments:</strong>
+                <div className="ml-2 mt-1 space-y-1">
+                  {sale.partialPayments.map((pp, idx) => (
+                    <p key={idx} className="text-sm text-gray-700">{pp.method}: {pp.amount.toFixed(2)}</p>
+                  ))}
+                </div>
+              </div>
+            )}
             {applicationSettings.invoiceShowPaymentDate && (sale.paymentDate || sale.saleDate) && <p className="text-sm text-gray-700"><strong>Payment Date:</strong> {new Date(sale.paymentDate || sale.saleDate).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' })}</p>}
             {applicationSettings.invoiceShowPaymentReference && sale.paymentReference && <p className="text-sm text-gray-700"><strong>Reference:</strong> {sale.paymentReference}</p>}
             {applicationSettings.invoiceShowReceivedAmount && <p className="text-sm text-gray-700"><strong>Received Amount:</strong> {(sale.receivedAmount || sale.totalAmount).toFixed(2)}</p>}

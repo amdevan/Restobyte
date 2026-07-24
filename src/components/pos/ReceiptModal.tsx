@@ -96,8 +96,23 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ onClose, sale }) => {
     invoiceText += `\nGrand Total: ${sale.totalAmount.toFixed(2)}\n`;
     invoiceText += `${divider}\n\n`;
     if (applicationSettings.invoiceShowPaymentDetails) {
-      if (sale.paymentMethod) invoiceText += `Payment: ${sale.paymentMethod}\n`;
+      // Show all payment methods if customer paid with multiple methods
+      if (sale.partialPayments && sale.partialPayments.length > 1) {
+        sale.partialPayments.forEach((payment) => {
+          invoiceText += `${payment.method}: ${payment.amount.toFixed(2)}\n`;
+        });
+      } else if (sale.paymentMethod) {
+        invoiceText += `Payment: ${sale.paymentMethod}\n`;
+      }
       invoiceText += `Paid: ${(sale.receivedAmount || sale.totalAmount).toFixed(2)}\n`;
+      // Show paid amount and due amount for partial payments
+      if (sale.isSettled === false && sale.receivedAmount !== undefined) {
+        const dueAmount = sale.totalAmount - sale.receivedAmount;
+        if (dueAmount > 0) {
+          invoiceText += `Paid Amount: ${sale.receivedAmount.toFixed(2)}\n`;
+          invoiceText += `Due Amount: ${dueAmount.toFixed(2)}\n`;
+        }
+      }
       if ((sale.returnAmount ?? 0) > 0 || (sale.receivedAmount && sale.receivedAmount > sale.totalAmount)) {
         invoiceText += `Change: ${((sale.returnAmount ?? 0) || (sale.receivedAmount || sale.totalAmount) - sale.totalAmount).toFixed(2)}\n`;
       }
@@ -191,19 +206,42 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ onClose, sale }) => {
     }
   };
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     const receiptElement = document.getElementById('receipt-content');
     if(!receiptElement) return;
+
+    // Handle image loading errors to prevent html2pdf from hanging
+    const images = receiptElement.querySelectorAll('img');
+    images.forEach(img => {
+      img.onerror = () => {
+        const span = document.createElement('span');
+        span.textContent = '[Image not available]';
+        span.className = 'text-gray-400 text-xs';
+        img.parentNode?.replaceChild(span, img);
+      };
+    });
 
     const options = {
       margin: 0.5,
       filename: `invoice-${sale.id.slice(-6).toUpperCase()}.pdf`,
       image: { type: 'jpeg' as const, quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true },
+      html2canvas: { scale: 2, useCORS: false, logging: false, allowTaint: true },
       jsPDF: { unit: 'in' as const, format: 'letter' as const, orientation: 'portrait' as const }
     };
 
-    html2pdf().set(options).from(receiptElement).save();
+    try {
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('PDF generation timed out')), 15000)
+      );
+      await Promise.race([
+        html2pdf().set(options).from(receiptElement).save(),
+        timeoutPromise
+      ]);
+    } catch (err) {
+      console.error('Failed to download invoice:', err);
+      window.print();
+    }
   };
 
   const outletName = currentOutlet?.restaurantName || currentOutlet?.name || websiteSettings.whiteLabel.appName || 'Demo Restaurant';

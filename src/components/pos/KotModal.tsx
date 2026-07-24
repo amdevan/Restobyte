@@ -14,7 +14,7 @@ interface KotModalProps {
 }
 
 const KotModal: React.FC<KotModalProps> = ({ isOpen, onClose, kotData }) => {
-  const { printers, printKot, applicationSettings } = useRestaurantData();
+  const { printers, printKot, applicationSettings, getSingleActiveOutlet, websiteSettings } = useRestaurantData();
   const kotRef = useRef<HTMLDivElement>(null);
 
   if (!kotData) return null;
@@ -65,6 +65,11 @@ const KotModal: React.FC<KotModalProps> = ({ isOpen, onClose, kotData }) => {
       });
     };
 
+    // Add restaurant name at top of KOT
+    const outlet = getSingleActiveOutlet();
+    const outletName = outlet?.restaurantName || outlet?.name || websiteSettings?.whiteLabel?.appName || 'Demo Restaurant';
+    lines.push(centerText(outletName.toUpperCase()));
+    lines.push(divider);
     lines.push(getEscPosEmphasizedTitle('KOT', lineWidth) || centerText('KOT'));
     lines.push(formatTwoCol(kotData.kotNumber, kotData.timestamp));
     lines.push(divider);

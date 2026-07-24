@@ -396,10 +396,10 @@ This is a sample KOT.
     const tempFilePath = path.join(tempDir, `restobyte-print-${Date.now()}.txt`);
 
     // Keep direct thermal jobs raw-friendly so ESC/POS emphasis commands survive.
+    // Preserve ESC/POS control characters (0x00-0x1F and 0x7F-0xFF) for thermal printers.
     printContent = String(printContent || '')
       .replace(/\r\n/g, '\n')
       .replace(/\r/g, '\n')
-      .replace(/[^\x00-\x1F\x20-\x7E]/g, '')
       .replace(/^\n+/, '')
       .replace(/\n+$/, '\n');
 

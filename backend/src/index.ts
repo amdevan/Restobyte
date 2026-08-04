@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
 import bcrypt from 'bcryptjs';
@@ -76,6 +76,12 @@ app.use('/api/app-data', appDataRoutes);
 app.use('/api/invoices', invoiceRoutes);
 app.use('/api/printers', printerRoutes);
 app.use('/api/print-agent', printAgentRoutes);
+
+// Global error handler — catches any unhandled errors from route handlers
+app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+  console.error('[server] Unhandled error:', err);
+  res.status(500).json({ message: 'Internal server error', detail: err?.message });
+});
 
 async function start() {
   try {

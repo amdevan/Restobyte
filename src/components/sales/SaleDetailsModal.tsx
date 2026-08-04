@@ -5,7 +5,7 @@ import { FiXCircle, FiPrinter, FiDownload } from 'react-icons/fi';
 import html2pdf from 'html2pdf.js';
 import { useRestaurantData } from '../../hooks/useRestaurantData';
 import { QRCodeSVG } from 'qrcode.react';
-import { applyLeftMarginToText, getConfiguredLineWidth, getDividerLine, getEscPosBottomFeed, getEscPosEmphasizedTitle, getMarginSpaces } from '../../utils/printSettings';
+import { applyLeftMarginToText, escPosCenterText, getConfiguredLineWidth, getDividerLine, getEscPosBottomFeed, getEscPosEmphasizedTitle, getEscPosQrCode, getMarginSpaces } from '../../utils/printSettings';
 
 interface SaleDetailsModalProps {
   isOpen: boolean;
@@ -45,9 +45,7 @@ const SaleDetailsModal: React.FC<SaleDetailsModalProps> = ({ isOpen, onClose, sa
     const centerText = (value: string) => {
       const text = value.trim();
       if (!text) return '';
-      if (text.length >= lineWidth) return `${text}\n`;
-      const leftPad = Math.floor((lineWidth - text.length) / 2);
-      return `${' '.repeat(leftPad)}${text}\n`;
+      return escPosCenterText(text) + '\n';
     };
 
     const formatPair = (label: string, value: string) => {
@@ -84,9 +82,6 @@ const SaleDetailsModal: React.FC<SaleDetailsModalProps> = ({ isOpen, onClose, sa
       }
       invoiceText += `${divider}\n\n`;
     }
-    // Add KOT header
-    invoiceText += centerText('KOT');
-    invoiceText += `${divider}\n`;
     invoiceText += centerText(applicationSettings.invoiceTitle || sale.orderType || 'Invoice');
     invoiceText += `${divider}\n`;
 
@@ -212,8 +207,11 @@ const SaleDetailsModal: React.FC<SaleDetailsModalProps> = ({ isOpen, onClose, sa
     }
 
     invoiceText += centerText(applicationSettings.invoiceFooterText || 'Thank you Visit Us Again!');
-    invoiceText += `\n`;
-    invoiceText += centerText('Powered by RestoByte Software');
+    invoiceText += `${divider}\n`;
+    if (applicationSettings.invoiceShowQrCode) {
+      invoiceText += getEscPosQrCode(`${window.location.origin}/invoice/${sale.id}`, 6, 0);
+    }
+    invoiceText += centerText('Powered by Restobyte Software');
     invoiceText += `${divider}\n`;
 
     return `${applyLeftMarginToText(invoiceText, marginSpaces)}${getEscPosBottomFeed(12)}`;

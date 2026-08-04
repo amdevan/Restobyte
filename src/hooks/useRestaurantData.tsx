@@ -1,13 +1,14 @@
 
-import React, { createContext, useState, useEffect, useContext, useCallback, ReactNode, useRef } from 'react';
+import React, { createContext, useState, useEffect, useContext, useCallback, useMemo, ReactNode, useRef } from 'react';
+import { AppDataContext } from './useAppData';
 import { 
     MenuItem, Table, TableStatus, Reservation, Sale, SaleItem, FoodMenuCategory, PreMadeFoodItem, 
     StockItem, StockEntry, StockEntryItem, StockAdjustment, StockAdjustmentItem, StockAdjustmentType,
     Supplier, Customer, AreaFloor, Kitchen, Printer, PrinterType, PrinterInterfaceType, PaperSize, Counter, Waiter,
     Currency, Denomination, Purchase, PurchaseItem, ExpenseCategory, Expense, WasteRecord, Employee,
     AttendanceRecord, AttendanceStatus, ReservationSettings, ReservationAvailability, WebsiteSettings,
-    PaymentMethod, Outlet, User, Role, ApplicationSettings, Tax, SaleTaxDetail, DeliveryPartner, Split, CustomerPayment, RestaurantDataContextType, SaasWebsiteContent, SaasPost,
-    Plan, AddonGroup, PayrollRecord, SaaSSettings, SoundSettings, TenantEntitlements, PlanFeatureKey
+    PaymentMethod, Outlet, User, Role, ApplicationSettings, Tax, SaleTaxDetail, DeliveryPartner, Split, CustomerPayment, RestaurantDataContextType, SaasWebsiteContent, SaasPost, SaleReturn,
+    Plan, AddonGroup, Recipe, PayrollRecord, SaaSSettings, SoundSettings, TenantEntitlements, PlanFeatureKey, PermissionKey
 } from '../types';
 import { INITIAL_TABLES_COUNT } from '../constants';
 import { API_BASE_URL } from '../config';
@@ -15,7 +16,7 @@ import { CURRENCIES, DEFAULT_CURRENCY_BY_COUNTRY } from '@/constants/geo';
 import { useAuth } from './useAuth';
 import { printRawViaQzTray } from '@/utils/qzTray';
 
-const RestaurantDataContext = createContext<RestaurantDataContextType | undefined>(undefined);
+export const RestaurantDataContext = createContext<RestaurantDataContextType | undefined>(undefined);
 
 const generateInitialTables = (): Table[] => {
   return Array.from({ length: INITIAL_TABLES_COUNT }, (_, i) => ({
@@ -326,6 +327,8 @@ const initialUsers: User[] = [
 const initialAddonGroups: AddonGroup[] = [
     { id: 'ag-1', name: 'Toppings', addons: [{id: 'addon-1', name: 'Extra Cheese', price: 1.50}, {id: 'addon-2', name: 'Pepperoni', price: 2.00}] }
 ];
+
+const initialRecipes: Recipe[] = [];
 
 const initialSaasSettings: SaaSSettings = {
     sms: { provider: '', apiKey: '', senderId: ''},
@@ -639,7 +642,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             'isSelfOrderEnabled', 'isReservationOrderEnabled',
             'reservationOrderReceivingUserIds', 'reservationSettings',
             'websiteSettings', 'applicationSettings', 'soundSettings', 'roles',
-            'addonGroups'
+            'addonGroups', 'recipes'
         ];
 
         const tenantSpecificKeys = [
@@ -911,6 +914,12 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         } else if (validActiveOutletIds.length !== activeOutletIds.length || !validActiveOutletIds.every((id, i) => id === activeOutletIds[i])) {
             setActiveOutletIds(validActiveOutletIds);
         }
+
+        // If multiple outlets are active, prefer the first valid one to ensure
+        // consistent behavior across the app (e.g., POS tax calculations).
+        if (validActiveOutletIds.length > 1) {
+            setActiveOutletIds([validActiveOutletIds[0]]);
+        }
     }, [outlets, user, isAuthenticated]);
 
     const [reservations, setReservations] = useState<Reservation[]>([]);
@@ -970,6 +979,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
     const [tenantEntitlements, setTenantEntitlements] = useState<TenantEntitlements | null>(null);
     const [saasSettings, setSaaSSettings] = useState<SaaSSettings>(initialSaasSettings);
     const [addonGroups, setAddonGroups] = useState<AddonGroup[]>(initialAddonGroups);
+    const [recipes, setRecipes] = useState<Recipe[]>(initialRecipes);
 
     const outletAppDataReadyRef = useRef<Record<string, boolean>>({});
     const outletAppDataSerializedRef = useRef<Record<string, string>>({});
@@ -1247,6 +1257,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             },
             { key: 'soundSettings', fallback: { soundsEnabled: true } as SoundSettings, getValue: () => soundSettings, setValue: (value) => setSoundSettings(value) },
             { key: 'addonGroups', fallback: initialAddonGroups, getValue: () => addonGroups, setValue: (value) => setAddonGroups(value) },
+            { key: 'recipes', fallback: initialRecipes, getValue: () => recipes, setValue: (value) => setRecipes(value) },
         ];
 
         void Promise.all(configs.map(async ({ key, fallback, getValue, setValue }) => {
@@ -1310,6 +1321,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             { key: 'applicationSettings', value: applicationSettings },
             { key: 'soundSettings', value: soundSettings },
             { key: 'addonGroups', value: addonGroups },
+            { key: 'recipes', value: recipes },
         ];
 
         configs.forEach(({ key, value }) => {
@@ -1355,6 +1367,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         applicationSettings,
         soundSettings,
         addonGroups,
+        recipes,
         persistOutletAppData,
     ]);
 
@@ -2215,11 +2228,11 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
     const sendBackendPrintJob = useCallback(async (
         printerId: string,
         content: string | undefined,
-        printType: 'test' | 'invoice' | 'kot'
+        printType: 'test' | 'invoice' | 'kot' | 'bot' | 'delivery'
     ): Promise<string> => {
         const selectedOutletId = activeOutletIds.length === 1 ? activeOutletIds[0] : undefined;
         if (!selectedOutletId) {
-            const label = printType === 'invoice' ? 'an invoice' : printType === 'kot' ? 'a KOT' : 'a test page';
+            const label = printType === 'invoice' ? 'an invoice' : printType === 'kot' ? 'a KOT' : printType === 'bot' ? 'a BOT' : printType === 'delivery' ? 'a delivery slip' : 'a test page';
             throw new Error(`Please select a single outlet before printing ${label}.`);
         }
 
@@ -2229,7 +2242,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 'Content-Type': 'application/json',
                 Authorization: `Bearer ${localStorage.getItem('authToken')}`
             },
-            body: JSON.stringify({ printerId, content, printType })
+            body: JSON.stringify({ printerId, content: content ? btoa(unescape(encodeURIComponent(content))) : undefined, printType, encoding: 'base64' })
         });
 
         if (!res.ok) {
@@ -2244,7 +2257,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
     const sendPrinterJob = useCallback(async (
         printerId: string,
         content: string | undefined,
-        printType: 'test' | 'invoice' | 'kot'
+        printType: 'test' | 'invoice' | 'kot' | 'bot' | 'delivery'
     ): Promise<string> => {
         const printer = printers.find((item) => item.id === printerId);
         if (!printer) {
@@ -2253,15 +2266,119 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
 
         if (printer.interfaceType === PrinterInterfaceType.QZTray) {
             await printRawViaQzTray(printer.name, String(content || ''));
-            const label = printType === 'invoice' ? 'Invoice' : printType === 'kot' ? 'KOT' : 'Test print';
+            const label = printType === 'invoice' ? 'Invoice' : printType === 'kot' ? 'KOT' : printType === 'bot' ? 'BOT' : printType === 'delivery' ? 'Delivery slip' : 'Test print';
             return `${label} sent successfully via QZ Tray!`;
         }
 
+        // PrintAgent interface: route through backend (which uses WebSocket or REST fallback)
+        // QZ Tray and PrintAgent both go through the backend, but PrintAgent
+        // is handled by the backend's printDocument which dispatches via WebSocket
         return sendBackendPrintJob(printerId, content, printType);
     }, [printers, sendBackendPrintJob]);
 
+    // Live data refresh — re-pull the order/table sources so a "Live"
+    // view can poll in the background. Defined as a STABLE useCallback:
+    // an inline arrow here changed identity on every provider render, which
+    // made RunningOrdersPage's [refreshData] effect re-run on every
+    // sales/tables update and call refreshData() again -> runaway
+    // re-render loop (the POS "flickers after leaving Running").
+    const refreshData = useCallback(async () => {
+        try {
+            await Promise.all([fetchSales(), fetchTables()]);
+            lastUpdatedRef.current = new Date();
+            setLastUpdatedTick(t => t + 1);
+        } catch (err) {
+            console.error('refreshData failed:', err);
+        }
+    }, [fetchSales, fetchTables]);
 
-    const contextValue: RestaurantDataContextType = {
+    // --- Automatic Stock Management Helpers ---
+    const deductStockForOrder = useCallback((sale: Sale) => {
+        for (const saleItem of sale.items) {
+            const recipe = recipes.find(r => r.menuItemId === saleItem.id);
+            if (!recipe) continue;
+            for (const ingredient of recipe.ingredients) {
+                const requiredQty = ingredient.quantityRequired * saleItem.quantity * (1 / recipe.yieldQuantity);
+                setStockItems(prev => prev.map(si => {
+                    if (si.id === ingredient.stockItemId) {
+                        return { ...si, quantity: Math.max(0, si.quantity - requiredQty) };
+                    }
+                    return si;
+                }));
+            }
+        }
+    }, [recipes]);
+
+    const restoreStockForOrder = useCallback((sale: Sale) => {
+        for (const saleItem of sale.items) {
+            const recipe = recipes.find(r => r.menuItemId === saleItem.id);
+            if (!recipe) continue;
+            for (const ingredient of recipe.ingredients) {
+                const restoreQty = ingredient.quantityRequired * saleItem.quantity * (1 / recipe.yieldQuantity);
+                setStockItems(prev => prev.map(si => {
+                    if (si.id === ingredient.stockItemId) {
+                        return { ...si, quantity: si.quantity + restoreQty };
+                    }
+                    return si;
+                }));
+            }
+        }
+    }, [recipes]);
+
+    const autoIncreaseStockOnPurchase = useCallback((purchase: Purchase) => {
+        for (const item of purchase.items) {
+            if (item.stockItemId) {
+                setStockItems(prev => prev.map(si => {
+                    if (si.id === item.stockItemId) {
+                        return {
+                            ...si,
+                            quantity: si.quantity + item.quantityPurchased,
+                            costPerUnit: item.costPerUnit || si.costPerUnit,
+                        };
+                    }
+                    return si;
+                }));
+            } else {
+                let existingItem: StockItem | undefined;
+                setStockItems(prev => {
+                    existingItem = prev.find(si =>
+                        si.name.toLowerCase() === item.itemName.toLowerCase() &&
+                        si.category.toLowerCase() === item.category.toLowerCase()
+                    );
+                    if (existingItem) {
+                        return prev.map(si =>
+                            si.id === existingItem!.id
+                                ? { ...si, quantity: si.quantity + item.quantityPurchased, costPerUnit: item.costPerUnit || si.costPerUnit }
+                                : si
+                        );
+                    }
+                    const newItem: StockItem = {
+                        id: `si-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                        name: item.itemName,
+                        category: item.category,
+                        quantity: item.quantityPurchased,
+                        unit: item.unit,
+                        lowStockThreshold: item.lowStockThreshold,
+                        costPerUnit: item.costPerUnit,
+                    };
+                    return [...prev, newItem];
+                });
+            }
+        }
+    }, []);
+
+    const autoDecreaseStockOnWaste = useCallback((wasteRecord: WasteRecord) => {
+        for (const item of wasteRecord.items) {
+            setStockItems(prev => prev.map(si => {
+                if (si.id === item.stockItemId) {
+                    return { ...si, quantity: Math.max(0, si.quantity - item.quantityWasted) };
+                }
+                return si;
+            }));
+        }
+    }, []);
+
+    const contextValue: RestaurantDataContextType = useMemo(() => ({
         // Implement all functions from RestaurantDataContextType
         menuItems,
         addMenuItem: async (item, imageUrl, isVeg) => {
@@ -2506,6 +2623,28 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 }
             }
         },
+        completeReservation: (reservationId: string) => {
+            const existing = reservations.find(r => r.id === reservationId);
+            if (!existing) return;
+            setReservations(prev => prev.map(r => r.id === reservationId ? { ...r, status: 'completed', updatedAt: new Date().toISOString() } : r));
+            if (existing.tableId) {
+                const stillReferenced = reservations.some(r => r.id !== reservationId && r.tableId === existing.tableId && r.status !== 'completed');
+                if (!stillReferenced) {
+                    void setAndPersistTableStatus(existing.tableId, TableStatus.Free);
+                }
+            }
+        },
+        cancelReservation: (reservationId: string) => {
+            const existing = reservations.find(r => r.id === reservationId);
+            if (!existing) return;
+            setReservations(prev => prev.map(r => r.id === reservationId ? { ...r, status: 'cancelled', updatedAt: new Date().toISOString() } : r));
+            if (existing.tableId) {
+                const stillReferenced = reservations.some(r => r.id !== reservationId && r.tableId === existing.tableId && r.status !== 'cancelled');
+                if (!stillReferenced) {
+                    void setAndPersistTableStatus(existing.tableId, TableStatus.Free);
+                }
+            }
+        },
         getAvailableTables: (dateTime, partySize) => {
             // This is a simplified logic
             return tables.filter(t => t.capacity >= partySize && t.status === TableStatus.Free);
@@ -2515,7 +2654,11 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         recordSale: async (saleData) => {
             const isClosed = saleData.isClosed ?? saleData.isSettled ?? false;
             const newSale = { ...saleData, isClosed, id: `sale-${Date.now()}`, saleDate: new Date().toISOString() };
-            return await persistSaleToBackend(newSale, 'create');
+            const savedSale = await persistSaleToBackend(newSale, 'create');
+            if (savedSale) {
+                deductStockForOrder(savedSale);
+            }
+            return savedSale;
         },
         updateSale: async (updatedSale) => {
             const existing = sales.find(s => s.id === updatedSale.id);
@@ -2544,6 +2687,79 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 kdsStatus: status,
                 kdsReadyTimestamp: status === 'ready' ? new Date().toISOString() : existing.kdsReadyTimestamp,
             }, 'update');
+        },
+        deleteSale: async (saleId: string) => {
+            const token = localStorage.getItem('authToken');
+            if (!token) {
+                return { success: false, message: 'Unauthorized. Please log in again.' };
+            }
+            const sale = sales.find(s => s.id === saleId);
+            if (!sale) {
+                return { success: false, message: 'Sale not found.' };
+            }
+            if (!window.confirm(`Are you sure you want to delete sale #${sale.id.slice(-6).toUpperCase()}? This action cannot be undone.`)) {
+                return { success: false, message: 'Delete cancelled.' };
+            }
+            try {
+                const res = await fetch(`${API_BASE_URL}/orders/${encodeURIComponent(saleId)}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`,
+                    },
+                });
+                if (res.status === 401) {
+                    logout();
+                    return { success: false, message: 'Unauthorized. Please log in again.' };
+                }
+                if (!res.ok) {
+                    const err = await res.json().catch(() => null);
+                    return { success: false, message: err?.message || `Failed to delete sale (${res.status})` };
+                }
+                setSales(prev => prev.filter(s => s.id !== saleId));
+                restoreStockForOrder(sale);
+                return { success: true, message: 'Sale deleted successfully.' };
+            } catch (err) {
+                console.error('Failed to delete sale:', err);
+                return { success: false, message: 'Failed to delete sale. Please try again.' };
+            }
+        },
+        returnSale: async (saleId: string, returnData: Omit<SaleReturn, 'id'>) => {
+            const token = localStorage.getItem('authToken');
+            if (!token) {
+                return { success: false, message: 'Unauthorized. Please log in again.' };
+            }
+            const sale = sales.find(s => s.id === saleId);
+            if (!sale) {
+                return { success: false, message: 'Sale not found.' };
+            }
+            try {
+                const res = await fetch(`${API_BASE_URL}/orders/${encodeURIComponent(saleId)}/return`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify(returnData),
+                });
+                if (res.status === 401) {
+                    logout();
+                    return { success: false, message: 'Unauthorized. Please log in again.' };
+                }
+                if (!res.ok) {
+                    const err = await res.json().catch(() => null);
+                    return { success: false, message: err?.message || `Failed to process return (${res.status})` };
+                }
+                const savedReturn = await res.json().catch(() => null);
+                if (savedReturn?.sale) {
+                    const updatedSale = mapBackendOrderToSale(savedReturn.sale);
+                    upsertSaleInState(updatedSale);
+                }
+                return { success: true, message: 'Return processed successfully.', sale: savedReturn?.sale };
+            } catch (err) {
+                console.error('Failed to process return:', err);
+                return { success: false, message: 'Failed to process return. Please try again.' };
+            }
         },
         
         foodMenuCategories,
@@ -2833,7 +3049,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 alert('Failed to update customer due. Please try again.');
             }
         },
-        receiveCustomerPayment: async (customerId: string, amountReceived: number, paymentMethod: string, notes?: string) => {
+        receiveCustomerPayment: async (customerId: string, amountReceived: number, paymentMethod: string, notes?: string, discountAmount?: number) => {
             const customer = customers.find(c => c.id === customerId);
             if (!customer) return;
 
@@ -2842,7 +3058,9 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 alert('Please enter a valid positive amount.');
                 return;
             }
-            const newDueAmount = Math.max(0, previousDueAmount - amountReceived);
+            const discountValue = discountAmount || 0;
+            const totalDeduction = amountReceived + discountValue;
+            const newDueAmount = Math.max(0, previousDueAmount - totalDeduction);
             
             setCustomers(prev => prev.map(c => c.id === customerId ? { ...c, dueAmount: newDueAmount } : c));
             const newPayment: CustomerPayment = {
@@ -2868,7 +3086,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                         'Content-Type': 'application/json',
                         Authorization: `Bearer ${token}`
                     },
-                    body: JSON.stringify({ dueAmount: newDueAmount })
+                    body: JSON.stringify({ dueAmount: newDueAmount, paymentAmount: amountReceived, discountAmount: discountValue, paymentMethod, notes })
                 });
                 if (res.status === 401) {
                     logout();
@@ -2895,6 +3113,35 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 console.error("Failed to update customer payment:", err);
                 setCustomers(prev => prev.map(c => c.id === customerId ? { ...c, dueAmount: previousDueAmount } : c));
                 alert('Failed to record customer payment. Please try again.');
+            }
+        },
+
+        sendSms: async (to: string, message: string) => {
+            try {
+                const token = localStorage.getItem('authToken');
+                if (!token) {
+                    return { success: false, message: 'Unauthorized. Please log in again.' };
+                }
+                const res = await fetch(`${API_BASE_URL}/sms/send`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ to, message })
+                });
+                if (res.status === 401) {
+                    logout();
+                    return { success: false, message: 'Unauthorized. Please log in again.' };
+                }
+                if (!res.ok) {
+                    const err = await res.json().catch(() => null);
+                    return { success: false, message: err?.message || `Failed to send SMS (${res.status})` };
+                }
+                return { success: true, message: 'SMS sent successfully' };
+            } catch (err) {
+                console.error('Failed to send SMS:', err);
+                return { success: false, message: 'Failed to send SMS. Please try again.' };
             }
         },
 
@@ -3006,6 +3253,24 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 alert(err instanceof Error ? err.message : 'Failed to print KOT');
             }
         },
+        printBot: async (printerId, content) => {
+            try {
+                const message = await sendPrinterJob(printerId, content, 'bot');
+                alert(message || 'BOT print sent successfully!');
+            } catch (err) {
+                console.error("Failed to print BOT:", err);
+                alert(err instanceof Error ? err.message : 'Failed to print BOT');
+            }
+        },
+        printDelivery: async (printerId, content) => {
+            try {
+                const message = await sendPrinterJob(printerId, content, 'delivery');
+                alert(message || 'Delivery slip print sent successfully!');
+            } catch (err) {
+                console.error("Failed to print delivery slip:", err);
+                alert(err instanceof Error ? err.message : 'Failed to print delivery slip');
+            }
+        },
 
         counters,
         addCounter: (counterData) => setCounters(prev => [...prev, { ...counterData, id: `c-${Date.now()}` }]),
@@ -3113,6 +3378,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 markOutletAppDataMutated('purchases', outletId);
                 persistOutletCollectionImmediately('purchases', outletId, nextPurchases);
             }
+            autoIncreaseStockOnPurchase(newPurchase);
             return newPurchase;
         },
         updatePurchase: (purchase) => {
@@ -3246,6 +3512,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 markOutletAppDataMutated('wasteRecords', outletId);
                 persistOutletCollectionImmediately('wasteRecords', outletId, nextWasteRecords);
             }
+            autoDecreaseStockOnWaste(newRecord);
             return newRecord;
         },
 
@@ -3317,6 +3584,14 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         
         paymentMethods,
         updatePaymentMethod: (method) => setPaymentMethods(prev => prev.map(p => p.id === method.id ? method : p)),
+        addPaymentMethod: (name: string) => {
+            const newMethod: PaymentMethod = { id: `pm-${Date.now()}`, name, isEnabled: true };
+            setPaymentMethods(prev => [...prev, newMethod]);
+            return newMethod;
+        },
+        removePaymentMethod: (id: string) => {
+            setPaymentMethods(prev => prev.filter(p => p.id !== id));
+        },
 
         deliveryPartners,
         addDeliveryPartner: (partnerData) => {
@@ -3977,6 +4252,18 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             if (!tenantEntitlements) return true;
             return tenantEntitlements.featureKeys.includes(featureKey);
         },
+        hasPermission: (permission: PermissionKey) => {
+            if (user?.isSuperAdmin) return true;
+            const userRole = roles.find(r => r.id === user?.roleId);
+            if (!userRole) return false;
+            // Check granular permissions first, fall back to legacy permissions
+            if (userRole.granularPermissions && userRole.granularPermissions.length > 0) {
+                return userRole.granularPermissions.includes(permission);
+            }
+            // Legacy: check if the resource part of the permission is in the role's permissions
+            const resource = permission.split('.')[0] as PlanFeatureKey;
+            return userRole.permissions.includes(resource);
+        },
         saasSettings,
         updateSaaSSettings: async (settings) => {
             const nextSettings = { ...saasSettings, ...settings };
@@ -3993,24 +4280,93 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         updateAddonGroup: (group) => setAddonGroups(prev => prev.map(g => g.id === group.id ? group : g)),
         deleteAddonGroup: (id) => setAddonGroups(prev => prev.filter(g => g.id !== id)),
 
+        // Recipes & Ingredient Mapping
+        recipes,
+        addRecipe: (recipeData) => {
+            const outletId = resolveOutletDataId(recipeData.outletId);
+            const newRecipe: Recipe = {
+                ...recipeData,
+                id: `recipe-${Date.now()}`,
+                outletId: outletId || recipeData.outletId,
+            };
+            setRecipes(prev => [...prev, newRecipe]);
+            return newRecipe;
+        },
+        updateRecipe: (recipe) => {
+            const outletId = resolveOutletDataId(recipe.outletId);
+            setRecipes(prev => prev.map(r => r.id === recipe.id ? { ...recipe, outletId: outletId || recipe.outletId } : r));
+        },
+        deleteRecipe: (recipeId) => {
+            setRecipes(prev => prev.filter(r => r.id !== recipeId));
+        },
+
+        checkStockAvailability: (menuItemId, orderQuantity = 1) => {
+            const recipe = recipes.find(r => r.menuItemId === menuItemId);
+            if (!recipe) return { available: true, recipe: null, shortages: [] };
+
+            const shortages: Array<{ stockItemId: string; stockItemName: string; required: number; available: number; unit: string }> = [];
+            for (const ingredient of recipe.ingredients) {
+                const requiredQty = ingredient.quantityRequired * orderQuantity * (1 / recipe.yieldQuantity);
+                const stockItem = stockItems.find(si => si.id === ingredient.stockItemId);
+                const availableQty = stockItem ? stockItem.quantity : 0;
+                if (availableQty < requiredQty) {
+                    shortages.push({
+                        stockItemId: ingredient.stockItemId,
+                        stockItemName: ingredient.stockItemName,
+                        required: requiredQty,
+                        available: availableQty,
+                        unit: ingredient.unit,
+                    });
+                }
+            }
+            return {
+                available: shortages.length === 0,
+                recipe,
+                shortages,
+            };
+        },
+
+        deductStockForOrder,
+        restoreStockForOrder,
+        autoIncreaseStockOnPurchase,
+        autoDecreaseStockOnWaste,
+
         // Live data refresh — re-pull the order/table sources so a "Live" view
         // can poll in the background and stay in sync with the server.
         lastUpdated: lastUpdatedRef.current,
-        refreshData: async () => {
-            try {
-                await Promise.all([fetchSales(), fetchTables()]);
-                lastUpdatedRef.current = new Date();
-                setLastUpdatedTick(t => t + 1);
-            } catch (err) {
-                console.error('refreshData failed:', err);
-            }
-        },
-    };
+        refreshData,
+    }), [
+        // Only include state that changes during polling or user interaction.
+        // This prevents unnecessary context value recreation when unrelated
+        // state updates occur (e.g., background polling of sales/tables).
+        menuItems, foodMenuCategories, tables, customers, sales, reservations,
+        customerPayments, preMadeFoodItems, stockItems, stockEntries, stockAdjustments,
+        suppliers, areasFloors, kitchens, printers, counters, waiters, currencies,
+        denominations, purchases, expenseCategories, expenses, wasteRecords,
+        employees, attendanceRecords, payrollRecords, paymentMethods,
+        deliveryPartners, isSelfOrderEnabled, isReservationOrderEnabled,
+        reservationOrderReceivingUserIds, reservationSettings, applicationSettings,
+        soundSettings, roles, users, saasWebsiteContent, plans, tenantEntitlements,
+        saasSettings, addonGroups, recipes, activeOutletIds, outlets, user,
+        refreshData, lastUpdatedTick,
+        deductStockForOrder, restoreStockForOrder, autoIncreaseStockOnPurchase, autoDecreaseStockOnWaste
+    ]);
+
+    // Separate context for app-level data that should NOT trigger re-renders
+    // when polling updates sales/tables. This prevents Money components and
+    // other consumers from re-rendering on every poll cycle.
+    const appDataValue = useMemo(() => ({
+        currencies,
+        applicationSettings,
+        websiteSettings,
+    }), [currencies, applicationSettings, websiteSettings]);
 
     return (
-        <RestaurantDataContext.Provider value={contextValue}>
-            {children}
-        </RestaurantDataContext.Provider>
+        <AppDataContext.Provider value={appDataValue}>
+            <RestaurantDataContext.Provider value={contextValue}>
+                {children}
+            </RestaurantDataContext.Provider>
+        </AppDataContext.Provider>
     );
 };
 

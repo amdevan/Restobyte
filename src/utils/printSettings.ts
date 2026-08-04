@@ -129,6 +129,118 @@ export const getEscPosBottomFeed = (lines: number = 12): string => {
   return `${ESC}d${String.fromCharCode(safeLines)}${GS}V\x00`;
 };
 
+/**
+ * ESC/POS center alignment command
+ */
+export const getEscPosAlignCenter = (): string => {
+  const ESC = '\x1B';
+  return `${ESC}a\x01`;
+};
+
+/**
+ * ESC/POS left alignment command
+ */
+export const getEscPosAlignLeft = (): string => {
+  const ESC = '\x1B';
+  return `${ESC}a\x00`;
+};
+
+/**
+ * Wrap text with center alignment ESC/POS commands.
+ * This uses the printer's built-in centering which is more reliable than spaces.
+ */
+export const escPosCenterText = (text: string): string => {
+  if (!text) return '';
+  return `${getEscPosAlignCenter()}${text}${getEscPosAlignLeft()}`;
+};
+
+/**
+ * Wrap text with left alignment ESC/POS commands.
+ */
+export const escPosLeftText = (text: string): string => {
+  if (!text) return '';
+  return `${getEscPosAlignLeft()}${text}`;
+};
+
+/**
+ * Generate ESC/POS QR code commands for thermal printers.
+ * Uses GS ( k commands to encode and print a QR code.
+ * Compatible with Epson, Star, Bixolon and most ESC/POS printers.
+ * @param data - The string data to encode in the QR code
+ * @param moduleSize - Module size (1-16, default 6)
+ * @param errorCorrection - Error correction level: 0=L, 1=M, 2=Q, 3=H (default 0=L)
+ */
+export const getEscPosQrCode = (data: string, moduleSize: number = 6, errorCorrection: number = 0): string => {
+  if (!data) return '';
+
+  const GS = String.fromCharCode(0x1D);
+  const safeSize = Math.max(1, Math.min(16, Math.round(moduleSize)));
+  // Error correction as ASCII: '0'=L(48), '1'=M(49), '2'=Q(50), '3'=H(51)
+  const ecAscii = 48 + Math.max(0, Math.min(3, Math.round(errorCorrection)));
+
+  // Convert data to bytes (UTF-8)
+  const dataBytes: number[] = [];
+  for (let i = 0; i < data.length; i++) {
+    const code = data.charCodeAt(i);
+    if (code <= 0x7F) {
+      dataBytes.push(code);
+    } else if (code <= 0x7FF) {
+      dataBytes.push(0xC0 | (code >> 6));
+      dataBytes.push(0x80 | (code & 0x3F));
+    } else {
+      dataBytes.push(0xE0 | (code >> 12));
+      dataBytes.push(0x80 | ((code >> 6) & 0x3F));
+      dataBytes.push(0x80 | (code & 0x3F));
+    }
+  }
+
+  const dataLength = dataBytes.length;
+
+  let qr = '';
+
+  // Step 1: Select QR code model (Model 2)
+  // GS ( k 4 0 49 50
+  qr += GS + '(k';
+  qr += String.fromCharCode(4, 0); // pL=4, pH=0
+  qr += String.fromCharCode(49, 50); // fn='1', m='2' (Model 2)
+
+  // Step 2: Set error correction level
+  // GS ( k 3 0 49 ec
+  qr += GS + '(k';
+  qr += String.fromCharCode(3, 0); // pL=3, pH=0
+  qr += String.fromCharCode(49); // fn='1'
+  qr += String.fromCharCode(ecAscii); // '0'=L, '1'=M, '2'=Q, '3'=H
+
+  // Step 3: Set module size
+  // GS ( k 3 0 50 size
+  qr += GS + '(k';
+  qr += String.fromCharCode(3, 0); // pL=3, pH=0
+  qr += String.fromCharCode(50); // fn='2'
+  qr += String.fromCharCode(safeSize); // 1-16
+
+  // Step 4: Store QR code data
+  // GS ( k pL pH 51 data... 0
+  const payloadLen = dataLength + 3; // fn(1) + data(n) + terminator(1) + 1
+  qr += GS + '(k';
+  qr += String.fromCharCode(payloadLen & 0xFF, (payloadLen >> 8) & 0xFF); // pL, pH
+  qr += String.fromCharCode(51); // fn='3'
+  for (let i = 0; i < dataLength; i++) {
+    qr += String.fromCharCode(dataBytes[i]);
+  }
+  qr += String.fromCharCode(0); // terminator
+
+  // Step 5: Print QR code
+  // GS ( k 3 0 49 3
+  qr += GS + '(k';
+  qr += String.fromCharCode(3, 0); // pL=3, pH=0
+  qr += String.fromCharCode(49, 3); // fn='1', m=3
+
+  // Feed lines after QR code
+  qr += String.fromCharCode(0x1B, 0x64, 3); // ESC d 3 (feed 3 lines)
+
+  return qr;
+};
+
 const escapeHtml = (value: string): string =>
   String(value || '')
     .replace(/&/g, '&amp;')

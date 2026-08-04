@@ -5,47 +5,93 @@ export const PERMISSIONS = [
   // Dashboard
   'dashboard.view',
   // POS
-  'pos.create_order',
-  'pos.edit_order',
-  'pos.cancel_order',
+  'pos.view',
+  'pos.create',
+  'pos.edit',
+  'pos.delete',
   'pos.discount',
-  'pos.refund',
-  // Invoice
-  'invoice.create',
-  'invoice.view',
-  'invoice.edit',
-  'invoice.delete',
-  'invoice.print',
-  // Customer
-  'customer.view',
-  'customer.edit',
-  'customer.delete',
+  'pos.return',
+  // Sales
+  'sales.view',
+  'sales.edit',
+  'sales.delete',
+  'sales.return',
+  'sales.export',
+  // KDS
+  'kds.view',
+  'kds.edit',
+  // Menu
+  'menu.view',
+  'menu.create',
+  'menu.edit',
+  'menu.delete',
+  // Tables
+  'tables.view',
+  'tables.create',
+  'tables.edit',
+  'tables.delete',
+  // Reservations
+  'reservations.view',
+  'reservations.create',
+  'reservations.edit',
+  'reservations.delete',
+  // Customers
+  'customers.view',
+  'customers.create',
+  'customers.edit',
+  'customers.delete',
   // Inventory
-  'inventory.add_product',
-  'inventory.edit_product',
-  'inventory.stock_adjustment',
-  'inventory.view_reports',
-  // Accounting
-  'accounting.view_reports',
-  'accounting.manage_payments',
-  // Orders
-  'orders.view',
-  'orders.edit',
-  // Kitchen
-  'kitchen.display',
-  // Settings
-  'settings.view',
-  'settings.edit',
+  'inventory.view',
+  'inventory.create',
+  'inventory.edit',
+  'inventory.delete',
+  // Purchase
+  'purchase.view',
+  'purchase.create',
+  'purchase.edit',
+  'purchase.delete',
+  // Reports
+  'reports.view',
+  'reports.export',
   // Users
   'users.view',
   'users.create',
   'users.edit',
   'users.delete',
-  // Roles
+  // Settings
+  'settings.view',
+  'settings.edit',
+  // Accounting
+  'accounting.view_reports',
+  'accounting.manage_payments',
+  // Invoice
+  'invoice.view',
+  'invoice.create',
+  'invoice.edit',
+  'invoice.delete',
+  'invoice.print',
+  // Orders
+  'orders.view',
+  'orders.edit',
+  // Kitchen
+  'kitchen.display',
+  // Legacy permissions for backward compatibility
+  'pos.create_order',
+  'pos.edit_order',
+  'pos.cancel_order',
+  'pos.refund',
+  'customer.view',
+  'customer.edit',
+  'customer.delete',
+  'inventory.add_product',
+  'inventory.edit_product',
+  'inventory.stock_adjustment',
+  'inventory.view_reports',
   'roles.view',
   'roles.create',
   'roles.edit',
   'roles.delete',
+  'customer_portal',
 ] as const;
 
 export type Permission = typeof PERMISSIONS[number];

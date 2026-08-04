@@ -1,10 +1,9 @@
 
 
-import React, { useMemo } from 'react';
-import { Customer, Table, Waiter, DeliveryPartner, TableStatus } from '../../types';
+import React, { useMemo, memo } from 'react';
+import { Customer, Table, Waiter, DeliveryPartner, TableStatus, Sale, Outlet } from '../../types';
 import Button from '../common/Button';
 import { FiUser, FiGrid, FiTruck, FiShoppingBag, FiMessageSquare } from 'react-icons/fi';
-import { useRestaurantData } from '../../hooks/useRestaurantData';
 
 type OrderType = 'Dine In' | 'Delivery' | 'Pickup' | 'WhatsApp';
 
@@ -22,6 +21,8 @@ interface CartHeaderProps {
   deliveryPartners: DeliveryPartner[];
   selectedDeliveryPartner: DeliveryPartner | null;
   onDeliveryPartnerSelect: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+  sales: Sale[];
+  currentOutlet: Outlet | undefined;
 }
 
 const CartHeader: React.FC<CartHeaderProps> = ({
@@ -37,10 +38,10 @@ const CartHeader: React.FC<CartHeaderProps> = ({
   waiters,
   deliveryPartners,
   selectedDeliveryPartner,
-  onDeliveryPartnerSelect
+  onDeliveryPartnerSelect,
+  sales,
+  currentOutlet
 }) => {
-    const { getSingleActiveOutlet, sales } = useRestaurantData();
-    const currentOutlet = getSingleActiveOutlet();
     const isCloudKitchen = currentOutlet?.outletType === 'CloudKitchen';
 
     const blockedTableIds = useMemo(() => {
@@ -102,4 +103,4 @@ const CartHeader: React.FC<CartHeaderProps> = ({
   );
 };
 
-export default CartHeader;
+export default memo(CartHeader);

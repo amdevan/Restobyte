@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Customer } from '../../types';
 import Input from '../common/Input';
 import Button from '../common/Button';
-import { FiSave, FiXCircle, FiCreditCard, FiAlignLeft } from 'react-icons/fi';
+import { FiSave, FiXCircle } from 'react-icons/fi';
 import { useRestaurantData } from '../../hooks/useRestaurantData';
 import Money from '../common/Money';
 import { formatMoney, getDefaultCurrency } from '../../utils/currency';
@@ -11,31 +11,28 @@ import { formatMoney, getDefaultCurrency } from '../../utils/currency';
 interface ReceivePaymentModalProps {
   customer: Customer | null;
   onClose: () => void;
-  onReceivePayment: (customerId: string, amountReceived: number, paymentMethod: string, notes?: string) => void | Promise<void>;
+  onReceivePayment: (customerId: string, amountReceived: number, paymentMethod: string, notes?: string, discountAmount?: number) => void | Promise<void>;
 }
 
 const ReceivePaymentModal: React.FC<ReceivePaymentModalProps> = ({ customer, onClose, onReceivePayment }) => {
   const { paymentMethods, currencies, applicationSettings } = useRestaurantData();
   const availablePaymentMethods = useMemo(() => paymentMethods.filter(pm => pm.isEnabled).map(pm => pm.name), [paymentMethods]);
   const defaultCurrency = useMemo(() => getDefaultCurrency(currencies), [currencies]);
-  const moneySettings = useMemo(() => {
-    return {
-      currencySymbolPosition: applicationSettings?.currencySymbolPosition ?? 'before',
-      decimalPlaces: applicationSettings?.decimalPlaces ?? 2,
-    };
-  }, [applicationSettings?.currencySymbolPosition, applicationSettings?.decimalPlaces]);
 
   const [receivedAmount, setReceivedAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState(availablePaymentMethods[0] || 'Cash');
   const [notes, setNotes] = useState('');
+  const [discountAmount, setDiscountAmount] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const dueAmount = customer ? Number((customer as any).dueAmount) : 0;
 
   // Calculate change/credit
+  const discountValue = useMemo(() => parseFloat(discountAmount) || 0, [discountAmount]);
+  const effectiveDue = useMemo(() => Math.max(0, dueAmount - discountValue), [dueAmount, discountValue]);
   const changeAmount = useMemo(() => {
     const numericReceived = parseFloat(receivedAmount) || 0;
-    return Math.max(0, numericReceived - dueAmount);
-  }, [receivedAmount, dueAmount]);
+    return Math.max(0, numericReceived - effectiveDue);
+  }, [receivedAmount, effectiveDue]);
 
   useEffect(() => {
     if (customer && Number.isFinite(dueAmount) && dueAmount > 0) {
@@ -46,7 +43,15 @@ const ReceivePaymentModal: React.FC<ReceivePaymentModalProps> = ({ customer, onC
     }
     setPaymentMethod(availablePaymentMethods[0] || 'Cash');
     setNotes('');
+    setDiscountAmount('');
   }, [customer, availablePaymentMethods, dueAmount]);
+
+  // Auto-update received amount when discount changes (only if user hasn't manually changed it)
+  useEffect(() => {
+    if (discountValue > 0 && Number.isFinite(dueAmount)) {
+      setReceivedAmount(String(effectiveDue.toFixed(2)));
+    }
+  }, [discountValue, effectiveDue, dueAmount]);
 
   if (!customer) return null;
 
@@ -59,11 +64,13 @@ const ReceivePaymentModal: React.FC<ReceivePaymentModalProps> = ({ customer, onC
       alert('Please enter a valid positive amount.');
       return;
     }
-    // The actual amount to credit (for overpayment) is handled by backend, we just pass received amount
-    const amountToProcess = Math.min(numericAmount, dueAmount + changeAmount); // Pass full received amount
+    // Pass the actual amount received; the discount is passed separately
+    const amountToProcess = numericAmount;
+    const discountNote = discountValue > 0 ? `Discount: ${formatMoney(discountValue, defaultCurrency, applicationSettings)}` : '';
+    const combinedNotes = notes ? `${notes}\n${discountNote}`.trim() : discountNote;
     try {
       setIsSubmitting(true);
-      await onReceivePayment(customer.id, amountToProcess, paymentMethod, notes);
+      await onReceivePayment(customer.id, amountToProcess, paymentMethod, combinedNotes, discountValue);
       onClose();
     } finally {
       setIsSubmitting(false);
@@ -93,12 +100,31 @@ const ReceivePaymentModal: React.FC<ReceivePaymentModalProps> = ({ customer, onC
         autoFocus
       />
 
+      <Input
+        label="Discount Amount (Optional)"
+        type="number"
+        id="paymentDiscountAmount"
+        value={discountAmount}
+        onChange={(e) => setDiscountAmount(e.target.value)}
+        min="0"
+        step="0.01"
+      />
+      <p className="text-xs text-gray-500 -mt-2 mb-2">Discount applied to the due amount. Max: {formatMoney(dueAmount, defaultCurrency, applicationSettings)}</p>
+
+      {discountValue > 0 && (
+        <div className="bg-green-50 p-3 rounded-lg border border-green-200">
+          <p className="text-sm text-green-800">
+            Effective Due After Discount: <span className="font-semibold"><Money amount={effectiveDue} /></span>
+          </p>
+        </div>
+      )}
+
       <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
         <label htmlFor="paymentChangeAmount" className="block text-sm font-medium text-blue-800 mb-1">
           {changeAmount > 0 ? 'Change to Return' : 'Remaining Due'}
         </label>
         <div className="text-2xl font-bold text-blue-900">
-          <Money amount={changeAmount > 0 ? changeAmount : dueAmount - (parseFloat(receivedAmount) || 0)} />
+          <Money amount={changeAmount > 0 ? changeAmount : effectiveDue - (parseFloat(receivedAmount) || 0)} />
         </div>
       </div>
 

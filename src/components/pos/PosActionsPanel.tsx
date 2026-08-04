@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, memo } from 'react';
 import { useRestaurantData } from '../../hooks/useRestaurantData';
 import { FiActivity, FiCalendar, FiBell, FiClock, FiGrid, FiUser, FiTrendingUp, FiArchive, FiSearch, FiBarChart2, FiMonitor, FiTv } from 'react-icons/fi';
 import { useNavigate, Link } from 'react-router-dom';
@@ -188,4 +188,4 @@ const PosActionsPanel: React.FC<PosActionsPanelProps> = ({ searchTerm, onSearchC
     );
 };
 
-export default PosActionsPanel;
+export default memo(PosActionsPanel);

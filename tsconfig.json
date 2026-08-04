@@ -27,5 +27,6 @@
       "@/*": ["./src/*"]
     },
     "baseUrl": "."
-  }
+  },
+  "exclude": ["print-agent", "backend", "node_modules"]
 }

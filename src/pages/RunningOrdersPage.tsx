@@ -1,9 +1,11 @@
-import React, { useMemo, useEffect, useState, useCallback } from 'react';
+import React, { useMemo, useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useRestaurantData } from '../hooks/useRestaurantData';
 import { isNative, vibrate } from '../utils/capacitorService';
-import { FiActivity, FiUser, FiClock, FiGrid, FiShoppingCart, FiBell, FiRefreshCw } from 'react-icons/fi';
+import { FiUser, FiClock, FiGrid, FiShoppingCart, FiBell, FiRefreshCw } from 'react-icons/fi';
 import Money from '../components/common/Money';
+import { API_BASE_URL } from '../config';
+import { useAuth } from '../hooks/useAuth';
 
 interface RunningOrdersPageProps {}
 
@@ -22,12 +24,82 @@ const timeSince = (dateString?: string) => {
 
 const RunningOrdersPage: React.FC<RunningOrdersPageProps> = () => {
   const navigate = useNavigate();
-  const { sales, tables, reservations, refreshData, lastUpdated } = useRestaurantData();
+  const { isAuthenticated, logout } = useAuth();
+  const { sales: contextSales, tables: contextTables, reservations: contextReservations, activeOutletIds } = useRestaurantData();
+
+  // Local state for live polling — does NOT update the shared context,
+  // so POS and other consumers are NOT re-rendered by polling.
+  const [localSales, setLocalSales] = useState(contextSales);
+  const [localTables, setLocalTables] = useState(contextTables);
+  const [localReservations] = useState(contextReservations);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   // Live mode: poll the server every 8s while this screen is open so orders,
   // waiter calls and reservations update in real time.
   const [now, setNow] = useState(Date.now());
   const [refreshing, setRefreshing] = useState(false);
+  const pollingRef = useRef<boolean>(false);
+
+  // Fetch sales locally (does not touch shared context state)
+  const fetchSalesLocal = useCallback(async () => {
+    if (!isAuthenticated) { setLocalSales([]); return; }
+    const token = localStorage.getItem('authToken');
+    if (!token || activeOutletIds.length === 0) { setLocalSales([]); return; }
+    try {
+      const results = await Promise.all(activeOutletIds.map((outletId) =>
+        fetch(`${API_BASE_URL}/orders?outletId=${encodeURIComponent(outletId)}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        }).then(async (res) => {
+          if (res.status === 401) { logout(); return []; }
+          if (!res.ok) return [];
+          return res.json().catch(() => []);
+        })
+      ));
+      const flat = results.flat().filter(Boolean);
+      setLocalSales(flat);
+    } catch (err) {
+      console.error("Failed to fetch sales:", err);
+      setLocalSales([]);
+    }
+  }, [isAuthenticated, activeOutletIds, logout]);
+
+  // Fetch tables locally (does not touch shared context state)
+  const fetchTablesLocal = useCallback(async () => {
+    if (!isAuthenticated) { setLocalTables([]); return; }
+    const token = localStorage.getItem('authToken');
+    if (!token || activeOutletIds.length === 0) { setLocalTables([]); return; }
+    try {
+      const results = await Promise.all(activeOutletIds.map(outletId =>
+        fetch(`${API_BASE_URL}/tables?outletId=${encodeURIComponent(outletId)}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        }).then(async res => {
+          if (res.status === 401) { logout(); return []; }
+          if (!res.ok) return [];
+          return res.json().catch(() => []);
+        })
+      ));
+      const flat = results.flat().filter(Boolean);
+      const deduped = Array.from(new Map(flat.map((it: any) => [String(it?.id || ''), it])).values()).filter((it: any) => it && it.id);
+      setLocalTables(deduped);
+    } catch (err) {
+      console.error("Failed to fetch tables:", err);
+      setLocalTables([]);
+    }
+  }, [isAuthenticated, activeOutletIds, logout]);
+
+  // Local refresh — fetches data into local state only
+  const refreshData = useCallback(async () => {
+    if (pollingRef.current) return; // Prevent overlapping requests
+    pollingRef.current = true;
+    try {
+      await Promise.all([fetchSalesLocal(), fetchTablesLocal()]);
+      setLastUpdated(new Date());
+    } catch (err) {
+      console.error('refreshData failed:', err);
+    } finally {
+      pollingRef.current = false;
+    }
+  }, [fetchSalesLocal, fetchTablesLocal]);
 
   const doRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -49,24 +121,24 @@ const RunningOrdersPage: React.FC<RunningOrdersPageProps> = () => {
 
   const runningOrders = useMemo(
     () =>
-      (sales || [])
+      (localSales || [])
         .filter((s: any) => s.assignedTableId && !(s.isClosed ?? s.isSettled))
         .sort((a: any, b: any) => new Date(b.saleDate).getTime() - new Date(a.saleDate).getTime()),
-    [sales]
+    [localSales]
   );
 
   const assistanceRequests = useMemo(
-    () => (tables || []).filter((t: any) => t.assistanceRequested),
-    [tables]
+    () => (localTables || []).filter((t: any) => t.assistanceRequested),
+    [localTables]
   );
 
   const todaysReservations = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    return (reservations || [])
+    return (localReservations || [])
       .filter((r: any) => new Date(r.dateTime) >= today)
       .sort((a: any, b: any) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime());
-  }, [reservations]);
+  }, [localReservations]);
 
   const openOrder = (tableId?: string) => {
     vibrate();

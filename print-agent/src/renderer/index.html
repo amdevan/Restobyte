@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RestoByte Print Agent</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: #f5f6fa;
+      color: #2d3436;
+      overflow-x: hidden;
+    }
+
+    /* Header */
+    .header {
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      color: white;
+      padding: 20px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .header .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .header .logo-icon {
+      width: 32px;
+      height: 32px;
+      background: #0ea5e9;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 18px;
+    }
+
+    .header .logo-text {
+      font-size: 20px;
+      font-weight: 700;
+    }
+
+    .header .version {
+      font-size: 12px;
+      opacity: 0.7;
+    }
+
+    /* Connection Status Banner */
+    .connection-banner {
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .connection-banner.connected {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .connection-banner.connecting {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .connection-banner.disconnected {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .connection-banner.error {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .status-dot.connected {
+      background: #22c55e;
+      animation: pulse 2s infinite;
+    }
+
+    .status-dot.connecting {
+      background: #f59e0b;
+      animation: pulse 1s infinite;
+    }
+
+    .status-dot.disconnected,
+    .status-dot.error {
+      background: #ef4444;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    /* Main Content */
+    .main-content {
+      padding: 24px;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .section {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .section-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #1e293b;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    /* Agent Info Grid */
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .info-item {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .info-label {
+      font-size: 12px;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .info-value {
+      font-size: 14px;
+      font-weight: 500;
+      color: #1e293b;
+      word-break: break-all;
+    }
+
+    /* Button */
+    .btn {
+      padding: 8px 16px;
+      border-radius: 8px;
+      border: none;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-primary {
+      background: #0ea5e9;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #0284c7;
+    }
+
+    .btn-secondary {
+      background: #f1f5f9;
+      color: #475569;
+      border: 1px solid #e2e8f0;
+    }
+
+    .btn-secondary:hover {
+      background: #e2e8f0;
+    }
+
+    .btn-danger {
+      background: #fee2e2;
+      color: #991b1b;
+      border: 1px solid #fecaca;
+    }
+
+    .btn-danger:hover {
+      background: #fecaca;
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    /* Printer List */
+    .printer-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .printer-card {
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .printer-info {
+      flex: 1;
+    }
+
+    .printer-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: #1e293b;
+    }
+
+    .printer-details {
+      display: flex;
+      gap: 16px;
+      margin-top: 4px;
+      font-size: 12px;
+      color: #64748b;
+    }
+
+    .printer-badge {
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .printer-badge.thermal {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .printer-badge.standard {
+      background: #e0e7ff;
+      color: #3730a3;
+    }
+
+    .printer-badge.network {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .printer-badge.unknown {
+      background: #f1f5f9;
+      color: #64748b;
+    }
+
+    .printer-badge.usb {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .printer-badge.bluetooth {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .printer-badge.serial {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .printer-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .printer-status-indicator {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #22c55e;
+      margin-right: 8px;
+    }
+
+    /* Settings Form */
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      color: #334155;
+      margin-bottom: 6px;
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      font-size: 14px;
+      color: #1e293b;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .form-input:focus {
+      border-color: #0ea5e9;
+      box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.2);
+    }
+
+    .form-input::placeholder {
+      color: #94a3b8;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    /* Log */
+    .log-container {
+      background: #0f172a;
+      color: #e2e8f0;
+      border-radius: 8px;
+      padding: 12px;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 12px;
+      max-height: 200px;
+      overflow-y: auto;
+      margin-top: 12px;
+    }
+
+    .log-entry {
+      padding: 2px 0;
+      border-bottom: 1px solid #1e293b;
+    }
+
+    .log-entry:last-child {
+      border-bottom: none;
+    }
+
+    .log-time {
+      color: #64748b;
+    }
+
+    .log-success {
+      color: #4ade80;
+    }
+
+    .log-error {
+      color: #f87171;
+    }
+
+    /* Empty State */
+    .empty-state {
+      text-align: center;
+      padding: 32px;
+      color: #94a3b8;
+    }
+
+    .empty-state svg {
+      width: 48px;
+      height: 48px;
+      margin-bottom: 12px;
+      opacity: 0.5;
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 16px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    .tab {
+      padding: 10px 20px;
+      background: none;
+      border: none;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      color: #64748b;
+      transition: all 0.2s;
+    }
+
+    .tab.active {
+      color: #0ea5e9;
+      border-bottom-color: #0ea5e9;
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    /* Responsive */
+    @media (max-width: 600px) {
+      .header {
+        padding: 16px;
+      }
+
+      .main-content {
+        padding: 16px;
+      }
+
+      .info-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .form-row {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <div class="header">
+    <div class="logo">
+      <div class="logo-icon">R</div>
+      <span class="logo-text">RestoByte Print Agent</span>
+    </div>
+    <span class="version">v<span id="agent-version">1.0.0</span></span>
+  </div>
+
+  <!-- Connection Status -->
+  <div id="connection-banner" class="connection-banner disconnected">
+    <span id="status-dot" class="status-dot disconnected"></span>
+    <span id="connection-text">Disconnected from server</span>
+  </div>
+
+  <!-- Main Content -->
+  <div class="main-content">
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab active" onclick="showTab('dashboard')">Dashboard</button>
+      <button class="tab" onclick="showTab('printers')">Printers</button>
+      <button class="tab" onclick="showTab('settings')">Settings</button>
+      <button class="tab" onclick="showTab('logs')">Logs</button>
+    </div>
+
+    <!-- Dashboard Tab -->
+    <div id="tab-dashboard" class="tab-content active">
+      <div class="section">
+        <h2 class="section-title">Agent Information</h2>
+        <div class="info-grid">
+          <div class="info-item">
+            <span class="info-label">Version</span>
+            <span id="info-version" class="info-value">1.0.0</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Platform</span>
+            <span id="info-platform" class="info-value">Loading...</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Hostname</span>
+            <span id="info-hostname" class="info-value">Loading...</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Backend URL</span>
+            <span id="info-backend-url" class="info-value">Not configured</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Outlet ID</span>
+            <span id="info-outlet-id" class="info-value">Not configured</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Tenant ID</span>
+            <span id="info-tenant-id" class="info-value">Not configured</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <h2 class="section-title">Connection Controls</h2>
+        <div class="btn-group">
+          <button id="btn-connect" class="btn btn-primary" onclick="connectAgent()">Connect</button>
+          <button id="btn-disconnect" class="btn btn-danger" onclick="disconnectAgent()">Disconnect</button>
+          <button id="btn-detect" class="btn btn-secondary" onclick="detectPrinters()">Detect Printers</button>
+        </div>
+      </div>
+
+      <div class="section">
+        <h2 class="section-title">Quick Actions</h2>
+        <div class="btn-group">
+          <button class="btn btn-secondary" onclick="showTab('printers')">View Printers</button>
+          <button class="btn btn-secondary" onclick="showTab('settings')">Configure Settings</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Printers Tab -->
+    <div id="tab-printers" class="tab-content">
+      <div class="section">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <h2 class="section-title" style="margin-bottom: 0;">Detected Printers</h2>
+          <button id="btn-refresh-printers" class="btn btn-secondary" onclick="detectPrinters()" style="margin-left: auto;">
+            Refresh
+          </button>
+        </div>
+        <div id="printer-list" class="printer-list">
+          <div class="empty-state">
+            <div>No printers detected. Click "Refresh" or "Detect Printers" to scan.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Settings Tab -->
+    <div id="tab-settings" class="tab-content">
+      <div class="section">
+        <h2 class="section-title">Connection Settings</h2>
+        <div class="form-group">
+          <label for="backend-url">Backend URL</label>
+          <input type="url" id="backend-url" class="form-input" placeholder="http://localhost:3000" />
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="outlet-id">Outlet ID</label>
+            <input type="text" id="outlet-id" class="form-input" placeholder="Outlet ID from RestoByte" />
+          </div>
+          <div class="form-group">
+            <label for="tenant-id">Tenant ID</label>
+            <input type="text" id="tenant-id" class="form-input" placeholder="Tenant ID (optional)" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="auth-token">Auth Token (JWT)</label>
+          <input type="password" id="auth-token" class="form-input" placeholder="Paste your JWT token here" />
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
+          <button class="btn btn-secondary" onclick="loadSettings()">Reload Settings</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Logs Tab -->
+    <div id="tab-logs" class="tab-content">
+      <div class="section">
+        <h2 class="section-title">Activity Log</h2>
+        <div id="log-container" class="log-container">
+          <div class="log-entry">
+            <span class="log-time">--:--:--</span> Initializing Print Agent...
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const { ipcRenderer } = require('electron');
+
+    let currentStatus = {
+      version: '1.0.0',
+      platform: 'Loading...',
+      hostname: 'Loading...',
+      backendUrl: null,
+      outletId: null,
+      tenantId: null,
+      isConnected: false,
+      connectionStatus: 'disconnected',
+      isDetecting: false,
+      printers: [],
+    };
+
+    // ---------------------------------------------------------------------------
+    // Tab Navigation
+    // ---------------------------------------------------------------------------
+
+    function showTab(tabName) {
+      document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.classList.remove('active');
+      });
+      document.querySelectorAll('.tab').forEach(tab => {
+        tab.classList.remove('active');
+      });
+      document.getElementById('tab-' + tabName).classList.add('active');
+      event.target.classList.add('active');
+    }
+
+    // ---------------------------------------------------------------------------
+    // Status Update
+    // ---------------------------------------------------------------------------
+
+    function updateStatus(status) {
+      currentStatus = { ...currentStatus, ...status };
+      renderStatus();
+    }
+
+    function renderStatus() {
+      // Version
+      document.getElementById('agent-version').textContent = currentStatus.version;
+      document.getElementById('info-version').textContent = currentStatus.version;
+
+      // Platform
+      document.getElementById('info-platform').textContent = currentStatus.platform || 'Unknown';
+
+      // Hostname
+      document.getElementById('info-hostname').textContent = currentStatus.hostname || 'Unknown';
+
+      // Backend URL
+      document.getElementById('info-backend-url').textContent = currentStatus.backendUrl || 'Not configured';
+
+      // Outlet ID
+      document.getElementById('info-outlet-id').textContent = currentStatus.outletId || 'Not configured';
+
+      // Tenant ID
+      document.getElementById('info-tenant-id').textContent = currentStatus.tenantId || 'Not configured';
+
+      // Connection banner
+      const banner = document.getElementById('connection-banner');
+      const dot = document.getElementById('status-dot');
+      const text = document.getElementById('connection-text');
+
+      banner.className = 'connection-banner ' + currentStatus.connectionStatus;
+      dot.className = 'status-dot ' + currentStatus.connectionStatus;
+
+      const statusText = {
+        connected: 'Connected to server',
+        connecting: 'Connecting to server...',
+        disconnected: 'Disconnected from server',
+        error: 'Connection error',
+      }[currentStatus.connectionStatus] || 'Unknown status';
+
+      text.textContent = statusText;
+
+      // Render printers
+      renderPrinters();
+
+      // Load settings into form
+      if (currentStatus.backendUrl) {
+        document.getElementById('backend-url').value = currentStatus.backendUrl;
+      }
+      if (currentStatus.outletId) {
+        document.getElementById('outlet-id').value = currentStatus.outletId;
+      }
+      if (currentStatus.tenantId) {
+        document.getElementById('tenant-id').value = currentStatus.tenantId;
+      }
+    }
+
+    // ---------------------------------------------------------------------------
+    // Printer Rendering
+    // ---------------------------------------------------------------------------
+
+    function renderPrinters() {
+      const container = document.getElementById('printer-list');
+
+      if (currentStatus.isDetecting) {
+        container.innerHTML = '<div class="empty-state">Detecting printers...</div>';
+        return;
+      }
+
+      if (!currentStatus.printers || currentStatus.printers.length === 0) {
+        container.innerHTML = '<div class="empty-state">No printers detected. Click "Detect Printers" to scan.</div>';
+        return;
+      }
+
+      container.innerHTML = currentStatus.printers.map(printer => {
+        const typeBadge = '<span class="printer-badge ' + printer.type + '">' + printer.type + '</span>';
+        const interfaceBadge = '<span class="printer-badge ' + printer.interfaceType + '">' + printer.interfaceType + '</span>';
+
+        let details = '';
+        if (printer.ipAddress) details += 'IP: ' + printer.ipAddress;
+        if (printer.port) details += ' • Port: ' + printer.port;
+        if (printer.usbPath) details += ' • USB: ' + printer.usbPath;
+        if (printer.bluetoothMac) details += ' • BT: ' + printer.bluetoothMac;
+        if (printer.serialPort) details += ' • Serial: ' + printer.serialPort;
+
+        return '<div class="printer-card">' +
+          '<div class="printer-info">' +
+            '<div style="display: flex; align-items: center; gap: 8px;">' +
+              '<span class="printer-status-indicator"></span>' +
+              '<span class="printer-name">' + printer.name + '</span>' +
+            '</div>' +
+            '<div class="printer-details">' +
+              typeBadge + ' ' + interfaceBadge +
+              (details ? ' • <span style="color: #94a3b8;">' + details + '</span>' : '') +
+            '</div>' +
+          '</div>' +
+          '<div class="printer-actions">' +
+            '<button class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;" onclick="testPrint(\'' + printer.id + '\')">Test Print</button>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+    }
+
+    // ---------------------------------------------------------------------------
+    // Actions
+    // ---------------------------------------------------------------------------
+
+    async function connectAgent() {
+      const result = await ipcRenderer.invoke('agent:connect');
+      addLog('Connecting to server...', 'success');
+    }
+
+    async function disconnectAgent() {
+      const result = await ipcRenderer.invoke('agent:disconnect');
+      addLog('Disconnected from server', 'success');
+    }
+
+    async function detectPrinters() {
+      addLog('Detecting printers...', 'success');
+      const result = await ipcRenderer.invoke('agent:detect-printers');
+      updateStatus({ printers: result.printers, isDetecting: result.isDetecting });
+      addLog('Detected ' + result.printers.length + ' printers', 'success');
+    }
+
+    async function testPrint(printerId) {
+      addLog('Sending test print to ' + printerId + '...', 'success');
+      const result = await ipcRenderer.invoke('agent:print-test', printerId);
+      if (result.success) {
+        addLog('Test print completed successfully', 'success');
+      } else {
+        addLog('Test print failed: ' + result.error, 'error');
+      }
+    }
+
+    async function saveSettings() {
+      const config = {
+        backendUrl: document.getElementById('backend-url').value,
+        wsUrl: null,
+        token: document.getElementById('auth-token').value,
+        outletId: document.getElementById('outlet-id').value,
+        tenantId: document.getElementById('tenant-id').value,
+      };
+
+      // Derive wsUrl from backendUrl
+      if (config.backendUrl) {
+        try {
+          const url = new URL(config.backendUrl);
+          config.wsUrl = url.protocol === 'https:'
+            ? 'wss://' + url.host + '/ws/print-agent'
+            : 'ws://' + url.host + '/ws/print-agent';
+        } catch (e) {
+          // Invalid URL
+        }
+      }
+
+      const result = await ipcRenderer.invoke('agent:set-config', config);
+      addLog('Settings saved. Connecting...', 'success');
+    }
+
+    async function loadSettings() {
+      const info = await ipcRenderer.invoke('agent:get-info');
+      updateStatus(info);
+    }
+
+    // ---------------------------------------------------------------------------
+    // Logging
+    // ---------------------------------------------------------------------------
+
+    function addLog(message, type = 'info') {
+      const container = document.getElementById('log-container');
+      const time = new Date().toLocaleTimeString();
+      const entry = document.createElement('div');
+      entry.className = 'log-entry';
+      entry.innerHTML = '<span class="log-time">[' + time + ']</span> ' +
+        '<span class="log-' + type + '">' + message + '</span>';
+      container.prepend(entry);
+    }
+
+    // ---------------------------------------------------------------------------
+    // Initialization
+    // ---------------------------------------------------------------------------
+
+    // Load initial state
+    ipcRenderer.invoke('agent:get-info').then(info => {
+      updateStatus(info);
+      addLog('Print Agent v' + info.version + ' initialized', 'success');
+      addLog('Platform: ' + info.platform, 'success');
+      addLog('Hostname: ' + info.hostname, 'success');
+    });
+
+    // Listen for status updates from main process
+    ipcRenderer.on('agent:status-update', (_event, status) => {
+      updateStatus(status);
+    });
+
+    // Auto-refresh settings on load
+    window.addEventListener('DOMContentLoaded', () => {
+      loadSettings();
+    });
+  </script>
+</body>
+</html>

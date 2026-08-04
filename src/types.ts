@@ -1,5 +1,7 @@
 
 
+export type StockStatus = 'in-stock' | 'low-stock' | 'out-of-stock';
+
 export interface Variation {
   name: string;
   price: number;
@@ -62,6 +64,9 @@ export interface Reservation {
   tableId?: string; // Assigned table ID
   notes?: string;
   outletId: string;
+  status?: 'pending' | 'confirmed' | 'seated' | 'completed' | 'cancelled';
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export enum Page {
@@ -80,6 +85,8 @@ export interface SaleItem {
   quantity: number;
   isVeg?: boolean;
   notes?: string; // For item-specific notes like "no onions"
+  discountType?: 'fixed' | 'percentage'; // Per-item discount type
+  discountValue?: number; // Per-item discount value
 }
 
 export interface Customer {
@@ -180,6 +187,27 @@ export interface Sale {
   kdsReadyTimestamp?: string; // ISO string for when order is marked 'ready'
 }
 
+export interface SaleReturnItem {
+  id: string; // SaleItem ID being returned
+  name: string;
+  price: number;
+  quantity: number; // Quantity being returned
+  reason?: string;
+}
+
+export interface SaleReturn {
+  id: string;
+  saleId: string; // Reference to the original sale
+  items: SaleReturnItem[];
+  returnAmount: number; // Total amount refunded
+  reason?: string;
+  refundMethod?: string; // e.g., "Cash", "Card", "Original"
+  refundDate: string; // ISO string
+  outletId: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface FoodMenuCategory {
   id: string;
   name: string;
@@ -195,6 +223,26 @@ export interface StockItem {
   unit: string; // e.g., 'kg', 'ltr', 'pcs'
   lowStockThreshold: number;
   costPerUnit?: number; // Average or last cost per unit, for waste estimation
+}
+
+export interface RecipeIngredient {
+  id: string;
+  stockItemId: string;
+  stockItemName: string;
+  quantityRequired: number;
+  unit: string;
+}
+
+export interface Recipe {
+  id: string;
+  menuItemId: string;
+  menuItemName: string;
+  category: string;
+  ingredients: RecipeIngredient[];
+  yieldQuantity: number; // how many portions this recipe makes
+  yieldUnit: string; // 'portions', 'plates', etc.
+  notes: string;
+  outletId: string;
 }
 
 // Types for Stock Entries
@@ -308,6 +356,7 @@ export interface Kitchen {
 export enum PrinterType {
   Receipt = 'Receipt',
   KOT = 'Kitchen Order Ticket (KOT)',
+  BOT = 'Bar Order Ticket (BOT)',
   Label = 'Label',
 }
 
@@ -317,6 +366,7 @@ export enum PrinterInterfaceType {
   Bluetooth = 'Bluetooth',
   Serial = 'Serial',
   QZTray = 'QZ Tray',
+  PrintAgent = 'Print Agent',
 }
 
 export enum PaperSize {
@@ -344,6 +394,8 @@ export interface Printer {
   retries?: number;
   autoPrintReceipt?: boolean;
   autoPrintKOT?: boolean;
+  autoPrintBOT?: boolean;
+  autoPrintDelivery?: boolean;
   autoPrintLabel?: boolean;
   notes?: string;
 }
@@ -719,6 +771,8 @@ export interface Role {
   permissions: string[];
   tenantId?: string;
   isSystem?: boolean;
+  // Granular permissions for CRUD operations (e.g., "pos.view", "sales.delete")
+  granularPermissions?: PermissionKey[];
 }
 
 export interface User {
@@ -915,6 +969,106 @@ export type PlanFeatureKey =
   | 'selfOrder'
   | 'subscription';
 
+// Granular permission keys for role-based access control
+export type PermissionAction = 'view' | 'create' | 'edit' | 'delete' | 'discount' | 'return' | 'export';
+export type PermissionResource =
+  | 'pos'
+  | 'kds'
+  | 'menu'
+  | 'tables'
+  | 'reservations'
+  | 'customers'
+  | 'inventory'
+  | 'purchase'
+  | 'reports'
+  | 'users'
+  | 'settings'
+  | 'sales';
+export type PermissionKey = `${PermissionResource}.${PermissionAction}`;
+
+// Permission groups for UI organization
+export interface PermissionGroup {
+  resource: PermissionResource;
+  label: string;
+  description: string;
+  permissions: PermissionKey[];
+}
+
+export const PERMISSION_GROUPS: PermissionGroup[] = [
+  {
+    resource: 'pos',
+    label: 'POS',
+    description: 'Point of Sale operations',
+    permissions: ['pos.view', 'pos.create', 'pos.edit', 'pos.delete', 'pos.discount', 'pos.return'],
+  },
+  {
+    resource: 'sales',
+    label: 'Sales',
+    description: 'Sales history and transactions',
+    permissions: ['sales.view', 'sales.edit', 'sales.delete', 'sales.return', 'sales.export'],
+  },
+  {
+    resource: 'kds',
+    label: 'KDS',
+    description: 'Kitchen Display System',
+    permissions: ['kds.view', 'kds.edit'],
+  },
+  {
+    resource: 'menu',
+    label: 'Menu',
+    description: 'Food menu items',
+    permissions: ['menu.view', 'menu.create', 'menu.edit', 'menu.delete'],
+  },
+  {
+    resource: 'tables',
+    label: 'Tables',
+    description: 'Table management',
+    permissions: ['tables.view', 'tables.create', 'tables.edit', 'tables.delete'],
+  },
+  {
+    resource: 'reservations',
+    label: 'Reservations',
+    description: 'Reservation management',
+    permissions: ['reservations.view', 'reservations.create', 'reservations.edit', 'reservations.delete'],
+  },
+  {
+    resource: 'customers',
+    label: 'Customers',
+    description: 'Customer management',
+    permissions: ['customers.view', 'customers.create', 'customers.edit', 'customers.delete'],
+  },
+  {
+    resource: 'inventory',
+    label: 'Inventory',
+    description: 'Stock and inventory',
+    permissions: ['inventory.view', 'inventory.create', 'inventory.edit', 'inventory.delete'],
+  },
+  {
+    resource: 'purchase',
+    label: 'Purchase',
+    description: 'Purchase orders and suppliers',
+    permissions: ['purchase.view', 'purchase.create', 'purchase.edit', 'purchase.delete'],
+  },
+  {
+    resource: 'reports',
+    label: 'Reports',
+    description: 'Analytics and reports',
+    permissions: ['reports.view', 'reports.export'],
+  },
+  {
+    resource: 'users',
+    label: 'Users & Roles',
+    description: 'User and role management',
+    permissions: ['users.view', 'users.create', 'users.edit', 'users.delete'],
+  },
+  {
+    resource: 'settings',
+    label: 'Settings',
+    description: 'Application settings',
+    permissions: ['settings.view', 'settings.edit'],
+  },
+];
+
 export interface Plan {
   id: string;
   name: string;
@@ -1023,11 +1177,15 @@ export interface RestaurantDataContextType {
     addReservation: (reservation: Omit<Reservation, 'id'>) => void;
     updateReservation: (reservation: Reservation) => void;
     deleteReservation: (reservationId: string) => void;
+    completeReservation: (reservationId: string) => void;
+    cancelReservation: (reservationId: string) => void;
     getAvailableTables: (dateTime: string, partySize: number) => Table[];
     
     sales: Sale[];
     recordSale: (saleData: Omit<Sale, 'id' | 'saleDate'>) => Promise<Sale | null>;
     updateSale: (updatedSale: Sale) => Promise<Sale | null>;
+    deleteSale: (saleId: string) => Promise<{ success: boolean; message?: string }>;
+    returnSale: (saleId: string, returnData: Omit<SaleReturn, 'id'>) => Promise<{ success: boolean; message?: string; sale?: Sale }>;
     updateKdsOrderStatus: (saleId: string, status: 'new' | 'in-progress' | 'ready' | 'served' | 'on-hold') => Promise<void>;
     
     foodMenuCategories: FoodMenuCategory[];
@@ -1050,6 +1208,17 @@ export interface RestaurantDataContextType {
     stockAdjustments: StockAdjustment[];
     addStockAdjustment: (adjustmentData: Omit<StockAdjustment, 'id' | 'date'>) => void;
 
+    // Recipes & Ingredient Mapping
+    recipes: Recipe[];
+    addRecipe: (recipeData: Omit<Recipe, 'id'>) => Recipe;
+    updateRecipe: (recipe: Recipe) => void;
+    deleteRecipe: (recipeId: string) => void;
+    checkStockAvailability: (menuItemId: string, orderQuantity?: number) => { available: boolean; recipe: Recipe | null; shortages: Array<{ stockItemId: string; stockItemName: string; required: number; available: number; unit: string }> };
+    deductStockForOrder: (sale: Sale) => void;
+    restoreStockForOrder: (sale: Sale) => void;
+    autoIncreaseStockOnPurchase: (purchase: Purchase) => void;
+    autoDecreaseStockOnWaste: (wasteRecord: WasteRecord) => void;
+
     suppliers: Supplier[];
     addSupplier: (supplierData: Omit<Supplier, 'id'>) => Supplier;
     updateSupplier: (supplier: Supplier) => void;
@@ -1062,7 +1231,8 @@ export interface RestaurantDataContextType {
     deleteCustomer: (customerId: string) => Promise<void>;
     getAllCustomers: () => Customer[];
     applyCustomerDueDelta: (customerId: string, deltaAmount: number) => Promise<void>;
-    receiveCustomerPayment: (customerId: string, amountReceived: number, paymentMethod: string, notes?: string) => Promise<void>;
+    receiveCustomerPayment: (customerId: string, amountReceived: number, paymentMethod: string, notes?: string, discountAmount?: number) => Promise<void>;
+    sendSms: (to: string, message: string) => Promise<{ success: boolean; message: string }>;
 
     areasFloors: AreaFloor[];
     addAreaFloor: (areaFloorData: Omit<AreaFloor, 'id'>) => void;
@@ -1081,6 +1251,8 @@ export interface RestaurantDataContextType {
     printTest: (printerId: string, content?: string) => Promise<void>;
     printInvoice: (printerId: string, content: string) => Promise<void>;
     printKot: (printerId: string, content: string) => Promise<void>;
+    printBot: (printerId: string, content: string) => Promise<void>;
+    printDelivery: (printerId: string, content: string) => Promise<void>;
 
     counters: Counter[];
     addCounter: (counterData: Omit<Counter, 'id' | 'assignedPrinterIds'> & { assignedPrinterIds?: string[] }) => void;
@@ -1136,6 +1308,8 @@ export interface RestaurantDataContextType {
 
     paymentMethods: PaymentMethod[];
     updatePaymentMethod: (method: PaymentMethod) => void;
+    addPaymentMethod: (name: string) => PaymentMethod;
+    removePaymentMethod: (id: string) => void;
 
     deliveryPartners: DeliveryPartner[];
     addDeliveryPartner: (partnerData: Omit<DeliveryPartner, 'id'>) => void;
@@ -1192,6 +1366,7 @@ export interface RestaurantDataContextType {
     selectPlan: (planName: string) => Promise<void>;
     tenantEntitlements?: TenantEntitlements | null;
     hasPlanFeature: (featureKey: PlanFeatureKey) => boolean;
+    hasPermission: (permission: PermissionKey) => boolean;
 
     // SaaS Settings
     saasSettings: SaaSSettings;

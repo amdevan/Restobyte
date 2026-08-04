@@ -45,8 +45,8 @@ const CustomerDueReceivePage: React.FC = () => {
     setSelectedCustomer(null);
   };
 
-  const handleReceivePayment = async (customerId: string, amountReceived: number, paymentMethod: string, notes?: string) => {
-    await receiveCustomerPayment(customerId, amountReceived, paymentMethod, notes);
+  const handleReceivePayment = async (customerId: string, amountReceived: number, paymentMethod: string, notes?: string, discountAmount?: number) => {
+    await receiveCustomerPayment(customerId, amountReceived, paymentMethod, notes, discountAmount);
   };
   
   const totalDueAmount = useMemo(() => {

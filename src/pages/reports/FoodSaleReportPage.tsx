@@ -8,8 +8,14 @@ import Card from '@/components/common/Card';
 import Input from '@/components/common/Input';
 import Button from '@/components/common/Button';
 import DownloadReportButton from '@/components/common/DownloadReportButton';
-import { FiCalendar, FiDollarSign, FiSearch, FiList, FiArrowLeft } from 'react-icons/fi';
+import { FiCalendar, FiDollarSign, FiSearch, FiList, FiArrowLeft, FiChevronRight, FiChevronDown } from 'react-icons/fi';
 import Money from '@/components/common/Money';
+
+interface VariantSaleData {
+  name: string;
+  quantitySold: number;
+  totalSales: number;
+}
 
 interface ItemSaleData {
   id: string;
@@ -17,7 +23,10 @@ interface ItemSaleData {
   category: string;
   quantitySold: number;
   totalSales: number;
+  variants: VariantSaleData[];
 }
+
+const VARIANT_REGEX = /^(.+)\s+\((.+)\)$/;
 
 const FoodSaleReportPage: React.FC = () => {
   const { sales, menuItems } = useRestaurantData();
@@ -25,6 +34,7 @@ const FoodSaleReportPage: React.FC = () => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
 
   const itemSalesData = useMemo(() => {
     const filteredSales = sales.filter(sale => {
@@ -50,17 +60,33 @@ const FoodSaleReportPage: React.FC = () => {
           const categoryName = rawCategory 
             ? (typeof rawCategory === 'object' ? (rawCategory as any).name : rawCategory) 
             : 'Uncategorized';
- 
+
           data[saleItem.id] = { 
               id: saleItem.id,
               name: menuItem?.name || saleItem.name, 
               category: categoryName,
               quantitySold: 0, 
-              totalSales: 0 
+              totalSales: 0,
+              variants: []
           };
         }
         data[saleItem.id].quantitySold += saleItem.quantity;
         data[saleItem.id].totalSales += saleItem.quantity * saleItem.price;
+
+        // Parse variant from item name (format: "Item Name (Variant)")
+        const match = saleItem.name.match(VARIANT_REGEX);
+        const variantName = match ? match[2] : 'Default';
+        const existingVariant = data[saleItem.id].variants.find(v => v.name === variantName);
+        if (existingVariant) {
+          existingVariant.quantitySold += saleItem.quantity;
+          existingVariant.totalSales += saleItem.quantity * saleItem.price;
+        } else {
+          data[saleItem.id].variants.push({
+            name: variantName,
+            quantitySold: saleItem.quantity,
+            totalSales: saleItem.quantity * saleItem.price
+          });
+        }
       });
     });
     
@@ -81,6 +107,10 @@ const FoodSaleReportPage: React.FC = () => {
   const totalValue = useMemo(() => {
     return filteredItemSalesData.reduce((sum, item) => sum + item.totalSales, 0);
   }, [filteredItemSalesData]);
+
+  const handleToggleExpand = (itemId: string) => {
+    setExpandedItemId(prev => prev === itemId ? null : itemId);
+  };
 
   const handleDownload = (format: 'PDF' | 'Excel' | 'CSV') => {
     alert(`Downloading Food Sale Report as ${format}... (This is a simulation)`);
@@ -133,14 +163,50 @@ const FoodSaleReportPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {filteredItemSalesData.map(item => (
-                  <tr key={item.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="py-3 px-4 text-sm font-medium text-gray-800">{item.name}</td>
-                    <td className="py-3 px-4 text-sm text-gray-600">{item.category}</td>
-                    <td className="py-3 px-4 text-sm text-gray-600 text-right">{item.quantitySold}</td>
-                    <td className="py-3 px-4 text-sm text-gray-800 font-semibold text-right"><Money amount={item.totalSales} /></td>
-                  </tr>
-                ))}
+                {filteredItemSalesData.map(item => {
+                  const hasVariants = item.variants.length > 1;
+                  const isExpanded = expandedItemId === item.id;
+                  return (
+                    <React.Fragment key={item.id}>
+                      <tr 
+                        className={`transition-colors ${hasVariants ? 'hover:bg-sky-50 cursor-pointer' : 'hover:bg-gray-50'}`}
+                        onClick={() => hasVariants && handleToggleExpand(item.id)}
+                      >
+                        <td className="py-3 px-4 text-sm font-medium text-gray-800">
+                          <div className="flex items-center">
+                            {hasVariants && (
+                              <span className="mr-2 text-gray-400">
+                                {isExpanded ? <FiChevronDown size={16} /> : <FiChevronRight size={16} />}
+                              </span>
+                            )}
+                            {item.name}
+                            {hasVariants && (
+                              <span className="ml-2 text-xs bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded-full">
+                                {item.variants.length} variants
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 text-sm text-gray-600">{item.category}</td>
+                        <td className="py-3 px-4 text-sm text-gray-600 text-right">{item.quantitySold}</td>
+                        <td className="py-3 px-4 text-sm text-gray-800 font-semibold text-right"><Money amount={item.totalSales} /></td>
+                      </tr>
+                      {hasVariants && isExpanded && item.variants.sort((a, b) => b.totalSales - a.totalSales).map((variant, vIdx) => (
+                        <tr key={`${item.id}-v-${vIdx}`} className="bg-sky-50/50">
+                          <td className="py-2 pl-10 pr-4 text-sm text-gray-600">
+                            <span className="inline-flex items-center">
+                              <span className="w-1.5 h-1.5 bg-sky-400 rounded-full mr-2"></span>
+                              {variant.name}
+                            </span>
+                          </td>
+                          <td className="py-2 px-4 text-sm text-gray-400">-</td>
+                          <td className="py-2 px-4 text-sm text-gray-600 text-right">{variant.quantitySold}</td>
+                          <td className="py-2 px-4 text-sm text-gray-700 font-medium text-right"><Money amount={variant.totalSales} /></td>
+                        </tr>
+                      ))}
+                    </React.Fragment>
+                  );
+                })}
               </tbody>
             </table>
           )}

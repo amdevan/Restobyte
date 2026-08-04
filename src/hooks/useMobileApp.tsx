@@ -121,16 +121,21 @@ export const MobileProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           role="alert"
           style={{
             position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            zIndex: 9999,
+            top:0,
+            left:0,
+            right:0,
+            zIndex:9999,
             background: '#dc2626',
             color: '#fff',
             textAlign: 'center',
             padding: '6px 12px',
             fontSize: 13,
             fontWeight: 600,
+            // Non-interactive status strip: never intercept taps on the
+            // area it covers (otherwise it eats touches along the top edge).
+            pointerEvents: 'none',
+            // Slide down so it doesn't pop in harshly.
+            animation: 'rb-alert-down 0.2s ease',
           }}
         >
           No internet connection — running offline

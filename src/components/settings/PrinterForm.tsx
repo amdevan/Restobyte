@@ -29,6 +29,8 @@ const PrinterForm: React.FC<PrinterFormProps> = ({ initialData, onSubmit, onUpda
   const [retries, setRetries] = useState<number>(3);
   const [autoPrintReceipt, setAutoPrintReceipt] = useState(false);
   const [autoPrintKOT, setAutoPrintKOT] = useState(false);
+  const [autoPrintBOT, setAutoPrintBOT] = useState(false);
+  const [autoPrintDelivery, setAutoPrintDelivery] = useState(false);
   const [autoPrintLabel, setAutoPrintLabel] = useState(false);
   const [notes, setNotes] = useState('');
 
@@ -50,6 +52,8 @@ const PrinterForm: React.FC<PrinterFormProps> = ({ initialData, onSubmit, onUpda
       setRetries(initialData.retries || 3);
       setAutoPrintReceipt(initialData.autoPrintReceipt || false);
       setAutoPrintKOT(initialData.autoPrintKOT || false);
+      setAutoPrintBOT(initialData.autoPrintBOT || false);
+      setAutoPrintDelivery(initialData.autoPrintDelivery || false);
       setAutoPrintLabel(initialData.autoPrintLabel || false);
       setNotes(initialData.notes || '');
     } else {
@@ -69,6 +73,8 @@ const PrinterForm: React.FC<PrinterFormProps> = ({ initialData, onSubmit, onUpda
       setRetries(3);
       setAutoPrintReceipt(false);
       setAutoPrintKOT(false);
+      setAutoPrintBOT(false);
+      setAutoPrintDelivery(false);
       setAutoPrintLabel(false);
       setNotes('');
     }
@@ -110,6 +116,8 @@ const PrinterForm: React.FC<PrinterFormProps> = ({ initialData, onSubmit, onUpda
         retries,
         autoPrintReceipt,
         autoPrintKOT,
+        autoPrintBOT,
+        autoPrintDelivery,
         autoPrintLabel,
         notes,
     };
@@ -250,6 +258,23 @@ const PrinterForm: React.FC<PrinterFormProps> = ({ initialData, onSubmit, onUpda
         </div>
       )}
 
+      {interfaceType === PrinterInterfaceType.PrintAgent && (
+        <div className="rounded-lg border border-purple-200 bg-purple-50 px-4 py-3 text-sm text-purple-800">
+          <div className="flex items-start gap-2">
+            <FiInfo className="mt-0.5 shrink-0" />
+            <div>
+              This printer is managed by the RestoByte Print Agent — a standalone desktop application
+              that runs locally and prints without browser dialogs. The Print Agent connects to the
+              cloud backend via secure WebSocket (with REST API fallback) and supports USB, Bluetooth,
+              Serial, and network (port 9100) printers on Windows, macOS, and Linux.
+              <br /><br />
+              Make sure the Print Agent is installed and running on the computer connected to this printer.
+              The agent will auto-detect connected printers and report them to the system.
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label htmlFor="paperSize" className="block text-sm font-medium text-gray-700 mb-1">Paper Size</label>
@@ -313,6 +338,30 @@ const PrinterForm: React.FC<PrinterFormProps> = ({ initialData, onSubmit, onUpda
           />
           <label htmlFor="autoPrintKOT" className="text-sm font-medium text-gray-700">
             Auto-Print KOTs
+          </label>
+        </div>
+        <div className="flex items-center gap-3">
+          <input
+            type="checkbox"
+            id="autoPrintBOT"
+            checked={autoPrintBOT}
+            onChange={(e) => setAutoPrintBOT(e.target.checked)}
+            className="h-4 w-4 text-sky-600 rounded focus:ring-sky-500 border-gray-300"
+          />
+          <label htmlFor="autoPrintBOT" className="text-sm font-medium text-gray-700">
+            Auto-Print BOTs (Bar Order Tickets)
+          </label>
+        </div>
+        <div className="flex items-center gap-3">
+          <input
+            type="checkbox"
+            id="autoPrintDelivery"
+            checked={autoPrintDelivery}
+            onChange={(e) => setAutoPrintDelivery(e.target.checked)}
+            className="h-4 w-4 text-sky-600 rounded focus:ring-sky-500 border-gray-300"
+          />
+          <label htmlFor="autoPrintDelivery" className="text-sm font-medium text-gray-700">
+            Auto-Print Delivery Slips
           </label>
         </div>
         <div className="flex items-center gap-3">

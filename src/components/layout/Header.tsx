@@ -101,7 +101,7 @@ const Header: React.FC<HeaderProps> = ({ title, onToggleSidebar, isSidebarCollap
         : `${window.location.origin}/public/restaurant`;
 
   return (
-    <header className={`bg-white shadow-sm p-3 flex-shrink-0 grid items-center relative z-[1000] border-b ${isNative ? 'grid-cols-2' : 'grid-cols-3'}`}>
+    <header className={`bg-white shadow-sm p-3 flex-shrink-0 grid items-center relative z-[1000] border-b ${isNative ? 'grid-cols-2' : 'grid-cols-[1fr_auto_1fr]'}`}>
         {/* Left side: Title */}
         <div className="flex items-center space-x-4">
             {onToggleSidebar && !isNative && (
@@ -114,7 +114,9 @@ const Header: React.FC<HeaderProps> = ({ title, onToggleSidebar, isSidebarCollap
                     {isSidebarCollapsed ? <FiMenu size={20} /> : <FiChevronLeft size={20} />}
                 </button>
             )}
-            <h1 className={`font-semibold text-gray-800 ${isNative ? 'text-base truncate' : 'text-xl'}`}>{title}</h1>
+            {!isNative && (
+                <h1 className={`font-semibold text-gray-800 ${isNative ? 'text-base truncate' : 'text-xl'}`}>{title}</h1>
+            )}
             {showOutletSelectorInHeader && <OutletSelector />}
         </div>
 

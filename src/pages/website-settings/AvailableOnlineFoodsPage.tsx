@@ -69,7 +69,7 @@ const AvailableOnlineFoodsPage: React.FC = () => {
     if (!searchTerm) return sourceMenuItems;
     return sourceMenuItems.filter(item => 
         item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.category.toLowerCase().includes(searchTerm.toLowerCase())
+        (typeof item.category === 'object' && item.category !== null ? (item.category as any).name : item.category || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [sourceMenuItems, searchTerm]);
 

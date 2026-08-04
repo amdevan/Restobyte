@@ -4,8 +4,6 @@ import Spinner from '../../components/common/Spinner';
 import { API_BASE_URL } from '../../config';
 import html2pdf from 'html2pdf.js';
 import { QRCodeSVG } from 'qrcode.react';
-
-// Helper function to map backend invoice to frontend sale type
 const mapBackendInvoiceToSale = (invoice: any) => {
   const items = invoice?.items || [];
   
@@ -25,6 +23,7 @@ const mapBackendInvoiceToSale = (invoice: any) => {
     customerId: invoice.customerId,
     customerName: invoice.customer?.name,
     discountAmount: invoice.discountAmount,
+    discountType: invoice.discountType || null,
     tipAmount: 0,
     paymentMethod: invoice.paymentMethod,
     paymentDate: invoice.paidAt || invoice.createdAt,
@@ -34,6 +33,9 @@ const mapBackendInvoiceToSale = (invoice: any) => {
     paidAmount: invoice.paidAmount,
     dueAmount: invoice.dueAmount,
     paymentStatus: invoice.paymentStatus,
+    assignedTableName: invoice.tableName || invoice.assignedTableName || '',
+    pax: invoice.pax || 0,
+    waiterName: invoice.waiterName || '',
   };
 };
 
@@ -82,18 +84,42 @@ const PublicInvoicePage: React.FC = () => {
   const outletPhone = outlet?.phone || '';
   const outletEmail = outlet?.email || '';
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     const element = document.getElementById('invoice-content');
     if (!element) return;
-    
-    const options = {
-      margin: 0.5,
-      filename: `invoice-${sale.id.slice(-6).toUpperCase()}.pdf`,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true },
-      jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
-    };
-    html2pdf().set(options).from(element).save();
+
+    // Handle image loading errors to prevent html2pdf from hanging
+    const images = element.querySelectorAll('img');
+    images.forEach(img => {
+      img.onerror = () => {
+        const span = document.createElement('span');
+        span.textContent = '[Image not available]';
+        span.className = 'text-gray-400 text-xs';
+        img.parentNode?.replaceChild(span, img);
+      };
+    });
+
+    try {
+      const options = {
+        margin: 0.5,
+        filename: `invoice-${sale.id.slice(-6).toUpperCase()}.pdf`,
+        image: { type: 'jpeg' as const, quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: false, logging: false, allowTaint: true },
+        jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' as const }
+      };
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('PDF generation timed out')), 15000)
+      );
+      await Promise.race([
+        html2pdf().set(options).from(element).save(),
+        timeoutPromise
+      ]);
+    } catch (err) {
+      console.error('Failed to download invoice:', err);
+      // Fallback: try printing instead
+      window.print();
+    }
   };
 
   return (

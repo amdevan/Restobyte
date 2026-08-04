@@ -1,23 +1,41 @@
-import React from 'react';
-import { MenuItem } from '../../types';
+import React, { memo, useMemo } from 'react';
+import { MenuItem, StockStatus } from '../../types';
 import { FiPlus } from 'react-icons/fi';
 import Money from '@/components/common/Money';
 
-const PosMenuItemCard: React.FC<{ item: MenuItem; onAddItem: (item: MenuItem) => void }> = ({ item, onAddItem }) => {
+const stockBadgeStyles: Record<StockStatus, string> = {
+  'in-stock': 'bg-green-500 text-white',
+  'low-stock': 'bg-amber-400 text-black',
+  'out-of-stock': 'bg-red-500 text-white',
+};
+
+const stockBadgeLabels: Record<StockStatus, string> = {
+  'in-stock': 'In Stock',
+  'low-stock': 'Low Stock',
+  'out-of-stock': 'Out of Stock',
+};
+
+interface PosMenuItemCardProps {
+  item: MenuItem;
+  onAddItem: (item: MenuItem) => void;
+  stockStatus?: StockStatus;
+}
+
+const PosMenuItemCard: React.FC<PosMenuItemCardProps> = ({ item, onAddItem, stockStatus }) => {
   const hasOptions = (item.variations && item.variations.length > 1) || (item.addonGroupIds && item.addonGroupIds.length > 0);
 
-  const displayPriceRange = () => {
+  const displayPriceRange = useMemo(() => {
     if (!item.variations || item.variations.length === 0) return <span className="opacity-60"><Money amount={0} /></span>;
     if (item.variations.length === 1) return <Money amount={item.variations[0].price} />;
     const min = Math.min(...item.variations.map(v => v.price));
     const max = Math.max(...item.variations.map(v => v.price));
     if (min === max) return <Money amount={min} />;
     return <span><Money amount={min} /> - <Money amount={max} /></span>;
-  }
+  }, [item.variations]);
 
   return (
     <div 
-      className="bg-white rounded-xl shadow-md overflow-hidden cursor-pointer group border border-gray-200/80 transition-shadow duration-200 hover:shadow-lg"
+      className={`bg-white rounded-xl shadow-md overflow-hidden cursor-pointer group border border-gray-200/80 transition-shadow duration-200 hover:shadow-lg${stockStatus === 'out-of-stock' ? ' opacity-75' : ''}`}
       onClick={() => onAddItem(item)}
       role="button"
       aria-label={`Add ${item.name} to order`}
@@ -32,6 +50,11 @@ const PosMenuItemCard: React.FC<{ item: MenuItem; onAddItem: (item: MenuItem) =>
         <div className="absolute top-2 right-2 bg-sky-500 text-white p-1.5 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-all duration-300 scale-75 group-hover:scale-100">
           <FiPlus size={16}/>
         </div>
+        {stockStatus && (
+            <div className={`absolute top-2 left-2 text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow ${stockBadgeStyles[stockStatus]}`}>
+                {stockBadgeLabels[stockStatus]}
+            </div>
+        )}
          {hasOptions && (
             <div className="absolute bottom-2 left-2 bg-amber-400 text-black text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow">
                 + options
@@ -40,10 +63,10 @@ const PosMenuItemCard: React.FC<{ item: MenuItem; onAddItem: (item: MenuItem) =>
       </div>
       <div className="p-3">
         <h3 className="text-sm font-semibold text-gray-800 truncate" title={item.name}>{item.name}</h3>
-        <p className="text-sm font-bold text-sky-600 mt-1">{displayPriceRange()}</p>
+        <p className="text-sm font-bold text-sky-600 mt-1">{displayPriceRange}</p>
       </div>
     </div>
   );
 };
 
-export default PosMenuItemCard;
+export default memo(PosMenuItemCard);

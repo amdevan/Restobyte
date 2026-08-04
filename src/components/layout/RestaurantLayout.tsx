@@ -12,7 +12,7 @@ import {
   FiCoffee, FiGrid, FiCalendar, FiDollarSign, FiChevronDown, FiChevronRight, FiChevronLeft, FiTag,
   FiMapPin, FiLayout, FiPrinter, FiMonitor, FiCreditCard, FiArchive, FiTrendingDown, FiAlertTriangle, FiClipboard,
   FiUploadCloud as ActualFiUploadCloud, FiKey as ActualFiKey, FiTruck, FiList, FiPlusCircle, FiActivity, FiTv,
-  FiVolume2
+  FiVolume2, FiBook, FiShield
 } from 'react-icons/fi';
 import Header from './Header';
 import Footer from './Footer';
@@ -255,6 +255,7 @@ const RestaurantLayout: React.FC<{ children: React.ReactNode }> = ({ children })
           { path: "/app/stock/adjustments", label: "Stock Adjustments", icon: <FiTool />, featureKey: 'inventory', requiredPermissions: ['inventory.stock_adjustment'] },
           { path: "/app/stock/suppliers", label: "Manage Suppliers", icon: <FiUsers />, featureKey: 'inventory', requiredPermissions: ['inventory.add_product', 'inventory.edit_product'] },
           { path: "/app/stock/low-stock-report", label: "Low Stock Report", icon: <FiAlertTriangle />, featureKey: 'inventory', requiredPermissions: ['inventory.view_reports'] },
+          { path: "/app/stock/recipes", label: "Recipe Management", icon: <FiBook />, featureKey: 'inventory', requiredPermissions: ['inventory.view_reports'] },
         ]
       },
       {

@@ -64,7 +64,8 @@ const KitchenDisplayCard: React.FC<KitchenDisplayCardProps> = ({ order, onAction
     const grouped: Record<string, SaleItem[]> = {};
     order.items.forEach(item => {
         const menuItem = menuItems.find(mi => mi.id === item.id);
-        const category = menuItem?.category || 'Uncategorized';
+        const rawCategory = menuItem?.category;
+        const category = (typeof rawCategory === 'object' && rawCategory !== null ? (rawCategory as any).name : rawCategory) || 'Uncategorized';
         if (!grouped[category]) grouped[category] = [];
         grouped[category].push(item);
     });

@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useCart } from '../../hooks/useCart';
-import { FiX, FiTrash2, FiPlus, FiMinus, FiShoppingBag } from 'react-icons/fi';
+import { FiX, FiTrash2, FiPlus, FiMinus, FiShoppingBag, FiCheck } from 'react-icons/fi';
 import { formatMoney } from '@/utils/currency';
 import type { Currency, ApplicationSettings } from '@/types';
 
@@ -13,6 +13,7 @@ interface CartDrawerProps {
   cartTotal: number;
   currency?: Currency;
   applicationSettings: ApplicationSettings;
+  onCheckout?: () => Promise<void> | void;
 }
 
 const CartDrawer: React.FC<CartDrawerProps> = ({ 
@@ -24,8 +25,29 @@ const CartDrawer: React.FC<CartDrawerProps> = ({
     cartTotal,
     currency,
     applicationSettings,
+    onCheckout,
 }) => {
+  const [isCheckingOut, setIsCheckingOut] = useState(false);
+  const [checkoutSuccess, setCheckoutSuccess] = useState(false);
   
+  const handleCheckout = async () => {
+    if (isCheckingOut || !onCheckout) return;
+    setIsCheckingOut(true);
+    try {
+      await onCheckout();
+      setCheckoutSuccess(true);
+      setTimeout(() => {
+        setCheckoutSuccess(false);
+        onClose();
+      }, 2000);
+    } catch (err) {
+      console.error('Checkout failed:', err);
+      alert('Failed to place order. Please try again.');
+    } finally {
+      setIsCheckingOut(false);
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -126,9 +148,14 @@ const CartDrawer: React.FC<CartDrawerProps> = ({
                             <span className="text-orange-500">{formatMoney(cartTotal, currency, applicationSettings)}</span>
                         </div>
                     </div>
-                    <button className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-4 rounded-xl shadow-lg shadow-orange-500/30 transition-all transform active:scale-95 flex justify-between px-6 items-center group">
-                        <span>Checkout</span>
+                    <button 
+                        onClick={handleCheckout}
+                        disabled={isCheckingOut || checkoutSuccess || !onCheckout}
+                        className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-4 rounded-xl shadow-lg shadow-orange-500/30 transition-all transform active:scale-95 flex justify-between px-6 items-center group disabled:opacity-50"
+                    >
+                        <span>{checkoutSuccess ? 'Order Placed!' : (isCheckingOut ? 'Placing...' : 'Checkout')}</span>
                         <span className="bg-white/20 px-3 py-1 rounded-lg text-sm font-mono group-hover:bg-white/30 transition-colors">{formatMoney(cartTotal, currency, applicationSettings)}</span>
+                        {checkoutSuccess && <FiCheck className="ml-2" />}
                     </button>
                 </div>
             )}

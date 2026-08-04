@@ -5,7 +5,7 @@ import { FiPrinter, FiXCircle, FiDownload } from 'react-icons/fi';
 import { useRestaurantData } from '../../hooks/useRestaurantData';
 import html2pdf from 'html2pdf.js';
 import { QRCodeSVG } from 'qrcode.react';
-import { applyLeftMarginToText, getConfiguredLineWidth, getDividerLine, getEscPosBottomFeed, getEscPosEmphasizedTitle, getMarginSpaces } from '../../utils/printSettings';
+import { applyLeftMarginToText, escPosCenterText, getConfiguredLineWidth, getDividerLine, getEscPosBottomFeed, getEscPosQrCode, getMarginSpaces } from '../../utils/printSettings';
 
 interface ReceiptModalProps {
   onClose: () => void;
@@ -37,21 +37,21 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ onClose, sale }) => {
     const showRestaurantAddress = applicationSettings.invoiceShowRestaurantAddress ?? true;
     const showRestaurantPhone = applicationSettings.invoiceShowRestaurantPhone ?? true;
     const showRestaurantEmail = applicationSettings.invoiceShowRestaurantEmail ?? true;
+
+    const centerText = (text: string): string => {
+      if (!text) return '';
+      return escPosCenterText(text);
+    };
+
     let invoiceText = '';
     if (showRestaurantDetails) {
-      if (showRestaurantName) invoiceText += getEscPosEmphasizedTitle(outletName, lineWidth) || `${outletName.toUpperCase()}\n`;
-      if (showRestaurantAddress) invoiceText += `${outletAddress}\n`;
-      if (showRestaurantPhone) invoiceText += `Tel: ${outletPhone}\n`;
-      if (showRestaurantEmail && outletEmail) invoiceText += `Email: ${outletEmail}\n`;
-      if (applicationSettings.invoiceRestaurantSectionTitle?.trim()) {
-        invoiceText += `${applicationSettings.invoiceRestaurantSectionTitle.trim()}\n`;
-      }
+      if (showRestaurantName) invoiceText += centerText(outletName);
+      if (showRestaurantAddress) invoiceText += centerText(outletAddress);
+      if (showRestaurantPhone) invoiceText += centerText(`Tel No.: ${outletPhone}`);
+      if (showRestaurantEmail && outletEmail) invoiceText += centerText(`Email: ${outletEmail}`);
       invoiceText += `${divider}\n`;
     }
-    // Add KOT header
-    invoiceText += `KOT\n`;
-    invoiceText += `${divider}\n`;
-    invoiceText += `\n${applicationSettings.invoiceTitle || 'INVOICE'}\n`;
+    invoiceText += `\n${centerText(applicationSettings.invoiceTitle || 'INVOICE')}\n`;
     invoiceText += `Bill No: DNBILL ${sale.id.slice(-4).toUpperCase()}\n`;
     if (applicationSettings.invoiceShowCustomerDetails && customer) {
       invoiceText += `${applicationSettings.invoiceCustomerSectionTitle || 'Customer Details'}\n`;
@@ -121,8 +121,12 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ onClose, sale }) => {
       }
       invoiceText += `\n`;
     }
-    invoiceText += `${applicationSettings.invoiceFooterText || 'Thank you for your business!'}\n`;
-    invoiceText += `Powered by RestoByte\n`;
+    invoiceText += `${centerText(applicationSettings.invoiceFooterText || 'Thank you for your business!')}\n`;
+    invoiceText += `${divider}\n`;
+    if (applicationSettings.invoiceShowQrCode) {
+      invoiceText += getEscPosQrCode(`${window.location.origin}/invoice/${sale.id}`, 6, 0);
+    }
+    invoiceText += `${centerText('Powered by Restobyte Software')}\n`;
     invoiceText += `${divider}\n`;
     return `${applyLeftMarginToText(invoiceText, marginSpaces)}${getEscPosBottomFeed(12)}`;
   };
@@ -314,9 +318,9 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ onClose, sale }) => {
                 {outletName}
               </h2>
             )}
-            {showRestaurantDetails && showRestaurantAddress && <p className="text-sm text-gray-600 mt-1">{outletAddress}</p>}
-            {showRestaurantDetails && showRestaurantPhone && <p className="text-sm text-gray-600">Tel No.: {outletPhone}</p>}
-            {showRestaurantDetails && showRestaurantEmail && outletEmail && <p className="text-sm text-gray-600">Email: {outletEmail}</p>}
+            {showRestaurantDetails && showRestaurantAddress && <p className="text-sm text-gray-600 mt-1 text-center">{outletAddress}</p>}
+            {showRestaurantDetails && showRestaurantPhone && <p className="text-sm text-gray-600 text-center">Tel No.: {outletPhone}</p>}
+            {showRestaurantDetails && showRestaurantEmail && outletEmail && <p className="text-sm text-gray-600 text-center">Email: {outletEmail}</p>}
             {showRestaurantDetails && applicationSettings.invoiceRestaurantSectionTitle?.trim() && (
               <p className="text-sm font-semibold uppercase tracking-wide text-gray-500 mt-2">
                 {applicationSettings.invoiceRestaurantSectionTitle.trim()}

@@ -28,9 +28,11 @@ import planRoutes from './routes/planRoutes.js';
 import appDataRoutes from './routes/appDataRoutes.js';
 import invoiceRoutes from './routes/invoiceRoutes.js';
 import printerRoutes from './routes/printerRoutes.js';
+import printAgentRoutes from './routes/printAgentRoutes.js';
 import { DEFAULT_PLAN_DEFINITIONS } from './utils/planConfig.js';
 import { ensureSystemRoles } from './utils/roleUtils.js';
 import { backfillMissingInvoices } from './services/invoiceService.js';
+import { createPrintAgentWebSocketServer, closePrintAgentWebSocketServer } from './services/printAgentService.js';
 
 dotenv.config();
 
@@ -73,6 +75,7 @@ app.use('/api/plans', planRoutes);
 app.use('/api/app-data', appDataRoutes);
 app.use('/api/invoices', invoiceRoutes);
 app.use('/api/printers', printerRoutes);
+app.use('/api/print-agent', printAgentRoutes);
 
 async function start() {
   try {
@@ -240,9 +243,25 @@ async function start() {
     console.error('[database]: Failed to backfill subscription invoices', error);
   }
 
-  app.listen(port, host, () => {
+  const httpServer = app.listen(port, host, () => {
     console.log(`[server]: Server is running at http://${host}:${port}`);
+
+    // Start the Print Agent WebSocket server on the same HTTP server
+    createPrintAgentWebSocketServer(httpServer);
   });
 }
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('[server]: SIGTERM received, shutting down gracefully');
+  closePrintAgentWebSocketServer();
+  process.exit(0);
+});
+
+process.on('SIGINT', () => {
+  console.log('[server]: SIGINT received, shutting down gracefully');
+  closePrintAgentWebSocketServer();
+  process.exit(0);
+});
 
 start();

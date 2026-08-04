@@ -2,19 +2,21 @@
 
 import React, { useState, useMemo } from 'react';
 import { useRestaurantData } from '../hooks/useRestaurantData';
-import { Sale } from '../types';
+import { Sale, SaleReturnItem } from '../types';
 import Card from '@/components/common/Card';
 import Input from '@/components/common/Input';
 import Button from '@/components/common/Button';
 import Modal from '@/components/common/Modal';
 import SaleDetailsModal from '@/components/sales/SaleDetailsModal';
-import { FiSearch, FiCalendar, FiFilter, FiXCircle, FiEye, FiShoppingCart, FiDollarSign } from 'react-icons/fi';
+import SaleReturnModal from '@/components/sales/SaleReturnModal';
+import EditSaleModal from '@/components/sales/EditSaleModal';
+import { FiSearch, FiCalendar, FiXCircle, FiEye, FiShoppingCart, FiDollarSign, FiEdit, FiTrash2, FiRotateCcw } from 'react-icons/fi';
 import Money from '@/components/common/Money';
 
 const ORDER_TYPES = ["All", "Dine In", "Delivery", "Pickup", "WhatsApp"];
 
 const SalesHistoryPage: React.FC = () => {
-  const { sales, customers, tables, waiters, paymentMethods } = useRestaurantData();
+  const { sales, customers, tables, waiters, paymentMethods, deleteSale, returnSale, updateSale } = useRestaurantData();
 
   const paymentMethodOptions = useMemo(() => ["All", ...paymentMethods.map(pm => pm.name)], [paymentMethods]);
 
@@ -26,6 +28,12 @@ const SalesHistoryPage: React.FC = () => {
 
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [selectedSaleForDetails, setSelectedSaleForDetails] = useState<Sale | null>(null);
+
+  const [isReturnModalOpen, setIsReturnModalOpen] = useState(false);
+  const [selectedSaleForReturn, setSelectedSaleForReturn] = useState<Sale | null>(null);
+
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedSaleForEdit, setSelectedSaleForEdit] = useState<Sale | null>(null);
 
   const enrichedSales = useMemo(() => {
     return sales.map(sale => ({
@@ -73,6 +81,39 @@ const SalesHistoryPage: React.FC = () => {
   const handleViewDetails = (sale: Sale) => {
     setSelectedSaleForDetails(sale);
     setIsDetailsModalOpen(true);
+  };
+
+  const handleReturnSale = (sale: Sale) => {
+    setSelectedSaleForReturn(sale);
+    setIsReturnModalOpen(true);
+  };
+
+  const handleEditSale = (sale: Sale) => {
+    setSelectedSaleForEdit(sale);
+    setIsEditModalOpen(true);
+  };
+
+  const handleDeleteSale = async (sale: Sale) => {
+    const result = await deleteSale(sale.id);
+    if (!result.success) {
+      alert(result.message || 'Failed to delete sale.');
+    }
+  };
+
+  const handleProcessReturn = async (saleId: string, returnData: { items: SaleReturnItem[]; returnAmount: number; reason?: string; refundMethod?: string; refundDate: string; outletId: string }) => {
+    const result = await returnSale(saleId, { ...returnData, saleId });
+    if (!result.success) {
+      alert(result.message || 'Failed to process return.');
+    }
+    return result;
+  };
+
+  const handleSaveEdit = async (updatedSale: Sale) => {
+    const result = await updateSale(updatedSale);
+    if (!result) {
+      alert('Failed to update sale.');
+    }
+    return result;
   };
   
   const totalSalesValue = useMemo(() => {
@@ -156,7 +197,6 @@ const SalesHistoryPage: React.FC = () => {
              <div className="text-right">
                 <p className="text-sm text-gray-600">Total Value (Filtered)</p>
                 <p className="text-xl font-bold text-sky-600">
-                    <FiDollarSign className="inline h-5 w-5 mr-0.5 relative -top-0.5" />
                     <Money amount={totalSalesValue} />
                 </p>
              </div>
@@ -193,9 +233,20 @@ const SalesHistoryPage: React.FC = () => {
                     <td className="py-3 px-4 text-sm text-gray-600">{sale.paymentMethod}</td>
                     <td className="py-3 px-4 text-sm text-gray-800 font-semibold text-right"><Money amount={sale.totalAmount} /></td>
                     <td className="py-3 px-4 text-center">
-                      <Button onClick={() => handleViewDetails(sale)} variant="outline" size="sm" leftIcon={<FiEye />}>
-                        Details
-                      </Button>
+                      <div className="flex justify-center space-x-1">
+                        <Button onClick={() => handleViewDetails(sale)} variant="outline" size="sm" aria-label="View Details" title="Details">
+                          <FiEye />
+                        </Button>
+                        <Button onClick={() => handleReturnSale(sale)} variant="secondary" size="sm" aria-label="Return" title="Return">
+                          <FiRotateCcw />
+                        </Button>
+                        <Button onClick={() => handleEditSale(sale)} variant="secondary" size="sm" aria-label="Edit" title="Edit">
+                          <FiEdit />
+                        </Button>
+                        <Button onClick={() => handleDeleteSale(sale)} variant="danger" size="sm" aria-label="Delete" title="Delete">
+                          <FiTrash2 />
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -210,6 +261,24 @@ const SalesHistoryPage: React.FC = () => {
           isOpen={isDetailsModalOpen}
           onClose={() => setIsDetailsModalOpen(false)}
           sale={selectedSaleForDetails}
+        />
+      </Modal>
+
+      <Modal isOpen={isReturnModalOpen} onClose={() => setIsReturnModalOpen(false)} title="Process Return" size="lg">
+        <SaleReturnModal
+          isOpen={isReturnModalOpen}
+          onClose={() => setIsReturnModalOpen(false)}
+          sale={selectedSaleForReturn}
+          onReturn={handleProcessReturn}
+        />
+      </Modal>
+
+      <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title="Edit Sale" size="lg">
+        <EditSaleModal
+          isOpen={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          sale={selectedSaleForEdit}
+          onSave={handleSaveEdit}
         />
       </Modal>
     </div>

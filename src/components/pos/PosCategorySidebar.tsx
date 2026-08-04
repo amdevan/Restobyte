@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { FiGrid } from 'react-icons/fi';
 
 interface PosCategorySidebarProps {
@@ -39,4 +39,4 @@ const PosCategorySidebar: React.FC<PosCategorySidebarProps> = ({ categories, sel
   );
 };
 
-export default PosCategorySidebar;
+export default memo(PosCategorySidebar);

@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useRestaurantData } from '../hooks/useRestaurantData';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { MenuItem as MenuItemType, SaleItem, Customer, Waiter, Table, DeliveryPartner, Sale, TableStatus, SaleTaxDetail, PartialPayment, KOT, Split, Variation } from '../types';
+import { MenuItem as MenuItemType, SaleItem, Customer, Waiter, Table, DeliveryPartner, Sale, TableStatus, SaleTaxDetail, PartialPayment, KOT, Split, Variation, StockStatus } from '../types';
 import Modal from '@/components/common/Modal';
 import Button from '@/components/common/Button';
 import Input from '@/components/common/Input';
@@ -22,7 +22,7 @@ import FeatureDisabledPage from '@/components/common/FeatureDisabledPage';
 import Money from '@/components/common/Money';
 import ItemCustomizationModal from '@/components/pos/ItemCustomizationModal'; // New
 import AiAssistantModal from '@/components/pos/AiAssistantModal'; // New
-import { applyLeftMarginToText, clampCharsPerLine, getConfiguredLineWidth, getDividerLine, getEscPosBottomFeed, getEscPosEmphasizedTitle, getMarginSpaces } from '@/utils/printSettings';
+import { applyLeftMarginToText, clampCharsPerLine, escPosCenterText, getConfiguredLineWidth, getDividerLine, getEscPosBottomFeed, getEscPosEmphasizedTitle, getMarginSpaces } from '@/utils/printSettings';
 import { isNative, vibrate } from '../utils/capacitorService';
 import {
   FiShoppingCart, FiXCircle, FiSearch, FiRefreshCw
@@ -95,7 +95,12 @@ const PosPage: React.FC = () => {
     applyCustomerDueDelta,
     printers,
     printInvoice,
-    printKot
+    printKot,
+    printBot,
+    printDelivery,
+    checkStockAvailability,
+    recipes,
+    stockItems,
   } = useRestaurantData();
 
   const navigate = useNavigate();
@@ -183,9 +188,7 @@ const PosPage: React.FC = () => {
     const centerText = (value: string) => {
       const text = value.trim();
       if (!text) return '';
-      if (text.length >= lineWidth) return text;
-      const leftPad = Math.floor((lineWidth - text.length) / 2);
-      return `${' '.repeat(leftPad)}${text}`;
+      return escPosCenterText(text);
     };
     const formatTwoCol = (left: string, right: string) => {
       const spaces = Math.max(1, lineWidth - left.length - right.length);
@@ -219,11 +222,7 @@ const PosPage: React.FC = () => {
       });
     };
 
-    // Add restaurant name at top of KOT
-    const outletName = singleActiveOutlet?.restaurantName || singleActiveOutlet?.name || websiteSettings.whiteLabel.appName || 'Demo Restaurant';
-    lines.push(centerText(outletName.toUpperCase()));
-    lines.push(divider);
-    lines.push(getEscPosEmphasizedTitle('KOT', lineWidth) || centerText('KOT'));
+    lines.push(centerText('=== KOT ==='));
     lines.push(formatTwoCol(kot.kotNumber, kot.timestamp));
     lines.push(divider);
     formatLabelLine('Customer', kot.customer || 'Walk-in Customer');
@@ -257,6 +256,190 @@ const PosPage: React.FC = () => {
     return `${lines.join('\r\n')}\r\n${getEscPosBottomFeed(12)}`;
   }, [applicationSettings?.kotCharactersPerLine]);
 
+  const generateBotPrintContent = useCallback((kot: KOT) => {
+    const lineWidth = clampCharsPerLine(applicationSettings?.kotCharactersPerLine, applicationSettings?.kotPaperSize);
+    const serialWidth = 4;
+    const columnGap = 1;
+    const qtyWidth = 4;
+    const nameWidth = lineWidth - serialWidth - columnGap - qtyWidth;
+    const divider = '-'.repeat(lineWidth);
+    const centerText = (value: string) => {
+      const text = value.trim();
+      if (!text) return '';
+      return escPosCenterText(text);
+    };
+    const formatTwoCol = (left: string, right: string) => {
+      const spaces = Math.max(1, lineWidth - left.length - right.length);
+      return `${left}${' '.repeat(spaces)}${right}`;
+    };
+    const wrapText = (value: string, width: number) => {
+      const words = value.trim().split(/\s+/).filter(Boolean);
+      const lines: string[] = [];
+      let current = '';
+
+      words.forEach((word) => {
+        const candidate = current ? `${current} ${word}` : word;
+        if (candidate.length <= width) {
+          current = candidate;
+        } else {
+          if (current) lines.push(current);
+          current = word;
+        }
+      });
+
+      if (current) lines.push(current);
+      return lines.length > 0 ? lines : [''];
+    };
+    const lines: string[] = [];
+    const formatLabelLine = (label: string, value: string) => {
+      const prefix = `${label} : `;
+      const wrapped = wrapText(value, Math.max(8, lineWidth - prefix.length));
+      lines.push(`${prefix}${wrapped[0]}`);
+      wrapped.slice(1).forEach((line) => {
+        lines.push(`${' '.repeat(prefix.length)}${line}`);
+      });
+    };
+
+    const outletName = singleActiveOutlet?.restaurantName || singleActiveOutlet?.name || websiteSettings.whiteLabel.appName || 'Demo Restaurant';
+    lines.push(centerText(outletName.toUpperCase()));
+    lines.push(divider);
+    lines.push(getEscPosEmphasizedTitle('BOT', lineWidth) || centerText('BOT'));
+    lines.push(formatTwoCol(kot.kotNumber, kot.timestamp));
+    lines.push(divider);
+    formatLabelLine('Customer', kot.customer || 'Walk-in Customer');
+    formatLabelLine('Table No.', kot.table || 'N/A');
+    if (kot.waiter) {
+      formatLabelLine('Waiter', kot.waiter);
+    }
+    lines.push(divider);
+    lines.push(`${'Sl'.padEnd(serialWidth)}${' '.repeat(columnGap)}${'Item Name'.padEnd(nameWidth)}${'Qty.'.padStart(qtyWidth)}`);
+    lines.push(divider);
+
+    kot.items.forEach((item, index) => {
+      const serial = String(index + 1).padEnd(serialWidth);
+      const nameLines = wrapText(item.name, nameWidth);
+      const qty = String(item.quantity).padStart(qtyWidth);
+      lines.push(`${serial}${' '.repeat(columnGap)}${nameLines[0].padEnd(nameWidth)}${qty}`);
+      nameLines.slice(1).forEach((line) => {
+        lines.push(`${' '.repeat(serialWidth + columnGap)}${line}`);
+      });
+      if (item.notes) {
+        wrapText(`Note: ${item.notes}`, nameWidth).forEach((line) => {
+          lines.push(`${' '.repeat(serialWidth + columnGap)}${line}`);
+        });
+      }
+    });
+
+    lines.push(divider);
+    lines.push(centerText(`Total Items : ${kot.items.length}`));
+    lines.push(divider);
+
+    return `${lines.join('\r\n')}\r\n${getEscPosBottomFeed(12)}`;
+  }, [applicationSettings?.kotCharactersPerLine]);
+
+  const generateDeliveryPrintContent = useCallback((sale: Sale) => {
+    const lineWidth = clampCharsPerLine(applicationSettings?.invoiceCharactersPerLine, applicationSettings?.invoicePaperSize);
+    const divider = '-'.repeat(lineWidth);
+    const centerText = (value: string) => {
+      const text = value.trim();
+      if (!text) return '';
+      return escPosCenterText(text);
+    };
+    const formatTwoCol = (left: string, right: string) => {
+      const spaces = Math.max(1, lineWidth - left.length - right.length);
+      return `${left}${' '.repeat(spaces)}${right}`;
+    };
+    const wrapText = (value: string, width: number) => {
+      const words = value.trim().split(/\s+/).filter(Boolean);
+      const lines: string[] = [];
+      let current = '';
+      words.forEach((word) => {
+        const candidate = current ? `${current} ${word}` : word;
+        if (candidate.length <= width) {
+          current = candidate;
+        } else {
+          if (current) lines.push(current);
+          current = word;
+        }
+      });
+      if (current) lines.push(current);
+      return lines.length > 0 ? lines : [''];
+    };
+    const lines: string[] = [];
+    const formatLabelLine = (label: string, value: string) => {
+      const prefix = `${label} : `;
+      const wrapped = wrapText(value, Math.max(8, lineWidth - prefix.length));
+      lines.push(`${prefix}${wrapped[0]}`);
+      wrapped.slice(1).forEach((line) => {
+        lines.push(`${' '.repeat(prefix.length)}${line}`);
+      });
+    };
+
+    const outletName = singleActiveOutlet?.restaurantName || singleActiveOutlet?.name || websiteSettings.whiteLabel.appName || 'Demo Restaurant';
+    const outletAddress = singleActiveOutlet?.address || 'Address not set';
+    const outletPhone = singleActiveOutlet?.phone || 'Phone not set';
+
+    lines.push(centerText(outletName.toUpperCase()));
+    lines.push(centerText(outletAddress));
+    lines.push(centerText(`Phone: ${outletPhone}`));
+    lines.push(divider);
+    lines.push(centerText(getEscPosEmphasizedTitle('DELIVERY SLIP', lineWidth) || 'DELIVERY SLIP'));
+    lines.push(formatTwoCol(`Order #${sale.id?.slice(-8)}`, sale.createdAt ? new Date(sale.createdAt).toLocaleString() : new Date().toLocaleString()));
+    lines.push(divider);
+
+    const customer = sale.customerId ? customers.find((item) => item.id === sale.customerId) : undefined;
+    if (customer) {
+      formatLabelLine('Customer', customer.name);
+      if (customer.phone) formatLabelLine('Phone', customer.phone);
+      if (customer.address) formatLabelLine('Address', customer.address);
+    } else {
+      formatLabelLine('Customer', 'Walk-in Customer');
+    }
+
+    if (selectedDeliveryPartner) {
+      formatLabelLine('Delivery Partner', selectedDeliveryPartner.name);
+    }
+    if (selectedWaiter) {
+      formatLabelLine('Waiter', selectedWaiter.name);
+    }
+    if (orderNotes) {
+      formatLabelLine('Notes', orderNotes);
+    }
+
+    lines.push(divider);
+    lines.push(`${'Sl'.padEnd(4)}  ${'Item Name'.padEnd(lineWidth - 10)}${'Qty.'.padStart(6)}`);
+    lines.push(divider);
+
+    const items = currentOrderItems || [];
+    items.forEach((item, index) => {
+      const serial = String(index + 1).padEnd(4);
+      const itemName = item.name || item.menuItemName || 'Item';
+      const nameLines = wrapText(itemName, lineWidth - 12);
+      const qty = String(item.quantity).padStart(6);
+      lines.push(`${serial}  ${nameLines[0].padEnd(lineWidth - 10)}${qty}`);
+      nameLines.slice(1).forEach((line) => {
+        lines.push(`    ${line}`);
+      });
+      if (item.notes) {
+        wrapText(`Note: ${item.notes}`, lineWidth - 12).forEach((line) => {
+          lines.push(`    ${line}`);
+        });
+      }
+    });
+
+    lines.push(divider);
+    lines.push(formatTwoCol('Subtotal', `$${(sale.totalAmount || 0).toFixed(2)}`));
+    if ((sale.discountAmount || 0) > 0) {
+      lines.push(formatTwoCol('Discount', `-$${(sale.discountAmount || 0).toFixed(2)}`));
+    }
+    lines.push(formatTwoCol('Total', `$${(sale.totalAmount || 0).toFixed(2)}`));
+    lines.push(divider);
+    lines.push(centerText('Thank you for your order!'));
+    lines.push(centerText('Please deliver to the address above'));
+
+    return `${lines.join('\r\n')}\r\n${getEscPosBottomFeed(12)}`;
+  }, [applicationSettings?.invoiceCharactersPerLine, applicationSettings?.invoicePaperSize, singleActiveOutlet, websiteSettings, customers, currentOrderItems, selectedDeliveryPartner, selectedWaiter, orderNotes]);
+
   const generateInvoicePrintContent = useCallback((sale: Sale) => {
     const marginSpaces = getMarginSpaces(applicationSettings.invoiceSideMarginMm);
     const lineWidth = Math.max(24, getConfiguredLineWidth(
@@ -279,9 +462,7 @@ const PosPage: React.FC = () => {
     const centerText = (value: string) => {
       const text = value.trim();
       if (!text) return '';
-      if (text.length >= lineWidth) return `${text}\n`;
-      const leftPad = Math.floor((lineWidth - text.length) / 2);
-      return `${' '.repeat(leftPad)}${text}\n`;
+      return escPosCenterText(text) + '\n';
     };
 
     const formatPair = (label: string, value: string) => {
@@ -321,9 +502,6 @@ const PosPage: React.FC = () => {
       invoiceText += `${divider}\n\n`;
     }
 
-    // Add KOT header
-    invoiceText += centerText('KOT');
-    invoiceText += `${divider}\n`;
     invoiceText += centerText(applicationSettings.invoiceTitle || sale.orderType || 'Invoice');
     invoiceText += `${divider}\n`;
 
@@ -426,11 +604,8 @@ const PosPage: React.FC = () => {
     }
 
     invoiceText += centerText(applicationSettings.invoiceFooterText || 'Thank you Visit Us Again!');
-    if (applicationSettings.invoiceShowQrCode) {
-      invoiceText += centerText(`Scan: /invoice/${sale.id}`);
-    }
-    invoiceText += `\n`;
-    invoiceText += centerText('Powered by RestoByte Software');
+    invoiceText += `${divider}\n`;
+    invoiceText += centerText('Powered by Restobyte Software');
     invoiceText += `${divider}\n`;
 
     return `${applyLeftMarginToText(invoiceText, marginSpaces)}${getEscPosBottomFeed(12)}`;
@@ -438,6 +613,14 @@ const PosPage: React.FC = () => {
 
   const directKotPrinters = useMemo(
     () => printers.filter((printer) => printer.isActive && (printer.type === 'Kitchen Order Ticket (KOT)' || printer.autoPrintKOT)),
+    [printers]
+  );
+  const directBotPrinters = useMemo(
+    () => printers.filter((printer) => printer.isActive && (printer.type === 'Bar Order Ticket (BOT)' || printer.autoPrintBOT)),
+    [printers]
+  );
+  const directDeliveryPrinters = useMemo(
+    () => printers.filter((printer) => printer.isActive && printer.autoPrintDelivery),
     [printers]
   );
   const autoPrintInvoicePrinters = useMemo(
@@ -490,7 +673,17 @@ const handleSendKot = useCallback(async () => {
       return;
     }
 
-    const subTotal = (currentOrderItems || []).reduce((sum, item) => sum + item.price * item.quantity, 0);
+    const subTotal = (currentOrderItems || []).reduce((sum, item) => {
+      const baseTotal = item.price * item.quantity;
+      // Apply per-item discount
+      if (item.discountType && item.discountValue && item.discountValue > 0) {
+        if (item.discountType === 'fixed') {
+          return sum + Math.max(0, baseTotal - (item.discountValue * item.quantity));
+        }
+        return sum + Math.max(0, baseTotal * (1 - item.discountValue / 100));
+      }
+      return sum + baseTotal;
+    }, 0);
     const discountValue = discountType === 'fixed' ? discountAmount : (subTotal * discountAmount) / 100;
     const totalAfterDiscount = subTotal - discountValue;
     
@@ -570,6 +763,23 @@ const handleSendKot = useCallback(async () => {
     directKotPrinters.forEach((printer) => {
       void printKot(printer.id, kotPrintContent);
     });
+
+    // Print BOT (Bar Order Ticket) for bar items if BOT printers are configured
+    if (directBotPrinters.length > 0) {
+      const botPrintContent = generateBotPrintContent(kot);
+      directBotPrinters.forEach((printer) => {
+        void printBot(printer.id, botPrintContent);
+      });
+    }
+
+    // Print delivery slip for delivery orders if delivery printers are configured
+    if (orderType === 'Delivery' && directDeliveryPrinters.length > 0 && editingSale) {
+      const deliveryPrintContent = generateDeliveryPrintContent(editingSale);
+      directDeliveryPrinters.forEach((printer) => {
+        void printDelivery(printer.id, deliveryPrintContent);
+      });
+    }
+
     playKotSentSound();
 
     setCurrentOrderItems(prevItems => 
@@ -580,7 +790,9 @@ const handleSendKot = useCallback(async () => {
   }, [
     currentOrderItems, orderType, selectedTable, selectedWaiter, singleActiveOutlet, editingSale,
     recordSale, updateSale, setEditingSale, discountType, discountAmount, pax,
-    selectedCustomer, orderNotes, selectedDeliveryPartner, generateKotPrintContent, directKotPrinters, printKot
+    selectedCustomer, orderNotes, selectedDeliveryPartner, generateKotPrintContent, generateBotPrintContent, generateDeliveryPrintContent,
+    directKotPrinters, directBotPrinters, directDeliveryPrinters,
+    printKot, printBot, printDelivery
   ]);
 
   useEffect(() => {
@@ -710,9 +922,6 @@ const handleSendKot = useCallback(async () => {
 
   const handleUpdateQuantity = useCallback((lineId: string, newQuantity: number) => {
     setCurrentOrderItems(prevItems => {
-        const targetItem = prevItems.find(item => item.lineId === lineId);
-        if(targetItem?.status === 'sent') return prevItems; // Do not modify sent items
-
         if (newQuantity <= 0) {
             return prevItems.filter(item => item.lineId !== lineId);
         } else {
@@ -721,6 +930,14 @@ const handleSendKot = useCallback(async () => {
             );
         }
     });
+  }, []);
+
+  const handleUpdateItemDiscount = useCallback((lineId: string, discountType: 'fixed' | 'percentage' | undefined, discountValue: number | undefined) => {
+    setCurrentOrderItems(prevItems =>
+      prevItems.map(item =>
+        item.lineId === lineId ? { ...item, discountType, discountValue } : item
+      )
+    );
   }, []);
 
   const handleEditItemNote = useCallback((item: OrderItem) => {
@@ -766,7 +983,41 @@ const handleSendKot = useCallback(async () => {
     });
   }, [mergedMenuItems, selectedCategory, menuSearchTerm]);
 
-  const subTotal = useMemo(() => (currentOrderItems || []).reduce((sum, item) => sum + item.price * item.quantity, 0), [currentOrderItems]);
+  // Compute stock status for each menu item that has a recipe
+  const stockStatusMap = useMemo(() => {
+    const map: Record<string, StockStatus> = {};
+    for (const item of mergedMenuItems) {
+      const result = checkStockAvailability(item.id, 1);
+      if (!result.recipe) continue; // No recipe defined = no badge needed
+
+      if (!result.available) {
+        map[item.id] = 'out-of-stock';
+      } else {
+        // Check if any ingredient is at or below its lowStockThreshold
+        const hasLowStock = result.recipe.ingredients.some(ingredient => {
+          const stockItem = stockItems.find(si => si.id === ingredient.stockItemId);
+          return stockItem && stockItem.quantity <= stockItem.lowStockThreshold;
+        });
+        map[item.id] = hasLowStock ? 'low-stock' : 'in-stock';
+      }
+    }
+    return map;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mergedMenuItems, recipes, stockItems]);
+
+  const subTotal = useMemo(() => {
+    return (currentOrderItems || []).reduce((sum, item) => {
+      const baseTotal = item.price * item.quantity;
+      // Apply per-item discount
+      if (item.discountType && item.discountValue && item.discountValue > 0) {
+        if (item.discountType === 'fixed') {
+          return sum + Math.max(0, baseTotal - (item.discountValue * item.quantity));
+        }
+        return sum + Math.max(0, baseTotal * (1 - item.discountValue / 100));
+      }
+      return sum + baseTotal;
+    }, 0);
+  }, [currentOrderItems]);
   const discountValue = useMemo(() => discountType === 'fixed' ? discountAmount : (subTotal * discountAmount) / 100, [subTotal, discountType, discountAmount]);
   const taxes = useMemo(() => {
     if (!singleActiveOutlet) return [];
@@ -835,7 +1086,7 @@ const handleSendKot = useCallback(async () => {
             taxDetails: taxDetails,
             totalAmount: totalAmount,
             partialPayments: paymentDetails.payments,
-            paymentMethod: paymentDetails.splitDetails ? 'Split' : paymentDetails.payments[0]?.method || 'Other',
+            paymentMethod: paymentDetails.splitDetails ? 'Split' : paymentDetails.payments[0]?.method || (!paymentDetails.isSettled ? 'Due' : 'Other'),
             isSettled: paymentDetails.isSettled,
             isClosed: true,
             tipAmount: paymentDetails.tip > 0 ? paymentDetails.tip : undefined,
@@ -854,7 +1105,7 @@ const handleSendKot = useCallback(async () => {
           totalAmount: totalAmount,
           orderType: orderType,
           partialPayments: paymentDetails.payments,
-          paymentMethod: paymentDetails.splitDetails ? 'Split' : paymentDetails.payments[0]?.method || 'Other',
+          paymentMethod: paymentDetails.splitDetails ? 'Split' : paymentDetails.payments[0]?.method || (!paymentDetails.isSettled ? 'Due' : 'Other'),
           isSettled: paymentDetails.isSettled,
           isClosed: true,
           pax: orderType === 'Dine In' ? pax : undefined,
@@ -916,7 +1167,7 @@ const handleSendKot = useCallback(async () => {
 
 
       {isPaymentModalOpen && (
-        <PaymentModal isOpen={isPaymentModalOpen} onClose={() => setIsPaymentModalOpen(false)} orderItems={currentOrderItems} subTotal={subTotal} grandTotal={grandTotal} taxes={taxes} onFinalizeSale={handleFinalizeSale} />
+        <PaymentModal isOpen={isPaymentModalOpen} onClose={() => setIsPaymentModalOpen(false)} orderItems={currentOrderItems} subTotal={subTotal} grandTotal={grandTotal} taxes={taxes} isAlreadyDue={currentOrderItems.some(item => item.status === 'sent')} onFinalizeSale={handleFinalizeSale} />
       )}
       
       {!isNative && (
@@ -943,7 +1194,7 @@ const handleSendKot = useCallback(async () => {
             <main className="flex-1 p-4 bg-gray-50/50 overflow-y-auto custom-scrollbar">
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                 {filteredMenu.map(item => (
-                    <PosMenuItemCard key={item.id} item={item} onAddItem={handleAddItem} />
+                    <PosMenuItemCard key={item.id} item={item} onAddItem={handleAddItem} stockStatus={stockStatusMap[item.id]} />
                 ))}
                 </div>
             </main>
@@ -974,7 +1225,7 @@ const handleSendKot = useCallback(async () => {
                 currentOutlet={singleActiveOutlet}
             />
 
-            <CartItems items={currentOrderItems} onUpdateQuantity={handleUpdateQuantity} onEditItemNote={handleEditItemNote} />
+            <CartItems items={currentOrderItems} onUpdateQuantity={handleUpdateQuantity} onEditItemNote={handleEditItemNote} onUpdateDiscount={handleUpdateItemDiscount} />
 
             <div className="flex-shrink-0">
                 <CartSummary subTotal={subTotal} discountValue={discountValue} taxes={taxes} grandTotal={grandTotal} onDiscountClick={handleOpenDiscountModal} />
@@ -1028,7 +1279,7 @@ const handleSendKot = useCallback(async () => {
             <main className="rb-pos-mobile-grid">
               <div className="grid grid-cols-3 gap-2.5">
                 {filteredMenu.map(item => (
-                  <PosMenuItemCard key={item.id} item={item} onAddItem={(it) => { handleAddItem(it); vibrate(); }} />
+                  <PosMenuItemCard key={item.id} item={item} onAddItem={(it) => { handleAddItem(it); vibrate(); }} stockStatus={stockStatusMap[item.id]} />
                 ))}
               </div>
             </main>
@@ -1082,7 +1333,7 @@ const handleSendKot = useCallback(async () => {
                 />
 
                 <div className="rb-pos-cart-items">
-                  <CartItems items={currentOrderItems} onUpdateQuantity={handleUpdateQuantity} onEditItemNote={handleEditItemNote} />
+                  <CartItems items={currentOrderItems} onUpdateQuantity={handleUpdateQuantity} onEditItemNote={handleEditItemNote} onUpdateDiscount={handleUpdateItemDiscount} />
                 </div>
 
                 <div className="rb-pos-cart-foot">

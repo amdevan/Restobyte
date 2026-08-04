@@ -14,6 +14,7 @@ interface PaymentModalProps {
   subTotal: number;
   grandTotal: number;
   taxes: SaleTaxDetail[];
+  isAlreadyDue?: boolean;
   onFinalizeSale: (details: {
     payments: PartialPayment[];
     tip: number;
@@ -26,7 +27,7 @@ interface PaymentModalProps {
 
 const PaymentModal: React.FC<PaymentModalProps> = (props) => {
   const { 
-    isOpen, onClose, orderItems, subTotal, grandTotal, taxes, onFinalizeSale 
+    isOpen, onClose, orderItems, subTotal, grandTotal, taxes, isAlreadyDue, onFinalizeSale 
   } = props;
 
   const [view, setView] = useState<'full' | 'split'>('full');
@@ -69,9 +70,11 @@ const PaymentModal: React.FC<PaymentModalProps> = (props) => {
          </div>
          {view === 'full' ? (
              <PaymentSection
+                orderItems={orderItems}
                 grandTotal={grandTotalWithTip}
                 onFinalize={handleFinalizeFullPayment}
                 onAddTip={() => setIsTipModalOpen(true)}
+                isAlreadyDue={isAlreadyDue}
               />
          ) : (
              <SplitBillInterface

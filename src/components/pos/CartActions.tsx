@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { memo } from 'react';
 import Button from '../common/Button';
 import { FiArrowRight, FiSend } from 'react-icons/fi';
 
@@ -35,4 +35,4 @@ const CartActions: React.FC<CartActionsProps> = ({ onGoToPayment, onSendKot, isC
   );
 };
 
-export default CartActions;
+export default memo(CartActions);

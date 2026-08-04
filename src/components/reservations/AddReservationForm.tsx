@@ -1,7 +1,7 @@
 
 
 import React, { useState, useEffect } from 'react';
-import { Reservation, Table, TableStatus } from '../../types';
+import { Reservation, Table } from '../../types';
 import Input from '../common/Input';
 import Button from '../common/Button';
 import { useRestaurantData } from '../../hooks/useRestaurantData';

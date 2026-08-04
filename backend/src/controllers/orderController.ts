@@ -202,3 +202,74 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
   const order = await prisma.order.update({ where: { id }, data: { status: statusValue as any } });
   res.json(order);
 };
+
+export const returnOrder = async (req: Request, res: Response) => {
+  const user = (req as AuthRequest).user;
+  if (!user) {
+    res.status(403).json({ message: 'Unauthorized' });
+    return;
+  }
+
+  const id = req.params.id as string;
+  const { items, returnAmount, reason, refundMethod, refundDate, outletId } = req.body;
+
+  // Find the order
+  const existing = await prisma.order.findUnique({ 
+    where: { id },
+    include: { items: true }
+  });
+  
+  if (!existing) {
+    res.status(404).json({ message: 'Order not found' });
+    return;
+  }
+
+  if (!(await canAccessOutlet(user, existing.outletId))) {
+    res.status(403).json({ message: 'Unauthorized' });
+    return;
+  }
+
+  // Validate return items exist in the order
+  if (!Array.isArray(items) || items.length === 0) {
+    res.status(400).json({ message: 'No items to return' });
+    return;
+  }
+
+  // Calculate return total
+  const calculatedReturnAmount = items.reduce((sum: number, item: any) => {
+    return sum + (item.price * item.quantity);
+  }, 0);
+
+  // Store return information in saleData
+  const currentSaleData = (existing.saleData as any) || {};
+  const existingReturns = currentSaleData.returns || [];
+  
+  const newReturn = {
+    id: `ret-${Date.now()}`,
+    items,
+    returnAmount: calculatedReturnAmount,
+    reason,
+    refundMethod,
+    refundDate,
+    outletId: existing.outletId,
+    createdAt: new Date().toISOString(),
+  };
+
+  const updatedSaleData = {
+    ...currentSaleData,
+    returns: [...existingReturns, newReturn],
+    totalAmount: (currentSaleData.totalAmount || existing.total) - calculatedReturnAmount,
+  };
+
+  // Update the order
+  const order = await prisma.order.update({
+    where: { id },
+    data: {
+      total: existing.total - calculatedReturnAmount,
+      saleData: updatedSaleData,
+    },
+    include: { customer: true, items: { include: { menuItem: true } } },
+  });
+
+  res.json({ sale: order });
+};

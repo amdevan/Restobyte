@@ -15,6 +15,35 @@
   </head>
   <body class="bg-gray-100">
     <noscript>You need to enable JavaScript to run this app.</noscript>
+    <!-- Branded launch/loading screen. Shown instantly (inline styles, no
+         bundle dependency) so there is never a white flash, and removed by
+         App.tsx as soon as React mounts. Logo animates (pop-in → float +
+         pulsing glow ring) for a polished native-feel launch. -->
+    <div id="app-loader" role="status" aria-live="polite" aria-label="Loading RestoByte"
+         style="position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(160deg,#5a1a0a 0%,#8b2d1d 32%,#c2410c 68%,#f59e0b 100%);">
+      <div class="rl-logo">
+        <div class="rl-bounce">
+          <div class="rl-ring"></div>
+          <div class="rl-badge"><img src="/icons/icon logo.png" alt="" style="width:100%;height:100%;object-fit:contain;" onerror="this.style.display='none'" /></div>
+        </div>
+      </div>
+      <div class="rl-brand">Resto<span>Byte</span></div>
+      <div class="rl-spinner"></div>
+      <style>
+        .rl-logo{animation:rl-pop .6s cubic-bezier(.22,1,.36,1) both}
+        .rl-bounce{position:relative;width:112px;height:112px;display:flex;align-items:center;justify-content:center;animation:rl-float 2.4s ease-in-out infinite}
+        .rl-ring{position:absolute;inset:-12px;border-radius:50%;border:2px solid rgba(251,191,36,0);animation:rl-glow 2s ease-out infinite}
+        .rl-badge{width:104px;height:104px;border-radius:26px;background:#fff;display:flex;align-items:center;justify-content:center;padding:16px;box-shadow:0 16px 40px -8px rgba(90,26,10,.55)}
+        .rl-brand{color:#fff;font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;font-weight:800;font-size:24px;letter-spacing:-.02em;text-shadow:0 2px 8px rgba(90,26,10,.4);animation:rl-up .6s ease .15s both}
+        .rl-brand span{color:#fbbf24}
+        .rl-spinner{margin-top:20px;width:34px;height:34px;border:3px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:rl-spin .8s linear infinite}
+        @keyframes rl-pop{0%{transform:scale(.6);opacity:0}60%{transform:scale(1.06);opacity:1}100%{transform:scale(1)}}
+        @keyframes rl-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+        @keyframes rl-glow{0%{box-shadow:0 0 0 0 rgba(251,191,36,.45)}70%{box-shadow:0 0 0 18px rgba(251,191,36,0)}100%{box-shadow:0 0 0 0 rgba(251,191,36,0)}}
+        @keyframes rl-up{0%{opacity:0;transform:translateY(8px)}100%{opacity:1;transform:translateY(0)}}
+        @keyframes rl-spin{to{transform:rotate(360deg)}}
+      </style>
+    </div>
     <div id="root"></div>
     <script type="module" src="/src/index.tsx"></script>
   </body>

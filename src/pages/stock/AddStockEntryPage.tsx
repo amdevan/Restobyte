@@ -1,494 +1,912 @@
-
-
-
-import React, { useState, useRef } from 'react';
-// FIX: Refactored to use named imports for react-router-dom for consistency.
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useRestaurantData } from '@/hooks/useRestaurantData';
-import { StockEntryItem as StockEntryItemType } from '@/types'; // Renamed to avoid conflict
-import Input from '@/components/common/Input';
-import Button from '@/components/common/Button';
-import Card from '@/components/common/Card';
-import { FiPlus, FiTrash2, FiSave, FiArrowLeft, FiBox, FiUpload, FiDownloadCloud } from 'react-icons/fi';
+import { useRestaurantData } from '../../hooks/useRestaurantData';
+import { FiSearch, FiPackage, FiPlus, FiTrash2, FiDownload, FiUpload, FiCheckCircle, FiTruck } from 'react-icons/fi';
+import type { StockItem, Supplier, StockEntryItem } from '../../types';
 
-// Local interface for form line management
 interface StockEntryLine {
-  id: string; // Temporary client-side ID for the line
+  id: string;
   itemName: string;
+  showDropdown: string;
+  showCatDropdown: string;
   itemCategory: string;
-  itemUnit: string; // Selected from a dropdown
+  itemUnit: string;
   itemLowStockThreshold: string;
   quantityAdded: string;
   costPerUnit: string;
 }
 
-const UNITS = ["kg", "g", "ltr", "ml", "pcs", "pack", "dozen", "bottle", "can", "box", "unit"];
+interface StockEntry {
+  id: string;
+  supplierName: string;
+  supplierId: string;
+  purchaseDate: string;
+  totalAmount: string;
+  invoiceNumber: string;
+  paymentStatus: string;
+  paidAmount: string;
+  notes: string;
+}
 
+const initialEntry: StockEntry = {
+  id: '',
+  supplierName: '',
+  supplierId: '',
+  purchaseDate: new Date().toISOString().split('T')[0],
+  totalAmount: '',
+  invoiceNumber: '',
+  paymentStatus: 'Paid',
+  paidAmount: '',
+  notes: '',
+};
+
+const blankLine = (): StockEntryLine => ({
+  id: Date.now().toString() + Math.random(),
+  itemName: '',
+  showDropdown: '',
+  showCatDropdown: '',
+  itemCategory: '',
+  itemUnit: 'kg',
+  itemLowStockThreshold: '',
+  quantityAdded: '',
+  costPerUnit: '',
+});
 
 const AddStockEntryPage: React.FC = () => {
-  const { suppliers, findOrCreateStockItem, addStockEntry, getSingleActiveOutlet } = useRestaurantData();
   const navigate = useNavigate();
-  const outlet = getSingleActiveOutlet();
+  const {
+    stockItems,
+    findOrCreateStockItem,
+    addStockEntry,
+    suppliers,
+    addSupplier,
+  } = useRestaurantData();
 
-  const [entryDate, setEntryDate] = useState(new Date().toISOString().split('T')[0]);
-  const [selectedSupplier, setSelectedSupplier] = useState('');
-  const [referenceNumber, setReferenceNumber] = useState('');
-  const [notes, setNotes] = useState('');
-  const [entryLines, setEntryLines] = useState<StockEntryLine[]>([
-    { id: Date.now().toString(), itemName: '', itemCategory: '', itemUnit: UNITS[0], itemLowStockThreshold: '0', quantityAdded: '', costPerUnit: '' }
-  ]);
-  
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [entry, setEntry] = useState<StockEntry>({
+    ...initialEntry,
+    purchaseDate: new Date().toISOString().split('T')[0],
+  });
+  const [lines, setLines] = useState<StockEntryLine[]>([blankLine()]);
+  const [categorySearch, setCategorySearch] = useState('');
+  const [showNewCategoryInput, setShowNewCategoryInput] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
 
+  // Supplier dropdown state
+  const [showSupplierDropdown, setShowSupplierDropdown] = useState(false);
+  const [supplierSearch, setSupplierSearch] = useState('');
+  const supplierDropdownRef = useRef<HTMLDivElement>(null);
+
+  const itemDropdownRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const catDropdownRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      const target = e.target as Node;
+      // Supplier dropdown
+      if (supplierDropdownRef.current && !supplierDropdownRef.current.contains(target)) {
+        setShowSupplierDropdown(false);
+      }
+      // Item dropdowns
+      itemDropdownRefs.current.forEach((ref, id) => {
+        if (ref && !ref.contains(target)) {
+          setLines(prev => prev.map(l => l.id === id ? { ...l, showDropdown: '' } : l));
+        }
+      });
+      // Category dropdowns
+      catDropdownRefs.current.forEach((ref, id) => {
+        if (ref && !ref.contains(target)) {
+          setLines(prev => prev.map(l => l.id === id ? { ...l, showCatDropdown: '' } : l));
+        }
+      });
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const existingCategories = useMemo(() => {
+    return [...new Set(stockItems.map(s => s.category).filter(Boolean))];
+  }, [stockItems]);
+
+  const filteredStockItems = useCallback((searchTerm: string) => {
+    if (!searchTerm.trim()) return stockItems;
+    const lower = searchTerm.toLowerCase();
+    return stockItems.filter(item =>
+      item.name.toLowerCase().includes(lower) ||
+      (item.category && item.category.toLowerCase().includes(lower))
+    );
+  }, [stockItems]);
+
+  const filteredCategories = useMemo(() => {
+    const lower = categorySearch.toLowerCase();
+    return existingCategories.filter(c => c.toLowerCase().includes(lower));
+  }, [existingCategories, categorySearch]);
+
+  const filteredSuppliers = useMemo(() => {
+    if (!supplierSearch.trim()) return suppliers;
+    const lower = supplierSearch.toLowerCase();
+    return suppliers.filter(s =>
+      s.name.toLowerCase().includes(lower) ||
+      (s.contactPerson && s.contactPerson.toLowerCase().includes(lower)) ||
+      (s.phone && s.phone.includes(lower))
+    );
+  }, [suppliers, supplierSearch]);
+
+  const handleEntryChange = (field: keyof StockEntry, value: string) => {
+    setEntry(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleLineChange = (id: string, field: keyof StockEntryLine, value: string) => {
+    setLines(prev => prev.map(l => l.id === id ? { ...l, [field]: value } : l));
+  };
+
+  const selectStockItem = (lineId: string, stockItem: StockItem) => {
+    setLines(prev => prev.map(l => {
+      if (l.id !== lineId) return l;
+      return {
+        ...l,
+        itemName: stockItem.name,
+        itemCategory: stockItem.category,
+        itemUnit: stockItem.unit,
+        itemLowStockThreshold: stockItem.lowStockThreshold?.toString() || '',
+        showDropdown: '',
+      };
+    }));
+  };
+
+  const selectSupplier = (supplier: Supplier) => {
+    setEntry(prev => ({
+      ...prev,
+      supplierName: supplier.name,
+      supplierId: supplier.id,
+    }));
+    setSupplierSearch('');
+    setShowSupplierDropdown(false);
+  };
+
+  const handleAddNewSupplier = () => {
+    const name = supplierSearch.trim();
+    if (!name) return;
+    const newSupplier = addSupplier({ name });
+    setEntry(prev => ({
+      ...prev,
+      supplierName: newSupplier.name,
+      supplierId: newSupplier.id,
+    }));
+    setSupplierSearch('');
+    setShowSupplierDropdown(false);
+  };
 
   const handleAddLine = () => {
-    setEntryLines([...entryLines, { id: Date.now().toString(), itemName: '', itemCategory: '', itemUnit: UNITS[0], itemLowStockThreshold: '0', quantityAdded: '', costPerUnit: '' }]);
+    setLines(prev => [...prev, blankLine()]);
   };
 
-  const handleRemoveLine = (lineId: string) => {
-    setEntryLines(entryLines.filter(line => line.id !== lineId));
+  const handleRemoveLine = (id: string) => {
+    if (lines.length === 1) return;
+    setLines(prev => prev.filter(l => l.id !== id));
   };
 
-  const handleLineChange = (lineId: string, field: keyof StockEntryLine, value: string) => {
-    setEntryLines(entryLines.map(line => line.id === lineId ? { ...line, [field]: value } : line));
-  };
-
-  const handleTriggerFileUpload = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleDownloadSampleCsv = () => {
-    const header = "Item Name,Category,Unit,Low Stock Threshold,Quantity Added,Cost Per Unit";
-    const exampleRows = [
-      "Flour,Baking,kg,5,20,1.50",
-      "Sugar,Baking,kg,2,10,", // Example with empty optional cost
-      "Olive Oil,Oils,ltr,1,5,8.75",
-      "Coffee Beans,Beverages,kg,0.5,2,22.00",
-      "Paper Napkins,Supplies,pack,50,100,0.80"
-    ];
-    const csvContent = [header, ...exampleRows].join("\n");
-    
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement("a");
-    if (link.download !== undefined) { 
-      const url = URL.createObjectURL(blob);
-      link.setAttribute("href", url);
-      link.setAttribute("download", "sample_stock_entry_format.csv");
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+  const handleAddNewCategory = () => {
+    const trimmed = newCategoryName.trim();
+    if (trimmed && !existingCategories.includes(trimmed)) {
+      setLines(prev => prev.map(l =>
+        l.showCatDropdown !== '' ? { ...l, itemCategory: trimmed, showCatDropdown: '' } : l
+      ));
+      setNewCategoryName('');
+      setShowNewCategoryInput(false);
+      setCategorySearch('');
     }
   };
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCsvUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file) {
-      return;
-    }
-
-    if (file.type !== 'text/csv' && !file.name.toLowerCase().endsWith('.csv')) {
-        alert('Invalid file type. Please upload a CSV file.');
-        if(fileInputRef.current) fileInputRef.current.value = ""; // Reset file input
-        return;
-    }
+    if (!file) return;
 
     const reader = new FileReader();
     reader.onload = (e) => {
-      const text = e.target?.result as string;
-      if (text) {
-        processCsvData(text);
-      } else {
-        alert('Could not read file content.');
+      try {
+        const text = e.target?.result as string;
+        const csvLines = text.split('\n').filter(line => line.trim() !== '');
+        if (csvLines.length < 2) return;
+
+        const newLines: StockEntryLine[] = [];
+        for (let i = 1; i < csvLines.length; i++) {
+          const values = csvLines[i].split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+          if (values.length >= 4) {
+            newLines.push({
+              ...blankLine(),
+              itemName: values[0] || '',
+              itemCategory: values[1] || '',
+              itemUnit: values[2] || 'kg',
+              quantityAdded: values[3] || '',
+              costPerUnit: values[4] || '',
+            });
+          }
+        }
+
+        if (newLines.length > 0) {
+          setLines(prev => [...prev, ...newLines]);
+        }
+      } catch (err) {
+        console.error('CSV parsing error:', err);
       }
-      if(fileInputRef.current) fileInputRef.current.value = ""; // Reset file input after processing
-    };
-    reader.onerror = () => {
-        alert('Error reading file.');
-        if(fileInputRef.current) fileInputRef.current.value = ""; // Reset file input
     };
     reader.readAsText(file);
+    event.target.value = '';
+  }, []);
+
+  const downloadCsvTemplate = () => {
+    const headers = ['Item Name', 'Category', 'Unit', 'Quantity Added', 'Cost Per Unit'];
+    const csvContent = [headers.join(',')].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'stock_entry_template.csv';
+    link.click();
+    URL.revokeObjectURL(url);
   };
 
-  const processCsvData = (csvText: string) => {
-    const lines = csvText.trim().split(/\r\n|\n/); // Handles different line endings
-    const newBulkEntryLines: StockEntryLine[] = [];
-    let successfulAdds = 0;
-    let failedAdds = 0;
-    const errors: string[] = [];
+  const validateForm = (): boolean => {
+    const newErrors: Record<string, string> = {};
 
-    // Skip header row if present (simple check, can be made more robust)
-    const dataLines = lines[0]?.match(/Item Name,Category,Unit,Low Stock Threshold,Quantity Added,Cost Per Unit/i) 
-                      ? lines.slice(1) 
-                      : lines;
+    if (!entry.supplierName.trim()) newErrors.supplierName = 'Supplier is required';
+    if (!entry.purchaseDate) newErrors.purchaseDate = 'Date is required';
+    if (lines.length === 0) newErrors.lines = 'At least one item is required';
 
-
-    dataLines.forEach((line, index) => {
-      if (line.trim() === '') return; // Skip empty lines
-
-      const parts = line.split(',').map(part => part.trim());
-      if (parts.length < 5 || parts.length > 6) {
-        errors.push(`Line ${index + 1}: Incorrect number of fields. Expected 5 or 6, got ${parts.length}. Line: "${line}"`);
-        failedAdds++;
-        return;
-      }
-
-      const [itemName, itemCategory, itemUnitInput, itemLowStockThresholdStr, quantityAddedStr, costPerUnitStr] = parts;
-
-      if (!itemName || !itemCategory || !itemUnitInput || !itemLowStockThresholdStr || !quantityAddedStr) {
-        errors.push(`Line ${index + 1}: Missing required fields (Name, Category, Unit, Low Stock Threshold, Quantity). Line: "${line}"`);
-        failedAdds++;
-        return;
-      }
-      
-      const itemUnit = itemUnitInput.toLowerCase();
-      if (!UNITS.includes(itemUnit)) {
-         errors.push(`Line ${index + 1}: Invalid unit "${itemUnitInput}". Must be one of: ${UNITS.join(', ')}. Line: "${line}"`);
-         failedAdds++;
-         return;
-      }
-
-      const quantityAdded = parseFloat(quantityAddedStr);
-      const itemLowStockThreshold = parseFloat(itemLowStockThresholdStr);
-
-      if (isNaN(quantityAdded) || quantityAdded <= 0) {
-        errors.push(`Line ${index + 1}: Invalid Quantity Added "${quantityAddedStr}". Must be a positive number. Line: "${line}"`);
-        failedAdds++;
-        return;
-      }
-      if (isNaN(itemLowStockThreshold) || itemLowStockThreshold < 0) {
-        errors.push(`Line ${index + 1}: Invalid Low Stock Threshold "${itemLowStockThresholdStr}". Must be a non-negative number. Line: "${line}"`);
-        failedAdds++;
-        return;
-      }
-
-      let costPerUnitValue: string | undefined = undefined;
-      if (costPerUnitStr !== undefined && costPerUnitStr.trim() !== '') {
-        const cost = parseFloat(costPerUnitStr);
-        if (isNaN(cost) || cost < 0) {
-          errors.push(`Line ${index + 1}: Invalid Cost Per Unit "${costPerUnitStr}". Must be a non-negative number or empty. Line: "${line}"`);
-          failedAdds++;
-          return;
-        }
-        costPerUnitValue = costPerUnitStr;
-      }
-
-      newBulkEntryLines.push({
-        id: `${Date.now().toString()}-csv-${index}`, // Unique ID for the new line
-        itemName,
-        itemCategory,
-        itemUnit: itemUnit, // Use validated unit
-        itemLowStockThreshold: itemLowStockThresholdStr,
-        quantityAdded: quantityAddedStr,
-        costPerUnit: costPerUnitValue || '',
-      });
-      successfulAdds++;
+    lines.forEach((line, index) => {
+      if (!line.itemName.trim()) newErrors[`itemName_${line.id}`] = `Item name required`;
+      if (!line.quantityAdded || parseFloat(line.quantityAdded) <= 0) newErrors[`quantityAdded_${line.id}`] = `Qty required`;
+      if (!line.costPerUnit || parseFloat(line.costPerUnit) <= 0) newErrors[`costPerUnit_${line.id}`] = `Cost required`;
     });
 
-    if (newBulkEntryLines.length > 0) {
-      const currentLinesArePlaceholder = entryLines.length === 1 &&
-                                       !entryLines[0].itemName &&
-                                       !entryLines[0].itemCategory &&
-                                       !entryLines[0].quantityAdded &&
-                                       !entryLines[0].costPerUnit &&
-                                       entryLines[0].itemLowStockThreshold === '0';
-
-      if (currentLinesArePlaceholder) {
-        setEntryLines(newBulkEntryLines);
-      } else {
-        setEntryLines(prevLines => [...prevLines, ...newBulkEntryLines]);
-      }
-    }
-
-    let feedbackMessage = `${successfulAdds} item(s) processed from CSV file.`;
-    if (failedAdds > 0) {
-      feedbackMessage += ` ${failedAdds} item(s) could not be processed due to errors.`;
-      console.warn("CSV Upload Errors:\n" + errors.join("\n"));
-      feedbackMessage += " Check console for details on errors.";
-    }
-    
-    if (successfulAdds === 0 && failedAdds === 0 && csvText.trim() !== '') {
-        feedbackMessage = "No valid items found in the CSV file. Please check the format and ensure it doesn't just contain a header.";
-    } else if (csvText.trim() === '') {
-        feedbackMessage = "CSV file was empty or contained no processable lines.";
-    }
-    alert(feedbackMessage);
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
-  const isSubmitDisabled = () => {
-    if (entryLines.length === 0) return true;
-    if (entryLines.length === 1) {
-        const line = entryLines[0];
-        // Check if the single line is essentially empty (placeholder state)
-        return !line.itemName.trim() && 
-               !line.itemCategory.trim() && 
-               !line.quantityAdded.trim() && 
-               !line.costPerUnit.trim() &&
-               line.itemLowStockThreshold.trim() === '0';
-    }
-    return false;
-  };
+  const handleSubmit = async () => {
+    if (!validateForm()) return;
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!outlet) {
-        alert('An active outlet must be selected to add a stock entry.');
-        return;
-    }
-    
-    const processedEntryItems: StockEntryItemType[] = [];
-    for (const line of entryLines) {
-      if (!line.itemName.trim() || !line.itemCategory.trim() || !line.itemUnit || !line.quantityAdded.trim() || !line.itemLowStockThreshold.trim()) {
-        alert('Please fill in Item Name, Category, Unit, Low Stock Threshold, and Quantity for all lines.');
-        return;
-      }
-      const quantity = parseFloat(line.quantityAdded);
-      const lowStockThreshold = parseFloat(line.itemLowStockThreshold);
+    setIsSubmitting(true);
 
-      if (isNaN(quantity) || quantity <= 0) {
-        alert('Please enter a valid positive quantity for all lines.');
-        return;
-      }
-      if (isNaN(lowStockThreshold) || lowStockThreshold < 0) {
-        alert('Please enter a valid non-negative low stock threshold.');
-        return;
+    try {
+      const entryItems: StockEntryItem[] = [];
+
+      for (const line of lines) {
+        const stockItem = findOrCreateStockItem({
+          name: line.itemName,
+          category: line.itemCategory || 'Uncategorized',
+          unit: line.itemUnit || 'kg',
+          costPerUnit: parseFloat(line.costPerUnit),
+          lowStockThreshold: line.itemLowStockThreshold ? parseFloat(line.itemLowStockThreshold) : 10,
+        });
+
+        entryItems.push({
+          stockItemId: stockItem.id,
+          stockItemName: stockItem.name,
+          quantityAdded: parseFloat(line.quantityAdded),
+          unit: stockItem.unit,
+          costPerUnit: parseFloat(line.costPerUnit),
+        });
       }
 
-      const cost = line.costPerUnit ? parseFloat(line.costPerUnit) : undefined;
-      if (line.costPerUnit && (isNaN(cost) || cost < 0)) {
-        alert('Please enter a valid cost per unit or leave it blank.');
-        return;
-      }
-      
-      const stockItemDetails = {
-          name: line.itemName.trim(),
-          category: line.itemCategory.trim(),
-          unit: line.itemUnit,
-          lowStockThreshold: lowStockThreshold
-      };
-      const actualStockItem = findOrCreateStockItem(stockItemDetails);
-
-      processedEntryItems.push({
-        stockItemId: actualStockItem.id,
-        stockItemName: actualStockItem.name, 
-        quantityAdded: quantity,
-        unit: actualStockItem.unit, 
-        costPerUnit: cost,
+      addStockEntry({
+        supplier: entry.supplierName,
+        referenceNumber: entry.invoiceNumber,
+        items: entryItems,
+        notes: entry.notes,
+        outletId: 'outlet-1',
       });
+
+      setEntry({
+        ...initialEntry,
+        purchaseDate: new Date().toISOString().split('T')[0],
+      });
+      setLines([blankLine()]);
+      setErrors({});
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 3000);
+    } catch (error) {
+      console.error('Error submitting stock entry:', error);
+    } finally {
+      setIsSubmitting(false);
     }
-
-    if (processedEntryItems.length === 0) {
-      alert('Please add at least one item to the stock entry.');
-      return;
-    }
-
-    addStockEntry({
-      supplier: selectedSupplier || undefined,
-      referenceNumber,
-      items: processedEntryItems,
-      notes,
-      outletId: outlet.id,
-    });
-
-    alert('Stock entry added successfully!');
-    setEntryDate(new Date().toISOString().split('T')[0]);
-    setSelectedSupplier('');
-    setReferenceNumber('');
-    setNotes('');
-    setEntryLines([{ id: Date.now().toString(), itemName: '', itemCategory: '', itemUnit: UNITS[0], itemLowStockThreshold: '0', quantityAdded: '', costPerUnit: '' }]);
   };
+
+  const totalLineCost = (line: StockEntryLine) => {
+    const qty = parseFloat(line.quantityAdded) || 0;
+    const cost = parseFloat(line.costPerUnit) || 0;
+    return (qty * cost).toFixed(2);
+  };
+
+  const grandTotal = useMemo(() => {
+    return lines.reduce((sum, line) => sum + parseFloat(totalLineCost(line)), 0).toFixed(2);
+  }, [lines]);
 
   return (
-    <div className="p-4 sm:p-6">
-      <Card>
-        <div className="p-5">
-          <h1 className="text-2xl font-semibold text-gray-800 mb-6 flex items-center">
-            <FiBox className="mr-3 text-sky-600" /> Add Stock Entry
-          </h1>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <Input
-                label="Entry Date"
-                type="date"
-                value={entryDate}
-                onChange={(e) => setEntryDate(e.target.value)}
-                required
-              />
-              <div>
-                <label htmlFor="supplier" className="block text-sm font-medium text-gray-700 mb-1">
-                  Supplier (Optional)
-                </label>
-                <select
-                  id="supplier"
-                  value={selectedSupplier}
-                  onChange={(e) => setSelectedSupplier(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500 sm:text-sm h-[42px]"
-                >
-                  <option value="">-- Select Supplier --</option>
-                  {suppliers.map(sup => (
-                    <option key={sup.id} value={sup.name}>{sup.name}</option>
-                  ))}
-                </select>
-              </div>
-              <Input
-                label="Reference/Invoice No. (Optional)"
-                value={referenceNumber}
-                onChange={(e) => setReferenceNumber(e.target.value)}
-                placeholder="e.g., INV-2024-001"
-              />
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200 px-4 sm:px-6 py-4">
+        <div className="max-w-5xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-lg shadow-green-200">
+              <FiPackage className="text-white text-xl" />
             </div>
+            <div>
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Add Stock Entry</h1>
+              <p className="text-sm text-gray-500">Record new stock purchases and deliveries</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="file"
+              accept=".csv"
+              onChange={handleCsvUpload}
+              className="hidden"
+              id="csvUpload"
+            />
+            <button
+              onClick={downloadCsvTemplate}
+              className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              title="Download CSV template"
+            >
+              <FiDownload className="w-4 h-4" />
+              <span className="hidden sm:inline">Template</span>
+            </button>
+            <label
+              htmlFor="csvUpload"
+              className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
+              title="Upload CSV file"
+            >
+              <FiUpload className="w-4 h-4" />
+              <span className="hidden sm:inline">Upload CSV</span>
+            </label>
+          </div>
+        </div>
+      </div>
 
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium text-gray-700 border-b pb-2">Stock Items</h3>
-              {entryLines.map((line) => (
-                <div key={line.id} className="grid grid-cols-1 md:grid-cols-12 gap-x-4 gap-y-2 items-end p-3 border rounded-md bg-gray-50/50">
-                  <div className="md:col-span-3">
-                    <Input
-                        label="Item Name *"
-                        value={line.itemName}
-                        onChange={(e) => handleLineChange(line.id, 'itemName', e.target.value)}
-                        placeholder="e.g., Tomatoes"
-                        containerClassName="mb-0"
-                        required
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <Input
-                        label="Category *"
-                        value={line.itemCategory}
-                        onChange={(e) => handleLineChange(line.id, 'itemCategory', e.target.value)}
-                        placeholder="e.g., Vegetables"
-                        containerClassName="mb-0"
-                        required
-                    />
-                  </div>
-                  <div className="md:col-span-1">
-                    <label htmlFor={`unit-${line.id}`} className="block text-xs font-medium text-gray-600 mb-0.5">Unit *</label>
-                    <select
-                      id={`unit-${line.id}`}
-                      value={line.itemUnit}
-                      onChange={(e) => handleLineChange(line.id, 'itemUnit', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500 sm:text-sm h-[42px]"
-                      required
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+        {/* Success Toast */}
+        {showSuccess && (
+          <div className="fixed top-4 right-4 z-50 bg-green-50 border border-green-200 rounded-xl px-4 py-3 shadow-lg flex items-center gap-2 animate-slide-in">
+            <FiCheckCircle className="text-green-600 w-5 h-5" />
+            <span className="text-green-800 font-medium">Stock entry saved successfully!</span>
+          </div>
+        )}
+
+        {/* Entry Details Section */}
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50">
+            <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-2">
+              <FiTruck className="w-3.5 h-3.5" />
+              Entry Details
+            </h2>
+          </div>
+          <div className="p-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* Supplier - Searchable Combobox */}
+              <div className="relative" ref={supplierDropdownRef}>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Supplier <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    type="text"
+                    value={showSupplierDropdown ? supplierSearch : entry.supplierName}
+                    onChange={(e) => {
+                      setSupplierSearch(e.target.value);
+                      setShowSupplierDropdown(true);
+                      if (!e.target.value) {
+                        setEntry(prev => ({ ...prev, supplierName: '', supplierId: '' }));
+                      }
+                    }}
+                    onFocus={() => {
+                      setShowSupplierDropdown(true);
+                      setSupplierSearch('');
+                    }}
+                    placeholder="Search or add supplier..."
+                    className={`w-full pl-9 pr-8 py-2.5 text-sm border rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all bg-white ${
+                      errors.supplierName ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                    }`}
+                  />
+                  {entry.supplierName && !showSupplierDropdown && (
+                    <button
+                      onClick={() => {
+                        setEntry(prev => ({ ...prev, supplierName: '', supplierId: '' }));
+                        setSupplierSearch('');
+                        setShowSupplierDropdown(true);
+                      }}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                     >
-                      {UNITS.map(unit => (
-                        <option key={unit} value={unit}>{unit}</option>
-                      ))}
-                    </select>
-                  </div>
-                   <div className="md:col-span-2">
-                     <Input
-                        label="Low Stock Threshold *"
-                        type="number"
-                        id={`lowStockThreshold-${line.id}`}
-                        value={line.itemLowStockThreshold}
-                        min="0"
-                        step="1"
-                        onChange={(e) => handleLineChange(line.id, 'itemLowStockThreshold', e.target.value)}
-                        placeholder="e.g., 5"
-                        containerClassName="mb-0"
-                        required
-                    />
-                  </div>
-                  <div className="md:col-span-1">
-                     <Input
-                        label="Qty Added *"
-                        type="number"
-                        id={`quantity-${line.id}`}
-                        value={line.quantityAdded}
-                        min="0.01"
-                        step="0.01"
-                        onChange={(e) => handleLineChange(line.id, 'quantityAdded', e.target.value)}
-                        placeholder="e.g., 10"
-                        containerClassName="mb-0"
-                        required
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <Input
-                        label="Cost/Unit (Opt.)"
-                        type="number"
-                        id={`cost-${line.id}`}
-                        value={line.costPerUnit}
-                        min="0"
-                        step="0.01"
-                        onChange={(e) => handleLineChange(line.id, 'costPerUnit', e.target.value)}
-                        placeholder="e.g., 2.50"
-                        containerClassName="mb-0"
-                    />
-                  </div>
-                  <div className="md:col-span-1 flex items-center justify-end pt-3 md:pt-0">
-                    {entryLines.length > 1 && (
-                      <Button
-                        type="button"
-                        variant="danger"
-                        size="sm"
-                        onClick={() => handleRemoveLine(line.id)}
-                        className="p-2"
-                        aria-label="Remove item line"
+                      <FiTrash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                {showSupplierDropdown && (
+                  <div className="absolute z-30 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-52 overflow-y-auto">
+                    {filteredSuppliers.length > 0 ? (
+                      filteredSuppliers.map(supplier => (
+                        <div
+                          key={supplier.id}
+                          className="px-3 py-2.5 cursor-pointer hover:bg-green-50 flex items-center justify-between border-b border-gray-50 last:border-0 transition-colors"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            selectSupplier(supplier);
+                          }}
+                        >
+                          <div className="flex items-center gap-2">
+                            <FiTruck className="w-4 h-4 text-green-600" />
+                            <div>
+                              <span className="text-sm font-medium text-gray-900">{supplier.name}</span>
+                              {supplier.contactPerson && (
+                                <span className="text-xs text-gray-500 ml-1">({supplier.contactPerson})</span>
+                              )}
+                            </div>
+                          </div>
+                          {supplier.phone && (
+                            <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                              {supplier.phone}
+                            </span>
+                          )}
+                        </div>
+                      ))
+                    ) : null}
+                    {supplierSearch.trim() && !suppliers.find(s => s.name.toLowerCase() === supplierSearch.trim().toLowerCase()) && (
+                      <div
+                        className="px-3 py-2.5 cursor-pointer hover:bg-blue-50 text-sm font-medium text-blue-600 flex items-center gap-1.5 transition-colors"
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          handleAddNewSupplier();
+                        }}
                       >
-                        <FiTrash2 size={16} />
-                      </Button>
+                        <FiPlus className="w-3.5 h-3.5" />
+                        Add "{supplierSearch.trim()}" as new supplier
+                      </div>
+                    )}
+                    {filteredSuppliers.length === 0 && !supplierSearch.trim() && (
+                      <div className="px-3 py-4 text-sm text-gray-400 text-center italic">
+                        No suppliers yet. Type a name to add one.
+                      </div>
                     )}
                   </div>
-                </div>
-              ))}
-              <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3 mt-2">
-                <Button type="button" variant="secondary" onClick={handleAddLine} leftIcon={<FiPlus />}>
-                  Add Item Line
-                </Button>
-                <div className="flex flex-col sm:flex-row sm:items-start sm:space-x-3">
-                    <div>
-                        <Button type="button" variant="secondary" onClick={handleTriggerFileUpload} leftIcon={<FiUpload />}>
-                            Upload CSV
-                        </Button>
-                        <input 
-                            type="file" 
-                            ref={fileInputRef} 
-                            onChange={handleFileUpload} 
-                            className="hidden" 
-                            accept=".csv"
-                        />
-                    </div>
-                     <Button type="button" variant="outline" onClick={handleDownloadSampleCsv} leftIcon={<FiDownloadCloud />} className="text-sky-600 border-sky-500 hover:bg-sky-50">
-                        Download Sample
-                    </Button>
+                )}
+                {errors.supplierName && <p className="text-red-500 text-xs mt-1">{errors.supplierName}</p>}
+              </div>
+
+              {/* Purchase Date */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Purchase Date <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="date"
+                  value={entry.purchaseDate}
+                  onChange={(e) => handleEntryChange('purchaseDate', e.target.value)}
+                  className={`w-full px-3 py-2.5 text-sm border rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all bg-white ${
+                    errors.purchaseDate ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                  }`}
+                />
+                {errors.purchaseDate && <p className="text-red-500 text-xs mt-1">{errors.purchaseDate}</p>}
+              </div>
+
+              {/* Payment Status */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Payment Status</label>
+                <div className="flex gap-1.5">
+                  {['Paid', 'Pending', 'Partial'].map(status => (
+                    <button
+                      key={status}
+                      type="button"
+                      onClick={() => handleEntryChange('paymentStatus', status)}
+                      className={`flex-1 px-3 py-2.5 text-sm font-medium rounded-xl border transition-all ${
+                        entry.paymentStatus === status
+                          ? status === 'Paid'
+                            ? 'bg-green-50 border-green-300 text-green-700'
+                            : status === 'Pending'
+                            ? 'bg-amber-50 border-amber-300 text-amber-700'
+                            : 'bg-blue-50 border-blue-300 text-blue-700'
+                          : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'
+                      }`}
+                    >
+                      {status}
+                    </button>
+                  ))}
                 </div>
               </div>
-               <p className="text-xs text-gray-500 mt-1">
-                    CSV Format: <code className="text-xs">Item Name,Category,Unit,Low Stock Threshold,Quantity Added,Cost Per Unit</code> (Cost is optional).
-                    <br />
-                    Valid units: {UNITS.join(', ')}. Ensure CSV does not contain only a header.
-                </p>
-            </div>
-            
-            <div>
-              <label htmlFor="entryNotes" className="block text-sm font-medium text-gray-700 mb-1">
-                Notes (Optional)
-              </label>
-              <textarea
-                id="entryNotes"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500 sm:text-sm"
-                placeholder="Any additional notes for this stock entry..."
-              />
-            </div>
 
-            <div className="flex items-center justify-start space-x-3 pt-4 border-t mt-6">
-              <Button type="submit" variant="primary" leftIcon={<FiSave size={18}/>} disabled={isSubmitDisabled()}>
-                Save Stock Entry
-              </Button>
-              <Button type="button" variant="secondary" onClick={() => navigate(-1)} leftIcon={<FiArrowLeft size={18}/>}>
-                Back
-              </Button>
+              {/* Invoice Number */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Invoice Number</label>
+                <input
+                  type="text"
+                  value={entry.invoiceNumber}
+                  onChange={(e) => handleEntryChange('invoiceNumber', e.target.value)}
+                  placeholder="e.g., INV-2024-001"
+                  className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all bg-white"
+                />
+              </div>
+
+              {/* Notes */}
+              <div className="sm:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Notes</label>
+                <input
+                  type="text"
+                  value={entry.notes}
+                  onChange={(e) => handleEntryChange('notes', e.target.value)}
+                  placeholder="Optional notes about this stock entry"
+                  className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all bg-white"
+                />
+              </div>
             </div>
-          </form>
+          </div>
         </div>
-      </Card>
+
+        {/* Items Section */}
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
+            <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-2">
+              <FiPackage className="w-3.5 h-3.5" />
+              Items to Add
+              {lines.length > 0 && (
+                <span className="bg-green-100 text-green-700 text-xs font-bold px-2 py-0.5 rounded-full ml-1">
+                  {lines.length}
+                </span>
+              )}
+            </h2>
+            {parseFloat(grandTotal) > 0 && (
+              <span className="text-sm font-semibold text-gray-900">
+                Total: <span className="text-green-600">NPR {grandTotal}</span>
+              </span>
+            )}
+          </div>
+
+          <div className="divide-y divide-gray-100">
+            {lines.map((line, index) => (
+              <div key={line.id} className="p-3 sm:p-4 hover:bg-gray-50/50 transition-colors">
+                {/* Single Row: Item | Category | Qty | Cost | Unit | Total | Remove */}
+                <div className="flex items-center gap-2">
+                  {/* Line Number */}
+                  <div className="w-6 h-6 rounded-full bg-green-100 text-green-700 flex items-center justify-center text-xs font-bold flex-shrink-0">
+                    {index + 1}
+                  </div>
+
+                  {/* Item Name - Searchable Combobox */}
+                  <div
+                    className="flex-1 min-w-0 relative"
+                    ref={(el) => { if (el) itemDropdownRefs.current.set(line.id, el); }}
+                  >
+                    <div className="relative">
+                      <FiSearch className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                      <input
+                        type="text"
+                        value={line.itemName}
+                        onChange={(e) => {
+                          handleLineChange(line.id, 'itemName', e.target.value);
+                          setLines(prev => prev.map(l => l.id === line.id ? { ...l, showDropdown: e.target.value } : l));
+                        }}
+                        onFocus={() => {
+                          setLines(prev => prev.map(l => l.id === line.id ? { ...l, showDropdown: l.itemName || ' ' } : l));
+                        }}
+                        placeholder="Item name"
+                        className={`w-full pl-8 pr-2 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all bg-white ${
+                          errors[`itemName_${line.id}`] ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                        }`}
+                      />
+                    </div>
+
+                    {line.showDropdown && line.itemName !== undefined && (
+                      <div className="absolute z-20 left-0 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-48 overflow-y-auto">
+                        {filteredStockItems(line.itemName).length > 0 && (
+                          filteredStockItems(line.itemName).map(stockItem => (
+                            <div
+                              key={stockItem.id}
+                              className="px-3 py-2 cursor-pointer hover:bg-green-50 flex items-center justify-between border-b border-gray-50 last:border-0 transition-colors"
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                selectStockItem(line.id, stockItem);
+                              }}
+                            >
+                              <div className="flex items-center gap-2">
+                                <FiPackage className="w-3.5 h-3.5 text-green-600" />
+                                <span className="text-sm font-medium text-gray-900">{stockItem.name}</span>
+                              </div>
+                              <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                                {stockItem.quantity} {stockItem.unit}
+                              </span>
+                            </div>
+                          ))
+                        )}
+                        {line.itemName.trim() && !stockItems.find(s => s.name.toLowerCase() === line.itemName.trim().toLowerCase()) && (
+                          <div
+                            className="px-3 py-2.5 cursor-pointer hover:bg-blue-50 text-sm font-medium text-blue-600 flex items-center gap-1.5 transition-colors"
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              handleLineChange(line.id, 'showDropdown', '');
+                            }}
+                          >
+                            <FiPlus className="w-3.5 h-3.5" />
+                            Add "{line.itemName.trim()}" as new item
+                          </div>
+                        )}
+                        {filteredStockItems(line.itemName).length === 0 && !line.itemName.trim() && (
+                          <div className="px-3 py-2.5 text-sm text-gray-500 italic">
+                            Type an item name to add.
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Category */}
+                  <div
+                    className="w-32 flex-shrink-0 relative hidden sm:block"
+                    ref={(el) => { if (el) catDropdownRefs.current.set(line.id, el); }}
+                  >
+                    <input
+                      type="text"
+                      value={line.itemCategory}
+                      onChange={(e) => {
+                        handleLineChange(line.id, 'itemCategory', e.target.value);
+                        setCategorySearch(e.target.value);
+                        setLines(prev => prev.map(l => l.id === line.id ? { ...l, showCatDropdown: e.target.value } : l));
+                      }}
+                      onFocus={() => {
+                        setLines(prev => prev.map(l => l.id === line.id ? { ...l, showCatDropdown: l.itemCategory || ' ' } : l));
+                      }}
+                      placeholder="Category"
+                      className="w-full px-2 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all bg-white"
+                    />
+
+                    {line.showCatDropdown !== '' && (
+                      <div className="absolute z-20 left-0 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-36 overflow-y-auto">
+                        {filteredCategories.length > 0 && filteredCategories.map(category => (
+                          <div
+                            key={category}
+                            className="px-3 py-2 cursor-pointer hover:bg-green-50 text-sm text-gray-700 border-b border-gray-50 last:border-0 transition-colors"
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              handleLineChange(line.id, 'itemCategory', category);
+                              setLines(prev => prev.map(l => l.id === line.id ? { ...l, showCatDropdown: '' } : l));
+                            }}
+                          >
+                            {category}
+                          </div>
+                        ))}
+                        <div
+                          className="px-3 py-2 cursor-pointer hover:bg-blue-50 text-sm font-medium text-blue-600 flex items-center gap-1.5 transition-colors"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            setShowNewCategoryInput(true);
+                            setLines(prev => prev.map(l => l.id === line.id ? { ...l, showCatDropdown: '' } : l));
+                          }}
+                        >
+                          <FiPlus className="w-3.5 h-3.5" />
+                          Add New
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Quantity */}
+                  <div className="w-20 flex-shrink-0">
+                    <input
+                      type="number"
+                      value={line.quantityAdded}
+                      onChange={(e) => handleLineChange(line.id, 'quantityAdded', e.target.value)}
+                      placeholder="Qty"
+                      min="0"
+                      step="0.01"
+                      className={`w-full px-2 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all bg-white ${
+                        errors[`quantityAdded_${line.id}`] ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                      }`}
+                    />
+                  </div>
+
+                  {/* Cost Per Unit */}
+                  <div className="w-24 flex-shrink-0">
+                    <input
+                      type="number"
+                      value={line.costPerUnit}
+                      onChange={(e) => handleLineChange(line.id, 'costPerUnit', e.target.value)}
+                      placeholder="Cost"
+                      min="0"
+                      step="0.01"
+                      className={`w-full px-2 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all bg-white ${
+                        errors[`costPerUnit_${line.id}`] ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                      }`}
+                    />
+                  </div>
+
+                  {/* Unit */}
+                  <div className="w-16 flex-shrink-0">
+                    <select
+                      value={line.itemUnit}
+                      onChange={(e) => handleLineChange(line.id, 'itemUnit', e.target.value)}
+                      className="w-full px-1 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all bg-white"
+                    >
+                      <option value="kg">kg</option>
+                      <option value="g">g</option>
+                      <option value="ltr">ltr</option>
+                      <option value="ml">ml</option>
+                      <option value="pcs">pcs</option>
+                      <option value="pack">pack</option>
+                      <option value="dozen">dozen</option>
+                      <option value="bottle">bottle</option>
+                      <option value="can">can</option>
+                      <option value="box">box</option>
+                      <option value="unit">unit</option>
+                    </select>
+                  </div>
+
+                  {/* Line Total */}
+                  <div className="w-24 flex-shrink-0 text-right hidden sm:block">
+                    {parseFloat(totalLineCost(line)) > 0 ? (
+                      <span className="text-xs font-semibold text-green-700 bg-green-50 px-2 py-1 rounded-lg border border-green-200 whitespace-nowrap">
+                        NPR {totalLineCost(line)}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-gray-300">—</span>
+                    )}
+                  </div>
+
+                  {/* Remove Button */}
+                  {lines.length > 1 && (
+                    <button
+                      onClick={() => handleRemoveLine(line.id)}
+                      className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0"
+                      title="Remove item"
+                    >
+                      <FiTrash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Error messages row */}
+                {(errors[`itemName_${line.id}`] || errors[`quantityAdded_${line.id}`] || errors[`costPerUnit_${line.id}`]) && (
+                  <div className="flex items-center gap-2 mt-1 ml-8">
+                    {errors[`itemName_${line.id}`] && <span className="text-red-500 text-xs">{errors[`itemName_${line.id}`]}</span>}
+                    {errors[`quantityAdded_${line.id}`] && <span className="text-red-500 text-xs">{errors[`quantityAdded_${line.id}`]}</span>}
+                    {errors[`costPerUnit_${line.id}`] && <span className="text-red-500 text-xs">{errors[`costPerUnit_${line.id}`]}</span>}
+                  </div>
+                )}
+
+                {/* Mobile-only: Category row for small screens */}
+                <div className="flex items-center gap-2 mt-2 sm:hidden">
+                  <div
+                    className="flex-1 relative"
+                    ref={(el) => { if (el) catDropdownRefs.current.set(line.id, el); }}
+                  >
+                    <input
+                      type="text"
+                      value={line.itemCategory}
+                      onChange={(e) => {
+                        handleLineChange(line.id, 'itemCategory', e.target.value);
+                        setCategorySearch(e.target.value);
+                        setLines(prev => prev.map(l => l.id === line.id ? { ...l, showCatDropdown: e.target.value } : l));
+                      }}
+                      onFocus={() => {
+                        setLines(prev => prev.map(l => l.id === line.id ? { ...l, showCatDropdown: l.itemCategory || ' ' } : l));
+                      }}
+                      placeholder="Category"
+                      className="w-full px-2 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all bg-white"
+                    />
+                    {line.showCatDropdown !== '' && (
+                      <div className="absolute z-20 left-0 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-36 overflow-y-auto">
+                        {filteredCategories.length > 0 && filteredCategories.map(category => (
+                          <div
+                            key={category}
+                            className="px-3 py-2 cursor-pointer hover:bg-green-50 text-sm text-gray-700 border-b border-gray-50 last:border-0 transition-colors"
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              handleLineChange(line.id, 'itemCategory', category);
+                              setLines(prev => prev.map(l => l.id === line.id ? { ...l, showCatDropdown: '' } : l));
+                            }}
+                          >
+                            {category}
+                          </div>
+                        ))}
+                        <div
+                          className="px-3 py-2 cursor-pointer hover:bg-blue-50 text-sm font-medium text-blue-600 flex items-center gap-1.5 transition-colors"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            setShowNewCategoryInput(true);
+                            setLines(prev => prev.map(l => l.id === line.id ? { ...l, showCatDropdown: '' } : l));
+                          }}
+                        >
+                          <FiPlus className="w-3.5 h-3.5" />
+                          Add New
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  {/* Mobile Total */}
+                  {parseFloat(totalLineCost(line)) > 0 && (
+                    <span className="text-xs font-semibold text-green-700 bg-green-50 px-2 py-1 rounded-lg border border-green-200 whitespace-nowrap">
+                      NPR {totalLineCost(line)}
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Add Item Button */}
+          <div className="px-6 py-4 border-t border-gray-100 bg-gray-50/30">
+            <button
+              onClick={handleAddLine}
+              className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-green-700 bg-green-50 border border-green-200 rounded-xl hover:bg-green-100 transition-colors"
+            >
+              <FiPlus className="w-4 h-4" />
+              Add Item Line
+            </button>
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pb-8">
+          <button
+            onClick={() => navigate(-1)}
+            className="flex items-center justify-center gap-2 px-6 py-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors"
+          >
+            ← Back
+          </button>
+          <button
+            onClick={handleSubmit}
+            disabled={isSubmitting || lines.length === 0}
+            className="flex items-center justify-center gap-2 px-8 py-3 text-sm font-semibold text-white bg-gradient-to-r from-green-600 to-emerald-600 rounded-xl hover:from-green-700 hover:to-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-green-200 transition-all"
+          >
+            <FiCheckCircle className="w-4 h-4" />
+            {isSubmitting ? 'Saving...' : `Save Entry (${lines.length} item${lines.length !== 1 ? 's' : ''})`}
+          </button>
+        </div>
+      </div>
+
+      {/* New Category Modal */}
+      {showNewCategoryInput && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Add New Category</h3>
+            <input
+              type="text"
+              value={newCategoryName}
+              onChange={(e) => setNewCategoryName(e.target.value)}
+              placeholder="Enter category name"
+              className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all"
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleAddNewCategory();
+                if (e.key === 'Escape') {
+                  setShowNewCategoryInput(false);
+                  setNewCategoryName('');
+                }
+              }}
+            />
+            <div className="flex justify-end gap-2 mt-4">
+              <button
+                onClick={() => {
+                  setShowNewCategoryInput(false);
+                  setNewCategoryName('');
+                }}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddNewCategory}
+                disabled={!newCategoryName.trim()}
+                className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-xl hover:bg-green-700 disabled:opacity-50 transition-colors"
+              >
+                Add Category
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

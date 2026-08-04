@@ -5,7 +5,7 @@ import Button from '../common/Button';
 import Modal from '../common/Modal';
 import { FiPrinter, FiXCircle } from 'react-icons/fi';
 import { useRestaurantData } from '../../hooks/useRestaurantData';
-import { clampCharsPerLine, getEscPosBottomFeed, getEscPosEmphasizedTitle } from '../../utils/printSettings';
+import { clampCharsPerLine, escPosCenterText, getEscPosBottomFeed } from '../../utils/printSettings';
 
 interface KotModalProps {
   isOpen: boolean;
@@ -14,7 +14,7 @@ interface KotModalProps {
 }
 
 const KotModal: React.FC<KotModalProps> = ({ isOpen, onClose, kotData }) => {
-  const { printers, printKot, applicationSettings, getSingleActiveOutlet, websiteSettings } = useRestaurantData();
+  const { printers, printKot, applicationSettings } = useRestaurantData();
   const kotRef = useRef<HTMLDivElement>(null);
 
   if (!kotData) return null;
@@ -29,9 +29,7 @@ const KotModal: React.FC<KotModalProps> = ({ isOpen, onClose, kotData }) => {
     const centerText = (value: string) => {
       const text = value.trim();
       if (!text) return '';
-      if (text.length >= lineWidth) return text;
-      const leftPad = Math.floor((lineWidth - text.length) / 2);
-      return `${' '.repeat(leftPad)}${text}`;
+      return escPosCenterText(text);
     };
     const formatTwoCol = (left: string, right: string) => {
       const spaces = Math.max(1, lineWidth - left.length - right.length);
@@ -65,14 +63,9 @@ const KotModal: React.FC<KotModalProps> = ({ isOpen, onClose, kotData }) => {
       });
     };
 
-    // Add restaurant name at top of KOT
-    const outlet = getSingleActiveOutlet();
-    const outletName = outlet?.restaurantName || outlet?.name || websiteSettings?.whiteLabel?.appName || 'Demo Restaurant';
-    lines.push(centerText(outletName.toUpperCase()));
+    lines.push(centerText('=== KOT ==='));
     lines.push(divider);
-    lines.push(getEscPosEmphasizedTitle('KOT', lineWidth) || centerText('KOT'));
     lines.push(formatTwoCol(kotData.kotNumber, kotData.timestamp));
-    lines.push(divider);
     formatLabelLine('Customer', kotData.customer || 'Walk-in Customer');
     formatLabelLine('Table No.', kotData.table || 'N/A');
     if (kotData.waiter) {

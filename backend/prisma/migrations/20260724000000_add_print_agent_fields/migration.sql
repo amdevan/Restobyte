@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "Printer" ADD COLUMN "autoPrintBOT" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "Printer" ADD COLUMN "autoPrintDelivery" BOOLEAN NOT NULL DEFAULT false;

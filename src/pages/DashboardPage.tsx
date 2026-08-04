@@ -35,12 +35,8 @@ const DashboardPage: React.FC = () => {
   const [isLoadingSpecial, setIsLoadingSpecial] = useState(true);
   const [specialError, setSpecialError] = useState<string | null>(null);
 
-  const [activeFilter, setActiveFilter] = useState<'today' | '7d' | '30d' | 'custom'>('7d');
-  const [startDate, setStartDate] = useState(() => {
-    const date = new Date();
-    date.setDate(date.getDate() - 6);
-    return getDateString(date);
-  });
+  const [activeFilter, setActiveFilter] = useState<'today' | '7d' | '30d' | 'custom'>('today');
+  const [startDate, setStartDate] = useState(getDateString(new Date()));
   const [endDate, setEndDate] = useState(getDateString(new Date()));
   const [isDatePopoverOpen, setIsDatePopoverOpen] = useState(false);
   const datePopoverRef = useRef<HTMLDivElement>(null);

@@ -32,6 +32,7 @@ const PaySplitModal: React.FC<PaySplitModalProps> = ({ isOpen, onClose, split, o
         <>
             <Modal isOpen={isOpen} onClose={onClose} title={`Pay for Split ${split.id.slice(-4)}`}>
                 <PaymentSection
+                    orderItems={split.items || []}
                     grandTotal={grandTotalWithTip}
                     onFinalize={handleFinalize}
                     onAddTip={() => setIsTipModalOpen(true)}

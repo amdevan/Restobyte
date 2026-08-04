@@ -22,12 +22,14 @@ interface SystemPrinter {
 }
 
 const ManagePrintersPage: React.FC = () => {
-    const { printers, addPrinter, updatePrinter, deletePrinter, printTest } = useRestaurantData();
+    const { printers, addPrinter, updatePrinter, deletePrinter, printTest, printBot, printDelivery } = useRestaurantData();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingPrinter, setEditingPrinter] = useState<Printer | null>(null);
     const [systemPrinters, setSystemPrinters] = useState<SystemPrinter[]>([]);
     const [isDetecting, setIsDetecting] = useState(false);
     const [isDetectingQz, setIsDetectingQz] = useState(false);
+    const [isDetectingAgent, setIsDetectingAgent] = useState(false);
+    const [agentStatus, setAgentStatus] = useState<{ available: boolean; agents: any[]; agentCount: number } | null>(null);
     const [showSystemPrintersModal, setShowSystemPrintersModal] = useState(false);
 
     const handleOpenModalForAdd = () => {
@@ -100,6 +102,57 @@ const ManagePrintersPage: React.FC = () => {
         }
     };
 
+    const handleDetectAgentPrinters = async () => {
+        setIsDetectingAgent(true);
+        try {
+            const token = localStorage.getItem('authToken');
+            const headers: Record<string, string> = {};
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+
+            // Check if a Print Agent is connected
+            const statusRes = await fetch(`${API_BASE_URL}/print-agent/status`, { headers });
+            if (!statusRes.ok) {
+                throw new Error('Failed to check Print Agent status');
+            }
+            const statusData = await statusRes.json();
+            setAgentStatus(statusData);
+
+            if (!statusData.available) {
+                alert('No Print Agent is currently connected. Please make sure the RestoByte Print Agent is installed and running on the computer connected to your printers.');
+                return;
+            }
+
+            // Get printers detected by the Print Agent
+            const printersRes = await fetch(`${API_BASE_URL}/print-agent/printers`, { headers });
+            if (!printersRes.ok) {
+                throw new Error('Failed to fetch Print Agent printers');
+            }
+            const printersData = await printersRes.json();
+            const agentPrinters: SystemPrinter[] = (printersData.printers || []).map((p: any) => ({
+                name: p.name,
+                model: p.printerModel || p.type,
+                port: p.ipAddress ? `${p.ipAddress}:${p.port || 9100}` : undefined,
+                status: p.status,
+                description: `Detected by Print Agent (${p.interfaceType})`,
+                usbPath: p.usbPath,
+                interfaceType: p.interfaceType === 'usb' ? PrinterInterfaceType.USB :
+                              p.interfaceType === 'bluetooth' ? PrinterInterfaceType.Bluetooth :
+                              p.interfaceType === 'serial' ? PrinterInterfaceType.Serial :
+                              p.interfaceType === 'network' ? PrinterInterfaceType.Network :
+                              PrinterInterfaceType.PrintAgent,
+                source: 'server',
+            }));
+
+            setSystemPrinters(agentPrinters);
+            setShowSystemPrintersModal(true);
+        } catch (error) {
+            console.error('Error detecting Print Agent printers:', error);
+            alert('Print Agent detection failed. Please ensure the Print Agent is running and connected to the backend.');
+        } finally {
+            setIsDetectingAgent(false);
+        }
+    };
+
     const handleAddSystemPrinter = async (systemPrinter: SystemPrinter) => {
         const resolvedInterfaceType = systemPrinter.interfaceType || (systemPrinter.usbPath ? PrinterInterfaceType.USB : PrinterInterfaceType.Network);
         const newPrinter: Omit<Printer, 'id'> = {
@@ -129,6 +182,9 @@ const ManagePrintersPage: React.FC = () => {
         }
         if (printer.interfaceType === PrinterInterfaceType.QZTray) {
             return 'Browser -> QZ Tray';
+        }
+        if (printer.interfaceType === PrinterInterfaceType.PrintAgent) {
+            return 'Print Agent (local)';
         }
         return printer.interfaceType;
     };
@@ -163,6 +219,19 @@ Date: ${new Date().toLocaleString()}
 
 Notes: Extra ketchup!
 `;
+        } else if (printer.type === PrinterType.BOT || printer.type === 'Bar Order Ticket (BOT)') {
+            testContent = `
+----------------------------------------
+|         RESTOBYTE TEST BOT           |
+----------------------------------------
+Date: ${new Date().toLocaleString()}
+
+2x Beer (Large)
+1x Cocktail
+1x Nachos
+
+Notes: Extra lime!
+`;
         } else if (printer.type === PrinterType.Label) {
             testContent = `
 RESTOBYTE TEST LABEL
@@ -185,6 +254,23 @@ ${new Date().toLocaleString()}
         <h1 className="text-2xl sm:text-3xl font-semibold text-gray-800 flex items-center">
             <FiPrinterIcon className="mr-3 text-sky-600"/> Manage Printers
         </h1>
+      </div>
+
+      {/* QZ Tray Instructions */}
+      <Card className="bg-blue-50 border-blue-200">
+        <div className="p-4">
+          <h3 className="font-semibold text-blue-800 mb-2">QZ Tray Setup (Browser Printing)</h3>
+          <ol className="list-decimal list-inside text-sm text-blue-700 space-y-1">
+            <li>Download & install QZ Tray from <a href="https://qz.io/download" target="_blank" rel="noopener noreferrer" className="underline font-medium">https://qz.io/download</a></li>
+            <li>Ensure QZ Tray is running (check system tray for QZ icon)</li>
+            <li>Click <strong>"Detect QZ Tray"</strong> below to find your printers</li>
+            <li>Add the detected printer and set it as active</li>
+          </ol>
+          <p className="text-xs text-blue-600 mt-2">QZ Tray enables silent printing directly from your browser without print dialogs.</p>
+        </div>
+      </Card>
+
+      <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
         <div className="flex gap-3">
           <Button 
             onClick={handleDetectPrinters} 
@@ -202,6 +288,14 @@ ${new Date().toLocaleString()}
           >
             {isDetectingQz ? 'Detecting...' : 'Detect QZ Tray'}
           </Button>
+          <Button
+            onClick={handleDetectAgentPrinters}
+            leftIcon={<FiRefreshCw size={20} className={isDetectingAgent ? 'animate-spin' : ''}/>}
+            variant="secondary"
+            disabled={isDetectingAgent}
+          >
+            {isDetectingAgent ? 'Detecting...' : 'Detect Print Agent'}
+          </Button>
           <Button onClick={handleOpenModalForAdd} leftIcon={<FiPlusCircle size={20}/>} variant="primary">
             Add New Printer
           </Button>
@@ -209,6 +303,38 @@ ${new Date().toLocaleString()}
       </div>
 
       <Card className="overflow-x-auto">
+        {agentStatus && (
+          <div className={`p-4 mb-4 rounded-lg border ${
+            agentStatus.available
+              ? 'bg-green-50 border-green-200 text-green-800'
+              : 'bg-red-50 border-red-200 text-red-800'
+          }`}>
+            <div className="flex items-center gap-3">
+              <div className={`w-3 h-3 rounded-full ${
+                agentStatus.available ? 'bg-green-500' : 'bg-red-500'
+              }`}></div>
+              <span className="font-medium">
+                {agentStatus.available
+                  ? `Print Agent connected (${agentStatus.agentCount} agent(s))`
+                  : 'No Print Agent connected'}
+              </span>
+            </div>
+            {agentStatus.available && agentStatus.agents && (
+              <div className="mt-2 text-sm">
+                {agentStatus.agents.map((agent: any, i: number) => (
+                  <div key={i} className="mt-1">
+                    • {agent.hostname} v{agent.version} • {agent.platform}
+                  </div>
+                ))}
+              </div>
+            )}
+            {!agentStatus.available && (
+              <div className="mt-2 text-sm">
+                Download and install the RestoByte Print Agent to enable silent printing without browser dialogs.
+              </div>
+            )}
+          </div>
+        )}
         {printers.length === 0 ? (
           <div className="text-center py-10">
             <FiPrinterIcon size={48} className="mx-auto text-gray-400 mb-4" />
@@ -254,6 +380,8 @@ ${new Date().toLocaleString()}
                     {[
                       p.autoPrintReceipt && 'Receipts',
                       p.autoPrintKOT && 'KOTs',
+                      p.autoPrintBOT && 'BOTs',
+                      p.autoPrintDelivery && 'Delivery',
                       p.autoPrintLabel && 'Labels'
                     ].filter(Boolean).join(', ') || 'None'}
                   </td>

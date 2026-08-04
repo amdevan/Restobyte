@@ -22,6 +22,7 @@
   "dependencies": {
     "@prisma/adapter-pg": "^6.0.0",
     "@prisma/client": "^6.0.0",
+    "@types/ws": "^8.18.1",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
@@ -29,7 +30,8 @@
     "jsonwebtoken": "^9.0.3",
     "nodemailer": "^6.9.14",
     "pg": "^8.13.1",
-    "systeminformation": "^5.31.16"
+    "systeminformation": "^5.31.16",
+    "ws": "^8.18.0"
   },
   "devDependencies": {
     "@prisma/config": "^7.8.0",

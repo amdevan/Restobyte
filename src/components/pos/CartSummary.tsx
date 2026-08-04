@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { memo } from 'react';
 import { SaleTaxDetail } from '../../types';
 import Money from '../common/Money';
 
@@ -47,4 +47,4 @@ const CartSummary: React.FC<CartSummaryProps> = ({ subTotal, discountValue, taxe
   );
 };
 
-export default CartSummary;
+export default memo(CartSummary);

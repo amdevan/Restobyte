@@ -31,6 +31,6 @@ export const formatMoney = (
   const amountInCurrency = fromBase(baseAmount, currency);
   const value = amountInCurrency.toFixed(decimals);
   return settings.currencySymbolPosition === 'after'
-    ? `${value}${currency?.symbol ?? '$'}`
-    : `${currency?.symbol ?? '$'}${value}`;
+    ? `${value} ${currency?.symbol ?? 'Rs'}`
+    : `${currency?.symbol ?? 'Rs'} ${value}`;
 };

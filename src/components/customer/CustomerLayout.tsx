@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import PublicHeader from '@/components/public/PublicHeader';
 import { useRestaurantData } from '@/hooks/useRestaurantData';
@@ -6,16 +6,43 @@ import { useCart } from '@/hooks/useCart';
 import { useAuth } from '@/hooks/useAuth';
 import CartDrawer from '@/components/public/CartDrawer';
 import { FiUser, FiShoppingBag, FiCalendar, FiSettings, FiLogOut, FiHome, FiCoffee } from 'react-icons/fi';
+import { getDefaultCurrency } from '@/utils/currency';
 
 const CustomerLayout: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { websiteSettings, getSingleActiveOutlet, outlets } = useRestaurantData();
-  const { cart, addToCart, removeFromCart, updateQuantity, clearCart, isCartOpen, setIsCartOpen, toggleCart, cartTotal, cartCount } = useCart();
+  const { websiteSettings, getSingleActiveOutlet, applicationSettings, currencies, recordSale } = useRestaurantData();
+  const { cart, removeFromCart, updateQuantity, clearCart, isCartOpen, setIsCartOpen, toggleCart, cartTotal, cartCount } = useCart();
   const { user, logout } = useAuth();
   
   const outlet = getSingleActiveOutlet();
   const baseUrl = '/public/restaurant';
+  const defaultCurrency = useMemo(() => getDefaultCurrency(currencies), [currencies]);
+
+  const handleCheckout = async () => {
+    if (cart.length === 0) return;
+    const saleItems = cart.map(item => ({
+      id: item.id,
+      name: item.name,
+      price: item.price,
+      quantity: item.quantity,
+      isVeg: item.isVegetarian,
+    }));
+    const totalAmount = cartTotal;
+    await recordSale({
+      items: saleItems,
+      subTotal: totalAmount,
+      taxDetails: [],
+      totalAmount: totalAmount,
+      discountAmount: 0,
+      paymentMethod: 'Cash',
+      orderType: 'Dine In',
+      outletId: outlet?.id || '',
+      isSettled: false,
+      isClosed: false,
+    });
+    clearCart();
+  };
 
   const navLinks = [
     { id: 'home', text: 'Home', url: `${baseUrl}` },
@@ -58,6 +85,9 @@ const CustomerLayout: React.FC = () => {
         removeFromCart={removeFromCart}
         updateQuantity={updateQuantity}
         cartTotal={cartTotal}
+        currency={defaultCurrency}
+        applicationSettings={applicationSettings}
+        onCheckout={handleCheckout}
       />
 
       <div className="flex-grow container mx-auto px-4 py-8 mt-20">

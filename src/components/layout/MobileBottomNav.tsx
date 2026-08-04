@@ -5,6 +5,7 @@ import {
   FiFileText, FiUsers, FiDatabase, FiSettings, FiCreditCard,
   FiTool, FiLogOut, FiX, FiActivity, FiClipboard, FiBox, FiPlusCircle, FiBell,
 } from 'react-icons/fi';
+import { App } from '@capacitor/app';
 import { isNative } from '../../utils/capacitorService';
 import { useMobile } from '../../hooks/useMobileApp';
 import { useAuth } from '../../hooks/useAuth';
@@ -68,17 +69,24 @@ const MoreSheet: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onC
     '/app/panel/pos': waiterCount,
   };
 
-  // Close on hardware/browser back button while sheet is open.
+  // Close on the NATIVE Android hardware back button while the sheet is open.
+  // IMPORTANT (this was the "footer disappears / screen flickers" bug):
+  // do NOT use window.history.pushState/back() here. This component
+  // lives inside React Router, and mixing manual history mutations with
+  // RR's own navigation corrupts the WebView history stack on Android —
+  // the bottom nav ended up hidden and the screen kept re-rendering.
+  // Capacitor's backButton listener is the correct, conflict-free way.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
   useEffect(() => {
     if (!open) return;
-    const onPop = () => onClose();
-    window.addEventListener('popstate', onPop);
-    window.history.pushState({ rbMoreSheet: true }, '');
-    return () => {
-      window.removeEventListener('popstate', onPop);
-      if (window.history.state?.rbMoreSheet) window.history.back();
-    };
-  }, [open, onClose]);
+    let sub: any;
+    App.addListener('backButton', (e: any) => {
+      e?.preventDefault?.();   // don't let the app exit
+      onCloseRef.current();      // just close the sheet
+    }).then((handle: any) => { sub = handle; });
+    return () => { sub?.remove?.(); };
+  }, [open]);
 
   if (!open) return null;
 

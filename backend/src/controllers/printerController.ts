@@ -7,6 +7,12 @@ import path from 'path';
 import os from 'os';
 import prisma from '../db/prisma.js';
 import { AuthRequest } from '../middleware/authMiddleware.js';
+import {
+  dispatchPrintJobToAgent,
+  storePendingJob,
+  PrintJob,
+  PrintType,
+} from '../services/printAgentService.js';
 
 const execAsync = promisify(exec);
 
@@ -185,7 +191,7 @@ export const createPrinter = async (req: Request, res: Response) => {
       }
     }
   }
-  const { name, type, interfaceType, isActive, ipAddress, port, usbPath, bluetoothMac, serialPort, baudRate, paperSize, printerModel, timeoutMs, retries, autoPrintReceipt, autoPrintKOT, autoPrintLabel, notes } = req.body;
+  const { name, type, interfaceType, isActive, ipAddress, port, usbPath, bluetoothMac, serialPort, baudRate, paperSize, printerModel, timeoutMs, retries, autoPrintReceipt, autoPrintKOT, autoPrintBOT, autoPrintDelivery, autoPrintLabel, notes } = req.body;
   const printer = await prisma.printer.create({ 
     data: { 
       name,
@@ -204,6 +210,8 @@ export const createPrinter = async (req: Request, res: Response) => {
       retries,
       autoPrintReceipt,
       autoPrintKOT,
+      autoPrintBOT,
+      autoPrintDelivery,
       autoPrintLabel,
       notes,
       outletId: requestedOutletId
@@ -244,7 +252,7 @@ export const updatePrinter = async (req: Request, res: Response) => {
     }
   }
   const id = req.params.id as string;
-  const { name, type, interfaceType, isActive, ipAddress, port, usbPath, bluetoothMac, serialPort, baudRate, paperSize, printerModel, timeoutMs, retries, autoPrintReceipt, autoPrintKOT, autoPrintLabel, notes } = req.body;
+  const { name, type, interfaceType, isActive, ipAddress, port, usbPath, bluetoothMac, serialPort, baudRate, paperSize, printerModel, timeoutMs, retries, autoPrintReceipt, autoPrintKOT, autoPrintBOT, autoPrintDelivery, autoPrintLabel, notes } = req.body;
   
   const existingPrinter = await prisma.printer.findFirst({
     where: { id, outletId: requestedOutletId }
@@ -274,6 +282,8 @@ export const updatePrinter = async (req: Request, res: Response) => {
       retries,
       autoPrintReceipt,
       autoPrintKOT,
+      autoPrintBOT,
+      autoPrintDelivery,
       autoPrintLabel,
       notes
     } 
@@ -337,12 +347,22 @@ export const printDocument = async (req: Request, res: Response) => {
       return;
     }
 
-    const { printerId, content, printType } = req.body;
+    const { printerId, content, printType, encoding } = req.body;
     const queryOutletId = typeof (req.query as any)?.outletId === 'string' ? String((req.query as any).outletId) : undefined;
     const requestedOutletId = queryOutletId || (user.outletId ? String(user.outletId) : undefined);
     if (!requestedOutletId) {
       res.status(400).json({ message: 'outletId is required' });
       return;
+    }
+
+    // Decode base64 content if encoding is specified
+    let decodedContent = content;
+    if (encoding === 'base64' && content) {
+      try {
+        decodedContent = Buffer.from(content, 'base64').toString('binary');
+      } catch {
+        decodedContent = content;
+      }
     }
 
     // Get printer from database
@@ -356,7 +376,7 @@ export const printDocument = async (req: Request, res: Response) => {
     }
 
     // Generate print content if not provided
-    let printContent = content;
+    let printContent = decodedContent;
     if (!printContent) {
       if (printType === 'test') {
         printContent = `
@@ -389,7 +409,70 @@ Date: ${new Date().toLocaleString()}
 
 This is a sample KOT.
 `;
+      } else if (printType === 'bot') {
+        printContent = `
+----------------------------------------
+|       RESTOBYTE BAR ORDER TICKET     |
+----------------------------------------
+Date: ${new Date().toLocaleString()}
+
+This is a sample BOT.
+`;
+      } else if (printType === 'delivery') {
+        printContent = `
+----------------------------------------
+|       RESTOBYTE DELIVERY SLIP        |
+----------------------------------------
+Date: ${new Date().toLocaleString()}
+
+This is a sample delivery slip.
+`;
       }
+    }
+
+    // Check if this printer uses the Print Agent (local Electron app)
+    const isPrintAgent = printer.interfaceType === 'Print Agent';
+
+    if (isPrintAgent) {
+      // Route to Print Agent via WebSocket (with REST fallback)
+      const jobId = `job-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const printJob: PrintJob = {
+        jobId,
+        printerId: printer.id,
+        printerName: printer.name,
+        content: printContent || '',
+        printType: printType as PrintType,
+        timestamp: new Date().toISOString(),
+        outletId: requestedOutletId,
+        tenantId: user.tenantId || '',
+        ...(printer.paperSize ? { paperSize: printer.paperSize } : {}),
+        ...(printer.interfaceType ? { interfaceType: printer.interfaceType } : {}),
+        ...(printer.ipAddress ? { ipAddress: printer.ipAddress } : {}),
+        ...(printer.port ? { port: printer.port } : {}),
+        ...(printer.usbPath ? { usbPath: printer.usbPath } : {}),
+        ...(printer.bluetoothMac ? { bluetoothMac: printer.bluetoothMac } : {}),
+        ...(printer.serialPort ? { serialPort: printer.serialPort } : {}),
+        ...(printer.baudRate ? { baudRate: printer.baudRate } : {}),
+        ...(printer.timeoutMs ? { timeoutMs: printer.timeoutMs } : {}),
+        ...(printer.retries ? { retries: printer.retries } : {}),
+      };
+
+      // Try WebSocket dispatch first
+      const dispatched = dispatchPrintJobToAgent(printJob);
+
+      if (!dispatched) {
+        // No agent connected via WebSocket — store for REST fallback polling
+        storePendingJob(printJob);
+        console.log(`[print-agent] Job ${jobId} queued for REST fallback (outlet: ${requestedOutletId})`);
+      }
+
+      res.status(200).json({
+        message: 'Print job sent to Print Agent',
+        printer: printer.name,
+        jobId,
+        dispatchedVia: dispatched ? 'websocket' : 'rest-fallback',
+      });
+      return;
     }
 
     const tempDir = os.tmpdir();

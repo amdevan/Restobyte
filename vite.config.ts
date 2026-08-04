@@ -72,6 +72,7 @@ export default defineConfig(({ mode }) => {
       server: {
         allowedHosts,
         historyApiFallback: true,
+        port: 5174,
       },
       preview: {
         allowedHosts,

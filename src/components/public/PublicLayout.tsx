@@ -12,8 +12,8 @@ import { getDefaultCurrency } from '@/utils/currency';
 const PublicLayout: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { websiteSettings, getSingleActiveOutlet, outlets, applicationSettings, currencies } = useRestaurantData();
-  const { cart, addToCart, removeFromCart, updateQuantity, isCartOpen, setIsCartOpen, toggleCart, cartTotal, cartCount } = useCart();
+  const { websiteSettings, getSingleActiveOutlet, outlets, applicationSettings, currencies, recordSale } = useRestaurantData();
+  const { cart, addToCart, removeFromCart, updateQuantity, clearCart, isCartOpen, setIsCartOpen, toggleCart, cartTotal, cartCount } = useCart();
   const { user, logout } = useAuth();
   
   // Extract outletId from URL if present (e.g. /website/:outletId/...)
@@ -25,6 +25,31 @@ const PublicLayout: React.FC = () => {
 
   const handleLoginClick = () => navigate('/public/login');
   const handleRegisterClick = () => navigate('/public/register');
+
+  const handleCheckout = async () => {
+    if (cart.length === 0) return;
+    const saleItems = cart.map(item => ({
+      id: item.id,
+      name: item.name,
+      price: item.price,
+      quantity: item.quantity,
+      isVeg: item.isVegetarian,
+    }));
+    const totalAmount = cartTotal;
+    await recordSale({
+      items: saleItems,
+      subTotal: totalAmount,
+      taxDetails: [],
+      totalAmount: totalAmount,
+      discountAmount: 0,
+      paymentMethod: 'Cash',
+      orderType: 'Dine In',
+      outletId: outlet?.id || '',
+      isSettled: false,
+      isClosed: false,
+    });
+    clearCart();
+  };
 
   const baseUrl = outletId ? `/website/${outletId}` : '/public/restaurant';
 
@@ -160,6 +185,7 @@ const PublicLayout: React.FC = () => {
         cartTotal={cartTotal}
         currency={defaultCurrency}
         applicationSettings={effectiveApplicationSettings}
+        onCheckout={handleCheckout}
       />
 
       <main className="flex-grow">

@@ -1,0 +1,1 @@
+-- No schema changes required; USB print bridge fields already added in previous migration

@@ -66,7 +66,7 @@ const PrintPreviewModal: React.FC<{
         setTimeout(() => { // Timeout to ensure content is loaded
             printWindow.print();
             printWindow.close();
-        }, 500);
+        }, 1000);
       }
     }
   };
@@ -104,7 +104,7 @@ const PrintPreviewModal: React.FC<{
           ))}
         </div>
         {/* Hidden div with actual print content and structure */}
-        <div ref={printContentRef} style={{ display: 'none' }}>
+        <div ref={printContentRef} style={{ position: 'absolute', left: '-9999px', top: '0' }}>
             {pages.map((pageTables, pageIndex) => (
             <div key={`print-page-${pageIndex}`} className="page-container">
                 {pageTables.map(table => {
@@ -243,7 +243,19 @@ const TableQrCodeGeneratorPage: React.FC = () => {
                         <h2>${selectedTable.name}</h2>
                     </div>
                     <script>
-                        window.onload = function() { window.print(); window.onafterprint = function() { window.close(); }; };
+                        window.onload = function() {
+                            var img = document.querySelector('img');
+                            if (img && img.complete) {
+                                window.print();
+                                window.onafterprint = function() { window.close(); };
+                            } else if (img) {
+                                img.onload = function() { window.print(); window.onafterprint = function() { window.close(); }; };
+                                img.onerror = function() { window.print(); window.onafterprint = function() { window.close(); }; };
+                            } else {
+                                window.print();
+                                window.onafterprint = function() { window.close(); };
+                            }
+                        };
                     </script>
                 </body></html>
             `);

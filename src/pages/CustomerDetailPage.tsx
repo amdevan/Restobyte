@@ -1,12 +1,14 @@
 import React, { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useRestaurantData } from '@/hooks/useRestaurantData';
+import { Sale } from '@/types';
 import { FiArrowLeft, FiUser, FiPhone, FiMail, FiMapPin, FiCalendar, FiDollarSign, FiCreditCard, FiEdit } from 'react-icons/fi';
 import Button from '@/components/common/Button';
 import Card from '@/components/common/Card';
 import Money from '@/components/common/Money';
 import Modal from '@/components/common/Modal';
 import CustomerForm from '@/components/customer/CustomerForm';
+import SaleDetailsModal from '@/components/sales/SaleDetailsModal';
 
 const CustomerDetailPage: React.FC = () => {
   const { customerId } = useParams<{ customerId: string }>();
@@ -35,6 +37,8 @@ const CustomerDetailPage: React.FC = () => {
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('Cash');
   const [paymentNotes, setPaymentNotes] = useState('');
+  const [selectedSaleForDetails, setSelectedSaleForDetails] = useState<Sale | null>(null);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
 
   if (!customer) {
     return (
@@ -176,8 +180,8 @@ const CustomerDetailPage: React.FC = () => {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {customerOrders.map(order => (
-                  <tr key={order.id} className="hover:bg-sky-50 transition-all duration-200">
-                    <td className="py-3 px-4 text-sm text-gray-800">#{order.id.slice(-6).toUpperCase()}</td>
+                  <tr key={order.id} className="hover:bg-sky-50 transition-all duration-200 cursor-pointer" onClick={() => { setSelectedSaleForDetails(order); setIsDetailsModalOpen(true); }}>
+                    <td className="py-3 px-4 text-sm text-sky-600 font-semibold hover:underline">#{order.id.slice(-6).toUpperCase()}</td>
                     <td className="py-3 px-4 text-sm text-gray-600">{new Date(order.saleDate).toLocaleString()}</td>
                     <td className="py-3 px-4 text-sm text-gray-600">{order.orderType}</td>
                     <td className="py-3 px-4 text-sm text-gray-600">{order.paymentMethod || '-'}</td>
@@ -299,6 +303,11 @@ const CustomerDetailPage: React.FC = () => {
             </Button>
           </div>
         </div>
+      </Modal>
+
+      {/* Sale Details Modal */}
+      <Modal isOpen={isDetailsModalOpen} onClose={() => setIsDetailsModalOpen(false)} title="Order Details" size="lg">
+        <SaleDetailsModal isOpen={isDetailsModalOpen} onClose={() => setIsDetailsModalOpen(false)} sale={selectedSaleForDetails} />
       </Modal>
     </div>
   );

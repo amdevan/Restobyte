@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- RestoByte brand colors -->
+    <color name="colorPrimary">#d97706</color>        <!-- amber-600 -->
+    <color name="colorPrimaryDark">#b45309</color>    <!-- amber-700 -->
+    <color name="colorAccent">#0ea5e9</color>         <!-- sky-500 -->
+    <color name="colorWhite">#FFFFFF</color>
+    <color name="colorBlack">#000000</color>
+    <color name="colorSplashBackground">#ffffff</color>
+</resources>

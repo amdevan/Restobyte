@@ -90,7 +90,7 @@ const TABLE_MAP: Record<string, string[]> = {
 export const createBackup = async (req: Request, res: Response) => {
   try {
     const user = (req as AuthRequest).user;
-    if (!isAdminLike(user)) {
+    if (!isAdminLike(user) || !user) {
       res.status(403).json({ message: 'Admin access required' });
       return;
     }
@@ -180,7 +180,7 @@ export const createBackup = async (req: Request, res: Response) => {
 export const restoreBackup = async (req: Request, res: Response) => {
   try {
     const user = (req as AuthRequest).user;
-    if (!isAdminLike(user)) {
+    if (!isAdminLike(user) || !user) {
       res.status(403).json({ message: 'Admin access required' });
       return;
     }
@@ -246,7 +246,7 @@ export const restoreBackup = async (req: Request, res: Response) => {
 export const uploadBackup = async (req: Request, res: Response) => {
   try {
     const user = (req as AuthRequest).user;
-    if (!isAdminLike(user)) {
+    if (!isAdminLike(user) || !user) {
       res.status(403).json({ message: 'Admin access required' });
       return;
     }
@@ -305,7 +305,7 @@ export const listBackups = async (req: Request, res: Response) => {
 export const deleteBackup = async (req: Request, res: Response) => {
   try {
     const user = (req as AuthRequest).user;
-    if (!isAdminLike(user)) {
+    if (!isAdminLike(user) || !user) {
       res.status(403).json({ message: 'Admin access required' });
       return;
     }

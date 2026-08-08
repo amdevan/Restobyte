@@ -113,19 +113,19 @@ async function start() {
   }
 
   // Auto-migrate: ensure missing columns exist in production database
-  const autoMigrations = [
-    'ALTER TABLE "Order" ADD COLUMN IF NOT EXISTS "tableNumber" TEXT',
-    'ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "employeeId" TEXT',
-    'ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "outletIds" JSONB',
-  ];
-  for (const sql of autoMigrations) {
-    try {
+  try {
+    console.log('[bootstrap]: Running auto-migrations...');
+    const migrations = [
+      "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'Order' AND column_name = 'tableNumber') THEN ALTER TABLE \"Order\" ADD COLUMN \"tableNumber\" TEXT; END IF; END $$;",
+      "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'User' AND column_name = 'employeeId') THEN ALTER TABLE \"User\" ADD COLUMN \"employeeId\" TEXT; END IF; END $$;",
+      "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'User' AND column_name = 'outletIds') THEN ALTER TABLE \"User\" ADD COLUMN \"outletIds\" JSONB; END IF; END $$;",
+    ];
+    for (const sql of migrations) {
       await prisma.$executeRawUnsafe(sql);
-    } catch (error: any) {
-      if (!error?.message?.includes('already exists')) {
-        console.warn(`[bootstrap]: Auto-migrate warning: ${error?.message}`);
-      }
     }
+    console.log('[bootstrap]: Auto-migrations complete');
+  } catch (error: any) {
+    console.error('[bootstrap]: Auto-migration failed:', error?.message);
   }
 
   if (typeof process.env.RESET_SUPERADMIN_PASSWORD === 'string' && process.env.RESET_SUPERADMIN_PASSWORD.trim()) {

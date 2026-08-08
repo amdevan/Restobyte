@@ -101,15 +101,31 @@ const FoodMenuSaleByCategoryPage: React.FC = () => {
     const data: Record<string, CategorySaleData> = {};
 
     filteredSales.forEach(sale => {
+      // Calculate returned quantities for this sale
+      const returnedQuantities: Record<string, number> = {};
+      if (sale.returns && sale.returns.length > 0) {
+        sale.returns.forEach(ret => {
+          if (ret.items) {
+            ret.items.forEach(retItem => {
+              returnedQuantities[retItem.id] = (returnedQuantities[retItem.id] || 0) + retItem.quantity;
+            });
+          }
+        });
+      }
+
       sale.items.forEach(saleItem => {
+        const returnedQty = returnedQuantities[saleItem.id] || 0;
+        const netQuantity = Math.max(0, saleItem.quantity - returnedQty);
+        if (netQuantity <= 0) return;
+
         const menuItem = menuItems.find(mi => mi.id === saleItem.id);
         const categoryName = menuItem?.category || 'Uncategorized';
         
         if (!data[categoryName]) {
           data[categoryName] = { categoryName, quantitySold: 0, totalSales: 0 };
         }
-        data[categoryName].quantitySold += saleItem.quantity;
-        data[categoryName].totalSales += saleItem.quantity * saleItem.price;
+        data[categoryName].quantitySold += netQuantity;
+        data[categoryName].totalSales += netQuantity * saleItem.price;
       });
     });
     

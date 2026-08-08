@@ -832,20 +832,32 @@ const handleSendKot = useCallback(async () => {
     if (tableId && outletRef.current?.outletType !== 'CloudKitchen') {
       const tableFromUrl = tablesRef.current.find(t => t.id === tableId);
       if (tableFromUrl) {
-          const openOrderForTable = salesRef.current.find(s => s.assignedTableId === tableId && !(s.isClosed ?? s.isSettled));
+          const openOrdersForTable = salesRef.current.filter(s => s.assignedTableId === tableId && !(s.isClosed ?? s.isSettled));
           
-          if (openOrderForTable) {
+          if (openOrdersForTable.length > 0) {
+            // Use the most recent order as the primary (for metadata)
+            const primaryOrder = openOrdersForTable[0];
+            // Aggregate items from ALL open orders for this table
+            const allItems = openOrdersForTable.flatMap(o => o.items);
+            const mergedItems = allItems.reduce((merged, item) => {
+                const existing = merged.find(m => m.id === item.id && !m.notes && m.price === item.price);
+                if (existing) {
+                    return merged.map(m => m.lineId === existing.lineId ? { ...m, quantity: m.quantity + item.quantity } : m);
+                }
+                return [...merged, {...item, status: 'sent', lineId: `line-${item.id}-${Math.random()}`}];
+            }, [] as OrderItem[]);
+
             // Load existing order
-            setEditingSale(openOrderForTable);
-            setCurrentOrderItems(openOrderForTable.items.map(item => ({...item, status: 'sent', lineId: `line-${item.id}-${Math.random()}`})));
-            setOrderType(openOrderForTable.orderType as any);
+            setEditingSale(primaryOrder);
+            setCurrentOrderItems(mergedItems);
+            setOrderType(primaryOrder.orderType as any);
             setSelectedTable(tableFromUrl);
-            setSelectedWaiter(waitersRef.current.find(w => w.id === openOrderForTable.waiterId) || null);
-            setSelectedCustomer(customersRef.current.find(c => c.id === openOrderForTable.customerId) || null);
-            setOrderNotes(openOrderForTable.orderNotes || '');
-            setDiscountType(openOrderForTable.discountType || null);
-            setDiscountAmount(openOrderForTable.discountAmount || 0);
-            setPax(Number(openOrderForTable.pax) || 1);
+            setSelectedWaiter(waitersRef.current.find(w => w.id === primaryOrder.waiterId) || null);
+            setSelectedCustomer(customersRef.current.find(c => c.id === primaryOrder.customerId) || null);
+            setOrderNotes(primaryOrder.orderNotes || '');
+            setDiscountType(primaryOrder.discountType || null);
+            setDiscountAmount(primaryOrder.discountAmount || 0);
+            setPax(Number(primaryOrder.pax) || 1);
           } else {
              // Start new order for this table
              clearOrder(true);
@@ -877,17 +889,17 @@ const handleSendKot = useCallback(async () => {
     }
 
     setCurrentOrderItems(prevItems => {
-        const existingNewItem = prevItems.find(item =>
+        // Merge with any existing item (new or sent) with same id, no notes, same price
+        const existingItem = prevItems.find(item =>
             item.id === itemToAdd.id &&
             !item.notes &&
-            item.status === 'new' &&
             item.price === firstVariation.price
         );
       
-        if (existingNewItem) {
+        if (existingItem) {
             return prevItems.map(item =>
-            item.lineId === existingNewItem.lineId
-                ? { ...item, quantity: item.quantity + 1 } 
+            item.lineId === existingItem.lineId
+                ? { ...item, quantity: item.quantity + 1, status: item.status === 'sent' ? 'new' : item.status }
                 : item
             );
         }
@@ -900,6 +912,7 @@ const handleSendKot = useCallback(async () => {
             isVeg: itemToAdd.isVegetarian === undefined ? true : itemToAdd.isVegetarian,
             quantity: 1, 
             notes: undefined, 
+            variationName: firstVariation.name,
             status: 'new',
             lineId: `line-${Date.now()}`
         };

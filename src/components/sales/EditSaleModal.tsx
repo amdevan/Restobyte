@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Sale, SaleItem } from '@/types';
 import Button from '@/components/common/Button';
 import Input from '@/components/common/Input';
@@ -14,7 +14,7 @@ interface EditSaleModalProps {
 }
 
 const EditSaleModal: React.FC<EditSaleModalProps> = ({ isOpen, onClose, sale, onSave }) => {
-  const { tables, waiters, paymentMethods } = useRestaurantData();
+  const { tables, waiters, paymentMethods, customers } = useRestaurantData();
 
   const [waiterName, setWaiterName] = useState('');
   const [waiterId, setWaiterId] = useState('');
@@ -24,7 +24,25 @@ const EditSaleModal: React.FC<EditSaleModalProps> = ({ isOpen, onClose, sale, on
   const [paymentMethod, setPaymentMethod] = useState('');
   const [paymentReference, setPaymentReference] = useState('');
   const [itemPrices, setItemPrices] = useState<Record<string, number>>({});
+  const [customerId, setCustomerId] = useState<string>('');
+  const [customerName, setCustomerName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Initialize state from sale prop when it changes
+  useEffect(() => {
+    if (sale) {
+      setPaymentMethod(sale.paymentMethod || '');
+      setPaymentReference(sale.paymentReference || '');
+      setWaiterName(sale.waiterName || '');
+      setWaiterId(sale.waiterId || '');
+      setAssignedTableId(sale.assignedTableId ?? null);
+      setAssignedTableName(sale.assignedTableName || '');
+      setOrderNotes(sale.orderNotes || '');
+      setCustomerId(sale.customerId || '');
+      setCustomerName(sale.customerName || '');
+      setItemPrices({});
+    }
+  }, [sale]);
 
   if (!isOpen || !sale) return null;
 
@@ -64,6 +82,8 @@ const EditSaleModal: React.FC<EditSaleModalProps> = ({ isOpen, onClose, sale, on
         ...sale,
         items: updatedItems,
         subTotal: newSubTotal,
+        customerId: customerId !== '' ? customerId : sale.customerId,
+        customerName: customerName || sale.customerName,
         waiterName: waiterName || sale.waiterName,
         waiterId: waiterId || sale.waiterId,
         assignedTableId: assignedTableId ?? sale.assignedTableId,
@@ -72,7 +92,10 @@ const EditSaleModal: React.FC<EditSaleModalProps> = ({ isOpen, onClose, sale, on
         paymentMethod: paymentMethod || sale.paymentMethod,
         paymentReference: paymentReference || sale.paymentReference,
       };
-      await onSave(updatedSale);
+      const result = await onSave(updatedSale);
+      if (!result) {
+        throw new Error('Failed to save sale');
+      }
       onClose();
     } finally {
       setIsSubmitting(false);
@@ -86,6 +109,24 @@ const EditSaleModal: React.FC<EditSaleModalProps> = ({ isOpen, onClose, sale, on
       </h3>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Customer</label>
+          <select
+            value={customerId}
+            onChange={(e) => {
+              const c = customers.find(cu => cu.id === e.target.value);
+              setCustomerId(e.target.value);
+              setCustomerName(c?.name || '');
+            }}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500 sm:text-sm"
+          >
+            <option value="">-- Walk-in Customer --</option>
+            {customers.map(c => (
+              <option key={c.id} value={c.id}>{c.name}{c.phone ? ` (${c.phone})` : ''}</option>
+            ))}
+          </select>
+        </div>
+
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Waiter</label>
           <select

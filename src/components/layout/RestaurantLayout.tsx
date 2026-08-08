@@ -368,6 +368,15 @@ const RestaurantLayout: React.FC<{ children: React.ReactNode }> = ({ children })
           { path: "/app/reservation-settings/enable-disable", label: "Order Enable/Disable", icon: <FiTool /> },
           { path: "/app/reservation-settings/receiving-user", label: "Order Receiving User", icon: <FiUsers /> },
         ]
+      },
+      {
+        key: 'backup',
+        label: 'Backup & Restore',
+        icon: <FiDatabase />,
+        matchPaths: ['/app/backup'],
+        items: [
+          { path: "/app/backup", label: "Backup Dashboard", icon: <FiDatabase /> },
+        ]
       }
     ];
 

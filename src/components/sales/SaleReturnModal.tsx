@@ -11,7 +11,7 @@ interface SaleReturnModalProps {
   isOpen: boolean;
   onClose: () => void;
   sale: Sale | null;
-  onReturn: (saleId: string, returnData: { items: SaleReturnItem[]; returnAmount: number; reason?: string; refundMethod?: string; refundDate: string; outletId: string }) => Promise<{ success: boolean; message?: string }>;
+  onReturn: (saleId: string, returnData: { items: SaleReturnItem[]; returnAmount: number; reason?: string; refundMethod?: string; refundDate: string; outletId: string; returnType?: 'stock_return' | 'waste' }) => Promise<{ success: boolean; message?: string }>;
 }
 
 const REFUND_METHODS = ['Cash', 'Card', 'Online', 'Original Payment'];
@@ -23,6 +23,7 @@ const SaleReturnModal: React.FC<SaleReturnModalProps> = ({ isOpen, onClose, sale
   const [returnItems, setReturnItems] = useState<SaleReturnItem[]>([]);
   const [reason, setReason] = useState('');
   const [refundMethod, setRefundMethod] = useState(REFUND_METHODS[0]);
+  const [returnType, setReturnType] = useState<'stock_return' | 'waste'>('stock_return');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!isOpen || !sale) return null;
@@ -55,6 +56,7 @@ const SaleReturnModal: React.FC<SaleReturnModalProps> = ({ isOpen, onClose, sale
         price: item.price,
         quantity: 1,
         reason: '',
+        variationName: item.variationName,
       }]);
     }
   };
@@ -93,6 +95,7 @@ const SaleReturnModal: React.FC<SaleReturnModalProps> = ({ isOpen, onClose, sale
         refundMethod,
         refundDate: new Date().toISOString(),
         outletId: sale.outletId,
+        returnType,
       });
       if (result.success) {
         onClose();
@@ -170,6 +173,23 @@ const SaleReturnModal: React.FC<SaleReturnModalProps> = ({ isOpen, onClose, sale
           </div>
         </div>
       )}
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Return Type</label>
+        <select
+          value={returnType}
+          onChange={(e) => setReturnType(e.target.value as 'stock_return' | 'waste')}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500 sm:text-sm"
+        >
+          <option value="stock_return">Stock Return (Restock inventory)</option>
+          <option value="waste">Waste Food (Do not restock)</option>
+        </select>
+        <p className="mt-1 text-xs text-gray-500">
+          {returnType === 'stock_return' 
+            ? 'Returned items will be added back to inventory.' 
+            : 'Returned items will be logged as waste and not restocked.'}
+        </p>
+      </div>
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Refund Method</label>

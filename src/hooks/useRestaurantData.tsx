@@ -143,10 +143,27 @@ const mapBackendOrderToSale = (order: any): Sale => {
             name: item?.menuItem?.name || item?.name || 'Item',
             price: Number(item?.unitPrice ?? 0),
             quantity: Number(item?.quantity ?? 0),
+            variationName: item?.variationName || undefined,
         }))
         : [];
 
-    const items = Array.isArray(rawSale?.items) && rawSale.items.length > 0 ? rawSale.items : fallbackItems;
+    const rawItems = Array.isArray(rawSale?.items) && rawSale.items.length > 0 ? rawSale.items : null;
+    const items = rawItems
+        ? rawItems.map((item: any) => {
+            // Already in SaleItem format
+            if (item.name && item.price !== undefined) return item;
+            // Normalize from QR/external format { menuItemId, unitPrice, quantity }
+            const fb = fallbackItems.find((fi: any) => fi.id === item.menuItemId || fi.id === item.id);
+            return {
+                id: item.menuItemId || item.id || fb?.id || '',
+                name: item.name || fb?.name || 'Item',
+                price: Number(item.price ?? item.unitPrice ?? fb?.price ?? 0),
+                quantity: Number(item.quantity ?? 0),
+                variationName: item.variationName,
+                notes: item.note || item.notes,
+            };
+        })
+        : fallbackItems;
     const subTotal = Number(
         rawSale?.subTotal ??
         items.reduce((sum: number, item: any) => sum + Number(item?.price ?? item?.unitPrice ?? 0) * Number(item?.quantity ?? 0), 0)
@@ -187,6 +204,7 @@ const mapBackendOrderToSale = (order: any): Sale => {
         paymentReference: rawSale?.paymentReference,
         receivedAmount: rawSale?.receivedAmount,
         returnAmount: rawSale?.returnAmount,
+        returns: Array.isArray(rawSale?.returns) ? rawSale.returns : [],
     };
 };
 const initialAreasFloors: AreaFloor[] = [
@@ -736,7 +754,12 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             ));
             const flat = results.flat().filter(Boolean);
             const deduped = Array.from(new Map(flat.map((it: any) => [String(it?.id || ''), it])).values()).filter((it: any) => it && it.id);
-            setMenuItems(deduped);
+            // Normalize: backend returns category as object, frontend expects string name
+            const normalized = deduped.map((it: any) => ({
+                ...it,
+                category: typeof it.category === 'object' && it.category !== null ? it.category.name : it.category,
+            }));
+            setMenuItems(normalized);
         } catch (err) {
             console.error("Failed to fetch menu items:", err);
             setMenuItems([]);
@@ -993,6 +1016,8 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
     const expensesRef = useRef<Expense[]>(initialExpenses);
     const wasteRecordsRef = useRef<WasteRecord[]>(initialWasteRecords);
     const employeesRef = useRef<Employee[]>(initialEmployees);
+    const suppliersRef = useRef<Supplier[]>([]);
+    const stockItemsRef = useRef<StockItem[]>([]);
     const deliveryPartnersRef = useRef<DeliveryPartner[]>(initialDeliveryPartners);
 
     const fetchOutletAppData = useCallback(async (key: string, outletId: string) => {
@@ -1205,10 +1230,16 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             { key: 'reservations', fallback: [] as Reservation[], getValue: () => reservations, setValue: (value) => setReservations(value) },
             { key: 'customerPayments', fallback: [] as CustomerPayment[], getValue: () => customerPayments, setValue: (value) => setCustomerPayments(value) },
             { key: 'preMadeFoodItems', fallback: [] as PreMadeFoodItem[], getValue: () => preMadeFoodItems, setValue: (value) => setPreMadeFoodItems(value) },
-            { key: 'stockItems', fallback: initialStockItems, getValue: () => stockItems, setValue: (value) => setStockItems(value) },
+            { key: 'stockItems', fallback: initialStockItems, getValue: () => stockItemsRef.current, setValue: (value) => {
+                const arr = Array.isArray(value) ? value : [];
+                const seen = new Set<string>();
+                const deduped = arr.filter((item: any) => { if (seen.has(item.id)) return false; seen.add(item.id); return true; });
+                stockItemsRef.current = deduped;
+                setStockItems(deduped);
+            } },
             { key: 'stockEntries', fallback: [] as StockEntry[], getValue: () => stockEntries, setValue: (value) => setStockEntries(value) },
             { key: 'stockAdjustments', fallback: [] as StockAdjustment[], getValue: () => stockAdjustments, setValue: (value) => setStockAdjustments(value) },
-            { key: 'suppliers', fallback: [] as Supplier[], getValue: () => suppliers, setValue: (value) => setSuppliers(value) },
+            { key: 'suppliers', fallback: [] as Supplier[], getValue: () => suppliersRef.current, setValue: (value) => { suppliersRef.current = value; setSuppliers(value); } },
             { key: 'areasFloors', fallback: initialAreasFloors, getValue: () => areasFloors, setValue: (value) => setAreasFloors(value) },
             { key: 'kitchens', fallback: initialKitchens, getValue: () => kitchens, setValue: (value) => setKitchens(value) },
             { 
@@ -1239,7 +1270,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             { key: 'expenseCategories', fallback: initialExpenseCategories, getValue: () => expenseCategoriesRef.current, setValue: (value) => setExpenseCategories(value) },
             { key: 'expenses', fallback: initialExpenses, getValue: () => expensesRef.current, setValue: (value) => setExpenses(value) },
             { key: 'wasteRecords', fallback: initialWasteRecords, getValue: () => wasteRecordsRef.current, setValue: (value) => setWasteRecords(value) },
-            { key: 'employees', fallback: initialEmployees, getValue: () => employeesRef.current, setValue: (value) => { employeesRef.current = value; setEmployees(value); } },
+            { key: 'employees', fallback: [] as Employee[], getValue: () => employeesRef.current, setValue: (value) => { employeesRef.current = value; setEmployees(value); } },
             { key: 'attendanceRecords', fallback: initialAttendanceRecords, getValue: () => attendanceRecords, setValue: (value) => setAttendanceRecords(value) },
             { key: 'payrollRecords', fallback: initialPayrollRecords, getValue: () => payrollRecords, setValue: (value) => setPayrollRecords(value) },
             { key: 'paymentMethods', fallback: initialPaymentMethods, getValue: () => paymentMethods, setValue: (value) => setPaymentMethods(value) },
@@ -2057,6 +2088,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                     tenantId: u.tenantId ? String(u.tenantId) : '',
                     isActive: Boolean(u.isActive),
                     isSuperAdmin: Boolean(u.isSuperAdmin),
+                    employeeId: u.employeeId ? String(u.employeeId) : undefined,
                 }));
                 setUsers(normalized);
             } catch (err) {
@@ -2217,6 +2249,39 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 void setAndPersistTableStatus(savedSale.assignedTableId, nextStatus);
             }
 
+            // Auto-create Invoice and PaymentHistory when sale is finalized
+            if (savedSale.isClosed && savedSale.totalAmount > 0) {
+                try {
+                    const totalPaid = (savedSale.partialPayments || []).reduce((sum, p) => sum + (typeof p.amount === 'number' ? p.amount : Number(p.amount || 0)), 0);
+                    const firstPaymentMethod = savedSale.partialPayments?.[0]?.method || savedSale.paymentMethod || 'Cash';
+                    await fetch(`${API_BASE_URL}/invoices`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: `Bearer ${token}`,
+                        },
+                        body: JSON.stringify({
+                            orderId: savedSale.id,
+                            customerId: savedSale.customerId || null,
+                            outletId: savedSale.outletId,
+                            totalAmount: savedSale.totalAmount,
+                            taxAmount: (savedSale.taxDetails || []).reduce((sum, t) => sum + (t.amount || 0), 0),
+                            discountAmount: savedSale.discountAmount || 0,
+                            paidAmount: totalPaid,
+                            paymentMethod: firstPaymentMethod,
+                            items: savedSale.items.map(item => ({
+                                id: item.id,
+                                name: item.name,
+                                price: item.price,
+                                quantity: item.quantity,
+                            })),
+                        }),
+                    }).catch(err => console.error('Failed to create invoice:', err));
+                } catch (err) {
+                    console.error('Invoice creation error:', err);
+                }
+            }
+
             return savedSale;
         } catch (err) {
             console.error('Failed to save sale:', err);
@@ -2292,67 +2357,116 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         }
     }, [fetchSales, fetchTables]);
 
-    // --- Automatic Stock Management Helpers ---
+    // --- Stock Management Helpers (auto deduct only when recipe exists) ---
     const deductStockForOrder = useCallback((sale: Sale) => {
+        let updatedStock = [...stockItemsRef.current];
         for (const saleItem of sale.items) {
-            const recipe = recipes.find(r => r.menuItemId === saleItem.id);
+            // Find recipe: prefer variant-specific, fall back to base, then any match
+            let recipe = recipes.find(r =>
+                r.menuItemId === saleItem.id &&
+                saleItem.variationName && r.variationName === saleItem.variationName
+            );
+            if (!recipe) {
+                recipe = recipes.find(r => r.menuItemId === saleItem.id && (!r.variationName || r.variationName === ''));
+            }
+            if (!recipe) {
+                recipe = recipes.find(r => r.menuItemId === saleItem.id);
+            }
             if (!recipe) continue;
             for (const ingredient of recipe.ingredients) {
                 const requiredQty = ingredient.quantityRequired * saleItem.quantity * (1 / recipe.yieldQuantity);
-                setStockItems(prev => prev.map(si => {
-                    if (si.id === ingredient.stockItemId) {
-                        return { ...si, quantity: Math.max(0, si.quantity - requiredQty) };
-                    }
-                    return si;
-                }));
+                updatedStock = updatedStock.map(si =>
+                    si.id === ingredient.stockItemId
+                        ? { ...si, quantity: Math.max(0, si.quantity - requiredQty) }
+                        : si
+                );
             }
         }
-    }, [recipes]);
+        stockItemsRef.current = updatedStock;
+        setStockItems(updatedStock);
+        if (activeOutletIds.length === 1) {
+            const oid = activeOutletIds[0];
+            markOutletAppDataMutated('stockItems', oid);
+            persistOutletCollectionImmediately('stockItems', oid, updatedStock);
+        }
+    }, [recipes, activeOutletIds]);
 
     const restoreStockForOrder = useCallback((sale: Sale) => {
+        let updatedStock = [...stockItemsRef.current];
         for (const saleItem of sale.items) {
-            const recipe = recipes.find(r => r.menuItemId === saleItem.id);
+            let recipe = recipes.find(r =>
+                r.menuItemId === saleItem.id &&
+                saleItem.variationName && r.variationName === saleItem.variationName
+            );
+            if (!recipe) recipe = recipes.find(r => r.menuItemId === saleItem.id && (!r.variationName || r.variationName === ''));
+            if (!recipe) recipe = recipes.find(r => r.menuItemId === saleItem.id);
             if (!recipe) continue;
             for (const ingredient of recipe.ingredients) {
                 const restoreQty = ingredient.quantityRequired * saleItem.quantity * (1 / recipe.yieldQuantity);
-                setStockItems(prev => prev.map(si => {
-                    if (si.id === ingredient.stockItemId) {
-                        return { ...si, quantity: si.quantity + restoreQty };
-                    }
-                    return si;
-                }));
+                updatedStock = updatedStock.map(si =>
+                    si.id === ingredient.stockItemId
+                        ? { ...si, quantity: si.quantity + restoreQty }
+                        : si
+                );
             }
         }
-    }, [recipes]);
+        stockItemsRef.current = updatedStock;
+        setStockItems(updatedStock);
+        if (activeOutletIds.length === 1) {
+            const oid = activeOutletIds[0];
+            markOutletAppDataMutated('stockItems', oid);
+            persistOutletCollectionImmediately('stockItems', oid, updatedStock);
+        }
+    }, [recipes, activeOutletIds]);
+
+    const restoreStockForReturn = useCallback((returnItems: { id: string; quantity: number; variationName?: string }[]) => {
+        let updatedStock = [...stockItemsRef.current];
+        for (const returnItem of returnItems) {
+            const recipe = recipes.find(r =>
+                r.menuItemId === returnItem.id &&
+                returnItem.variationName && r.variationName === returnItem.variationName
+            ) || recipes.find(r => r.menuItemId === returnItem.id && !r.variationName);
+            if (!recipe) continue;
+            for (const ingredient of recipe.ingredients) {
+                const restoreQty = ingredient.quantityRequired * returnItem.quantity * (1 / recipe.yieldQuantity);
+                updatedStock = updatedStock.map(si =>
+                    si.id === ingredient.stockItemId
+                        ? { ...si, quantity: si.quantity + restoreQty }
+                        : si
+                );
+            }
+        }
+        stockItemsRef.current = updatedStock;
+        setStockItems(updatedStock);
+        if (activeOutletIds.length === 1) {
+            const oid = activeOutletIds[0];
+            markOutletAppDataMutated('stockItems', oid);
+            persistOutletCollectionImmediately('stockItems', oid, updatedStock);
+        }
+    }, [recipes, activeOutletIds]);
 
     const autoIncreaseStockOnPurchase = useCallback((purchase: Purchase) => {
+        let updatedStock = [...stockItemsRef.current];
         for (const item of purchase.items) {
             if (item.stockItemId) {
-                setStockItems(prev => prev.map(si => {
-                    if (si.id === item.stockItemId) {
-                        return {
-                            ...si,
-                            quantity: si.quantity + item.quantityPurchased,
-                            costPerUnit: item.costPerUnit || si.costPerUnit,
-                        };
-                    }
-                    return si;
-                }));
+                updatedStock = updatedStock.map(si =>
+                    si.id === item.stockItemId
+                        ? { ...si, quantity: si.quantity + item.quantityPurchased, costPerUnit: item.costPerUnit || si.costPerUnit }
+                        : si
+                );
             } else {
-                let existingItem: StockItem | undefined;
-                setStockItems(prev => {
-                    existingItem = prev.find(si =>
-                        si.name.toLowerCase() === item.itemName.toLowerCase() &&
-                        si.category.toLowerCase() === item.category.toLowerCase()
+                const existingItem = updatedStock.find(si =>
+                    si.name.toLowerCase() === item.itemName.toLowerCase() &&
+                    si.category.toLowerCase() === item.category.toLowerCase()
+                );
+                if (existingItem) {
+                    updatedStock = updatedStock.map(si =>
+                        si.id === existingItem.id
+                            ? { ...si, quantity: si.quantity + item.quantityPurchased, costPerUnit: item.costPerUnit || si.costPerUnit }
+                            : si
                     );
-                    if (existingItem) {
-                        return prev.map(si =>
-                            si.id === existingItem!.id
-                                ? { ...si, quantity: si.quantity + item.quantityPurchased, costPerUnit: item.costPerUnit || si.costPerUnit }
-                                : si
-                        );
-                    }
-                    const newItem: StockItem = {
+                } else {
+                    updatedStock = [...updatedStock, {
                         id: `si-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
                         name: item.itemName,
                         category: item.category,
@@ -2360,23 +2474,36 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                         unit: item.unit,
                         lowStockThreshold: item.lowStockThreshold,
                         costPerUnit: item.costPerUnit,
-                    };
-                    return [...prev, newItem];
-                });
+                    }];
+                }
             }
         }
-    }, []);
+        stockItemsRef.current = updatedStock;
+        setStockItems(updatedStock);
+        if (activeOutletIds.length === 1) {
+            const oid = activeOutletIds[0];
+            markOutletAppDataMutated('stockItems', oid);
+            persistOutletCollectionImmediately('stockItems', oid, updatedStock);
+        }
+    }, [activeOutletIds]);
 
     const autoDecreaseStockOnWaste = useCallback((wasteRecord: WasteRecord) => {
+        let updatedStock = [...stockItemsRef.current];
         for (const item of wasteRecord.items) {
-            setStockItems(prev => prev.map(si => {
-                if (si.id === item.stockItemId) {
-                    return { ...si, quantity: Math.max(0, si.quantity - item.quantityWasted) };
-                }
-                return si;
-            }));
+            updatedStock = updatedStock.map(si =>
+                si.id === item.stockItemId
+                    ? { ...si, quantity: Math.max(0, si.quantity - item.quantityWasted) }
+                    : si
+            );
         }
-    }, []);
+        stockItemsRef.current = updatedStock;
+        setStockItems(updatedStock);
+        if (activeOutletIds.length === 1) {
+            const oid = activeOutletIds[0];
+            markOutletAppDataMutated('stockItems', oid);
+            persistOutletCollectionImmediately('stockItems', oid, updatedStock);
+        }
+    }, [activeOutletIds]);
 
     const contextValue: RestaurantDataContextType = useMemo(() => ({
         // Implement all functions from RestaurantDataContextType
@@ -2426,7 +2553,12 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                     return;
                 }
                 const updatedItem = await res.json();
-                setMenuItems(prev => prev.map(i => i.id === item.id ? updatedItem : i));
+                // Normalize category from object to string name
+                const normalized = {
+                    ...updatedItem,
+                    category: typeof updatedItem.category === 'object' && updatedItem.category !== null ? updatedItem.category.name : updatedItem.category,
+                };
+                setMenuItems(prev => prev.map(i => i.id === item.id ? normalized : i));
             } catch (err) {
                 const message =
                     err instanceof Error
@@ -2655,8 +2787,9 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             const isClosed = saleData.isClosed ?? saleData.isSettled ?? false;
             const newSale = { ...saleData, isClosed, id: `sale-${Date.now()}`, saleDate: new Date().toISOString() };
             const savedSale = await persistSaleToBackend(newSale, 'create');
+            // Use original sale (with variationName) for stock deduction, not the mapped backend response
             if (savedSale) {
-                deductStockForOrder(savedSale);
+                deductStockForOrder(newSale);
             }
             return savedSale;
         },
@@ -2665,7 +2798,15 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             const isClosed = updatedSale.isClosed ?? updatedSale.isSettled ?? false;
             const normalized = { ...updatedSale, isClosed };
             const savedSale = await persistSaleToBackend(normalized, 'update');
-            if (!savedSale) return null;
+            if (!savedSale) {
+                console.warn('[SaleUpdate] persistSaleToBackend returned null - save may have failed');
+                return null;
+            }
+            console.log('[SaleUpdate] Backend saved. paymentMethod:', savedSale.paymentMethod, 'calling fetchSales...');
+
+            // Re-fetch all sales from server to ensure complete sync
+            await fetchSales();
+            console.log('[SaleUpdate] fetchSales complete. Sales count after refetch:', sales.length);
 
             if (updatedSale.orderType === 'Dine In' && updatedSale.assignedTableId) {
                 const wasClosed = Boolean(existing?.isClosed ?? existing?.isSettled);
@@ -2673,8 +2814,16 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
 
                 if (!wasClosed && nextClosed) {
                     void setAndPersistTableStatus(updatedSale.assignedTableId, TableStatus.Free);
+                    // Use original sale items (with variationName) for stock deduction
+                    deductStockForOrder(normalized);
                 } else if (wasClosed && !nextClosed) {
                     void setAndPersistTableStatus(updatedSale.assignedTableId, TableStatus.Occupied);
+                }
+            } else {
+                // Non-dine-in orders: deduct on first finalize
+                const wasClosed = Boolean(existing?.isClosed ?? existing?.isSettled);
+                if (!wasClosed && isClosed) {
+                    deductStockForOrder(normalized);
                 }
             }
             return savedSale;
@@ -2754,6 +2903,42 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 if (savedReturn?.sale) {
                     const updatedSale = mapBackendOrderToSale(savedReturn.sale);
                     upsertSaleInState(updatedSale);
+                }
+                // Handle stock restoration or waste based on return type
+                if (returnData.items && returnData.items.length > 0) {
+                    if (returnData.returnType === 'waste') {
+                        // Create waste record for returned items
+                        const wasteItems = returnData.items.map(item => ({
+                            stockItemId: item.id,
+                            stockItemName: item.name,
+                            quantityWasted: item.quantity,
+                            unit: 'units',
+                            costAtTimeOfWaste: item.price,
+                            reasonForItem: returnData.reason || 'Sales return - waste',
+                        }));
+                        const totalEstimatedLoss = wasteItems.reduce((sum, item) => sum + item.quantityWasted * item.costAtTimeOfWaste, 0);
+                        const newWasteRecord = {
+                            id: `waste-${Date.now()}`,
+                            date: new Date().toISOString(),
+                            reason: returnData.reason || 'Sales return waste',
+                            responsiblePerson: 'System',
+                            items: wasteItems,
+                            totalEstimatedLoss,
+                            notes: `Waste from return on sale #${saleId.slice(-6).toUpperCase()}`,
+                            outletId: returnData.outletId,
+                        };
+                        const nextWasteRecords = [...wasteRecordsRef.current, newWasteRecord];
+                        wasteRecordsRef.current = nextWasteRecords;
+                        setWasteRecords(nextWasteRecords);
+                        if (returnData.outletId) {
+                            markOutletAppDataMutated('wasteRecords', returnData.outletId);
+                            persistOutletCollectionImmediately('wasteRecords', returnData.outletId, nextWasteRecords);
+                        }
+                        autoDecreaseStockOnWaste(newWasteRecord);
+                    } else {
+                        // Default: Stock Return - restore inventory
+                        restoreStockForReturn(returnData.items.map(item => ({ id: item.id, quantity: item.quantity, variationName: item.variationName })));
+                    }
                 }
                 return { success: true, message: 'Return processed successfully.', sale: savedReturn?.sale };
             } catch (err) {
@@ -2864,8 +3049,21 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         deletePreMadeFoodItem: (itemId) => setPreMadeFoodItems(prev => prev.filter(i => i.id !== itemId)),
 
         stockItems,
+        updateStockItem: (itemId: string, updates: Partial<StockItem>) => {
+            const outletId = selectedDataOutletId;
+            const nextStock = stockItemsRef.current.map(item =>
+                item.id === itemId ? { ...item, ...updates } : item
+            );
+            stockItemsRef.current = nextStock;
+            setStockItems(nextStock);
+            if (outletId) {
+                markOutletAppDataMutated('stockItems', outletId);
+                persistOutletCollectionImmediately('stockItems', outletId, nextStock);
+            }
+        },
         updateStockItemQuantity: (itemId, quantityValue, changeType = 'increase') => {
-            setStockItems(prev => prev.map(item => {
+            const outletId = selectedDataOutletId;
+            const nextStock = stockItemsRef.current.map(item => {
                 if (item.id === itemId) {
                     let newQuantity = item.quantity;
                     if (changeType === 'increase') newQuantity += quantityValue;
@@ -2874,32 +3072,63 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                     return { ...item, quantity: Math.max(0, newQuantity) };
                 }
                 return item;
-            }));
+            });
+            stockItemsRef.current = nextStock;
+            setStockItems(nextStock);
+            if (outletId) {
+                markOutletAppDataMutated('stockItems', outletId);
+                persistOutletCollectionImmediately('stockItems', outletId, nextStock);
+            }
         },
         findOrCreateStockItem: (details) => {
-            let item = stockItems.find(i => i.name.toLowerCase() === details.name.toLowerCase() && i.category.toLowerCase() === details.category.toLowerCase());
+            const outletId = selectedDataOutletId;
+            let item = stockItemsRef.current.find(i => i.name.toLowerCase() === details.name.toLowerCase() && i.category.toLowerCase() === details.category.toLowerCase());
             if (item) return item;
             const newItem: StockItem = { id: `si-${Date.now()}`, quantity: 0, ...details };
-            setStockItems(prev => [...prev, newItem]);
+            const nextStock = [...stockItemsRef.current, newItem];
+            stockItemsRef.current = nextStock;
+            setStockItems(nextStock);
+            if (outletId) {
+                markOutletAppDataMutated('stockItems', outletId);
+                persistOutletCollectionImmediately('stockItems', outletId, nextStock);
+            }
             return newItem;
         },
 
         stockEntries,
         addStockEntry: (entryData) => {
+            const outletId = selectedDataOutletId;
             const newEntry = { ...entryData, id: `se-${Date.now()}`, date: new Date().toISOString() };
-            setStockEntries(prev => [...prev, newEntry]);
+            const nextEntries = [...stockEntries, newEntry];
+            setStockEntries(nextEntries);
+            let updatedStock = [...stockItemsRef.current];
             newEntry.items.forEach(item => {
-                setStockItems(prev => prev.map(si => si.id === item.stockItemId ? { ...si, quantity: si.quantity + item.quantityAdded, costPerUnit: item.costPerUnit || si.costPerUnit } : si));
+                updatedStock = updatedStock.map(si =>
+                    si.id === item.stockItemId
+                        ? { ...si, quantity: si.quantity + item.quantityAdded, costPerUnit: item.costPerUnit || si.costPerUnit }
+                        : si
+                );
             });
+            stockItemsRef.current = updatedStock;
+            setStockItems(updatedStock);
+            if (outletId) {
+                markOutletAppDataMutated('stockEntries', outletId);
+                persistOutletCollectionImmediately('stockEntries', outletId, nextEntries);
+                markOutletAppDataMutated('stockItems', outletId);
+                persistOutletCollectionImmediately('stockItems', outletId, updatedStock);
+            }
             return newEntry;
         },
 
         stockAdjustments,
         addStockAdjustment: (adjustmentData) => {
+            const outletId = selectedDataOutletId;
             const newAdjustment = { ...adjustmentData, id: `sa-${Date.now()}`, date: new Date().toISOString() };
-            setStockAdjustments(prev => [...prev, newAdjustment]);
+            const nextAdjustments = [...stockAdjustments, newAdjustment];
+            setStockAdjustments(nextAdjustments);
+            let updatedStock = [...stockItemsRef.current];
             newAdjustment.items.forEach(item => {
-                setStockItems(prev => prev.map(si => {
+                updatedStock = updatedStock.map(si => {
                     if (si.id === item.stockItemId) {
                         let newQuantity = si.quantity;
                         if (item.adjustmentType === 'Increase') newQuantity += item.quantity;
@@ -2908,18 +3137,51 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                         return { ...si, quantity: Math.max(0, newQuantity) };
                     }
                     return si;
-                }));
+                });
             });
+            stockItemsRef.current = updatedStock;
+            setStockItems(updatedStock);
+            if (outletId) {
+                markOutletAppDataMutated('stockAdjustments', outletId);
+                persistOutletCollectionImmediately('stockAdjustments', outletId, nextAdjustments);
+                markOutletAppDataMutated('stockItems', outletId);
+                persistOutletCollectionImmediately('stockItems', outletId, updatedStock);
+            }
         },
 
         suppliers,
         addSupplier: (supplierData) => {
-            const newSupplier = { ...supplierData, id: `sup-${Date.now()}` };
-            setSuppliers(prev => [...prev, newSupplier]);
+            const outletId = selectedDataOutletId || 'unknown';
+            const newSupplier = { ...supplierData, id: `sup-${Date.now()}`, outletId };
+            const nextSuppliers = [...suppliersRef.current, newSupplier];
+            suppliersRef.current = nextSuppliers;
+            setSuppliers(nextSuppliers);
+            if (outletId) {
+                markOutletAppDataMutated('suppliers', outletId);
+                persistOutletCollectionImmediately('suppliers', outletId, nextSuppliers);
+            }
             return newSupplier;
         },
-        updateSupplier: (supplier) => setSuppliers(prev => prev.map(s => s.id === supplier.id ? supplier : s)),
-        deleteSupplier: (supplierId) => setSuppliers(prev => prev.filter(s => s.id !== supplierId)),
+        updateSupplier: (supplier) => {
+            const outletId = selectedDataOutletId || 'unknown';
+            const nextSuppliers = suppliersRef.current.map(s => s.id === supplier.id ? supplier : s);
+            suppliersRef.current = nextSuppliers;
+            setSuppliers(nextSuppliers);
+            if (outletId) {
+                markOutletAppDataMutated('suppliers', outletId);
+                persistOutletCollectionImmediately('suppliers', outletId, nextSuppliers);
+            }
+        },
+        deleteSupplier: (supplierId) => {
+            const outletId = selectedDataOutletId || 'unknown';
+            const nextSuppliers = suppliersRef.current.filter(s => s.id !== supplierId);
+            suppliersRef.current = nextSuppliers;
+            setSuppliers(nextSuppliers);
+            if (outletId) {
+                markOutletAppDataMutated('suppliers', outletId);
+                persistOutletCollectionImmediately('suppliers', outletId, nextSuppliers);
+            }
+        },
 
         customers,
         customerPayments,
@@ -3108,6 +3370,36 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                         dob: updatedCustomer?.dob ? String(updatedCustomer.dob).slice(0, 10) : undefined,
                     };
                     setCustomers(prev => prev.map(c => c.id === customerId ? normalized : c));
+                }
+
+                // Also create PaymentHistory records in the backend for outstanding invoices
+                try {
+                    const invoicesRes = await fetch(`${API_BASE_URL}/invoices?customerId=${customerId}`, {
+                        headers: { Authorization: `Bearer ${token}` },
+                    });
+                    if (invoicesRes.ok) {
+                        const invoices = await invoicesRes.json().catch(() => []);
+                        if (Array.isArray(invoices)) {
+                            let remainingPayment = amountReceived;
+                            for (const invoice of invoices) {
+                                if (remainingPayment <= 0) break;
+                                if (invoice.paymentStatus !== 'PAID' && invoice.dueAmount > 0) {
+                                    const payAmount = Math.min(remainingPayment, invoice.dueAmount);
+                                    await fetch(`${API_BASE_URL}/invoices/${invoice.id}/payments`, {
+                                        method: 'POST',
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                            Authorization: `Bearer ${token}`,
+                                        },
+                                        body: JSON.stringify({ amount: payAmount, method: paymentMethod }),
+                                    }).catch(() => {});
+                                    remainingPayment -= payAmount;
+                                }
+                            }
+                        }
+                    }
+                } catch (invErr) {
+                    console.error('Failed to update invoice payments:', invErr);
                 }
             } catch (err) {
                 console.error("Failed to update customer payment:", err);
@@ -3537,6 +3829,15 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             if (outletId) {
                 markOutletAppDataMutated('employees', outletId);
                 persistOutletCollectionImmediately('employees', outletId, nextEmployees);
+            }
+            // Propagate name change to historical orders if this is a waiter
+            if (employee.isWaiter && employee.waiterId) {
+                setSales(prev => prev.map(sale => {
+                    if (sale.waiterId === employee.waiterId) {
+                        return { ...sale, waiterName: employee.name };
+                    }
+                    return sale;
+                }));
             }
         },
         deleteEmployee: (employeeId) => {
@@ -4004,6 +4305,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                         outletIds,
                         isActive: userData.isActive,
                         isSuperAdmin: Boolean((userData as any).isSuperAdmin),
+                        employeeId: (userData as any).employeeId || null,
                     }),
                 });
 
@@ -4030,6 +4332,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                     tenantId: created.tenantId ? String(created.tenantId) : '',
                     isActive: Boolean(created.isActive),
                     isSuperAdmin: Boolean(created.isSuperAdmin),
+                    employeeId: created.employeeId ? String(created.employeeId) : undefined,
                 };
                 setUsers(prev => [...prev, normalized]);
                 return { success: true };
@@ -4053,6 +4356,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                     outletIds,
                     isActive: userToUpdate.isActive,
                     isSuperAdmin: Boolean(userToUpdate.isSuperAdmin),
+                    employeeId: userToUpdate.employeeId || null,
                 };
 
                 if (userToUpdate.passwordHash && userToUpdate.passwordHash.length >= 6) {
@@ -4091,6 +4395,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                     tenantId: updated.tenantId ? String(updated.tenantId) : '',
                     isActive: Boolean(updated.isActive),
                     isSuperAdmin: Boolean(updated.isSuperAdmin),
+                    employeeId: updated.employeeId ? String(updated.employeeId) : undefined,
                 };
 
                 setUsers(prev => prev.map(u => (u.id === userToUpdate.id ? normalized : u)));
@@ -4276,28 +4581,69 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             globalAppDataReadyRef.current.saasSettings = true;
         },
         addonGroups,
-        addAddonGroup: (group) => setAddonGroups(prev => [...prev, { ...group, id: `ag-${Date.now()}` }]),
-        updateAddonGroup: (group) => setAddonGroups(prev => prev.map(g => g.id === group.id ? group : g)),
-        deleteAddonGroup: (id) => setAddonGroups(prev => prev.filter(g => g.id !== id)),
+        addAddonGroup: (group) => {
+            const outletId = selectedDataOutletId;
+            const nextGroups = [...addonGroups, { ...group, id: `ag-${Date.now()}` }];
+            setAddonGroups(nextGroups);
+            if (outletId) {
+                markOutletAppDataMutated('addonGroups', outletId);
+                persistOutletCollectionImmediately('addonGroups', outletId, nextGroups);
+            }
+        },
+        updateAddonGroup: (group) => {
+            const outletId = selectedDataOutletId;
+            const nextGroups = addonGroups.map(g => g.id === group.id ? group : g);
+            setAddonGroups(nextGroups);
+            if (outletId) {
+                markOutletAppDataMutated('addonGroups', outletId);
+                persistOutletCollectionImmediately('addonGroups', outletId, nextGroups);
+            }
+        },
+        deleteAddonGroup: (id) => {
+            const outletId = selectedDataOutletId;
+            const nextGroups = addonGroups.filter(g => g.id !== id);
+            setAddonGroups(nextGroups);
+            if (outletId) {
+                markOutletAppDataMutated('addonGroups', outletId);
+                persistOutletCollectionImmediately('addonGroups', outletId, nextGroups);
+            }
+        },
 
         // Recipes & Ingredient Mapping
         recipes,
         addRecipe: (recipeData) => {
-            const outletId = resolveOutletDataId(recipeData.outletId);
+            const outletId = resolveOutletDataId(recipeData.outletId) || selectedDataOutletId;
             const newRecipe: Recipe = {
                 ...recipeData,
                 id: `recipe-${Date.now()}`,
                 outletId: outletId || recipeData.outletId,
             };
-            setRecipes(prev => [...prev, newRecipe]);
+            const nextRecipes = [...recipes, newRecipe];
+            setRecipes(nextRecipes);
+            if (outletId) {
+                markOutletAppDataMutated('recipes', outletId);
+                persistOutletCollectionImmediately('recipes', outletId, nextRecipes);
+            }
             return newRecipe;
         },
         updateRecipe: (recipe) => {
-            const outletId = resolveOutletDataId(recipe.outletId);
-            setRecipes(prev => prev.map(r => r.id === recipe.id ? { ...recipe, outletId: outletId || recipe.outletId } : r));
+            const outletId = resolveOutletDataId(recipe.outletId) || selectedDataOutletId;
+            const nextRecipes = recipes.map(r => r.id === recipe.id ? { ...recipe, outletId: outletId || recipe.outletId } : r);
+            setRecipes(nextRecipes);
+            if (outletId) {
+                markOutletAppDataMutated('recipes', outletId);
+                persistOutletCollectionImmediately('recipes', outletId, nextRecipes);
+            }
         },
         deleteRecipe: (recipeId) => {
-            setRecipes(prev => prev.filter(r => r.id !== recipeId));
+            const recipe = recipes.find(r => r.id === recipeId);
+            const outletId = recipe ? (resolveOutletDataId(recipe.outletId) || selectedDataOutletId) : selectedDataOutletId;
+            const nextRecipes = recipes.filter(r => r.id !== recipeId);
+            setRecipes(nextRecipes);
+            if (outletId) {
+                markOutletAppDataMutated('recipes', outletId);
+                persistOutletCollectionImmediately('recipes', outletId, nextRecipes);
+            }
         },
 
         checkStockAvailability: (menuItemId, orderQuantity = 1) => {

@@ -275,6 +275,7 @@ const SalesHistoryPage: React.FC = () => {
 
       <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title="Edit Sale" size="lg">
         <EditSaleModal
+          key={selectedSaleForEdit?.id || 'edit-modal'}
           isOpen={isEditModalOpen}
           onClose={() => setIsEditModalOpen(false)}
           sale={selectedSaleForEdit}

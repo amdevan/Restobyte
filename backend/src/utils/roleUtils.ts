@@ -1,5 +1,6 @@
 import prisma from '../db/prisma.js';
 import type { AuthRequest } from '../middleware/authMiddleware.js';
+import type { Request, Response, NextFunction } from 'express';
 
 export const PERMISSIONS = [
   // Dashboard
@@ -112,11 +113,24 @@ export const isAdminLike = (user: AuthRequest['user'] | undefined) => {
   return user.isSuperAdmin || user.roleId === 'role-admin' || user.roleId === 'role-superadmin';
 };
 
-export const hasPermission = (user: AuthRequest['user'] | undefined, permission: Permission) => {
+export const hasPermission = async (user: AuthRequest['user'] | undefined, permission: Permission) => {
   if (!user) return false;
   if (user.isSuperAdmin || user.roleId === 'role-admin' || user.roleId === 'role-superadmin') return true;
-  // We'll fetch user's role permissions from the role
-  return true; // Placeholder for now
+  const roleId: string = user.roleId ?? '';
+  if (!roleId) return false;
+
+  const role = await prisma.role.findUnique({ where: { id: roleId } });
+  if (!role) return false;
+
+  const perms = (role.permissions as string[]) || [];
+  if (perms.includes('*')) return true;
+  if (perms.includes(permission)) return true;
+
+  // Check resource-level permission (e.g. 'pos.view' matches resource 'pos')
+  const resource = permission.split('.')[0] ?? '';
+  if (perms.includes(resource)) return true;
+
+  return false;
 };
 
 export const resolveTenantIdForActor = async (
@@ -167,4 +181,21 @@ export const ensureSystemRoles = async () => {
       },
     });
   }
+};
+
+/** Middleware factory: rejects with 403 if the authenticated user lacks the given permission. */
+export const requirePermission = (permission: Permission) => {
+  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    const user = (req as AuthRequest).user;
+    if (!user) {
+      res.status(401).json({ message: 'Unauthorized' });
+      return;
+    }
+    const allowed = await hasPermission(user, permission);
+    if (!allowed) {
+      res.status(403).json({ message: 'Insufficient permissions', required: permission });
+      return;
+    }
+    next();
+  };
 };

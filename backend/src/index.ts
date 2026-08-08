@@ -29,8 +29,11 @@ import appDataRoutes from './routes/appDataRoutes.js';
 import invoiceRoutes from './routes/invoiceRoutes.js';
 import printerRoutes from './routes/printerRoutes.js';
 import printAgentRoutes from './routes/printAgentRoutes.js';
+import backupRoutes from './routes/backupRoutes.js';
+import googleDriveRoutes from './routes/googleDriveRoutes.js';
 import { DEFAULT_PLAN_DEFINITIONS } from './utils/planConfig.js';
 import { ensureSystemRoles } from './utils/roleUtils.js';
+import { startScheduler } from './services/autoBackupService.js';
 import { backfillMissingInvoices } from './services/invoiceService.js';
 import { createPrintAgentWebSocketServer, closePrintAgentWebSocketServer } from './services/printAgentService.js';
 
@@ -40,6 +43,21 @@ const app = express();
 const port = Number(process.env.PORT || 3000);
 const host = process.env.HOST || '0.0.0.0';
 
+// Request logging middleware
+app.use((req: Request, _res: Response, next: NextFunction) => {
+  if (req.method !== 'OPTIONS') {
+    const start = Date.now();
+    _res.on('finish', () => {
+      const duration = Date.now() - start;
+      if (duration > 1000 || _res.statusCode >= 400) {
+        console.warn(`[server] ${req.method} ${req.originalUrl} ${_res.statusCode} ${duration}ms`);
+      }
+    });
+  }
+  next();
+});
+
+// CORS and body parsing
 app.use(cors());
 app.use(express.json());
 
@@ -76,6 +94,8 @@ app.use('/api/app-data', appDataRoutes);
 app.use('/api/invoices', invoiceRoutes);
 app.use('/api/printers', printerRoutes);
 app.use('/api/print-agent', printAgentRoutes);
+app.use('/api/backups', backupRoutes);
+app.use('/api/google-drive', googleDriveRoutes);
 
 // Global error handler — catches any unhandled errors from route handlers
 app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
@@ -121,6 +141,13 @@ async function start() {
     console.log('[bootstrap]: Ensured system roles');
   } catch (error) {
     console.error('[bootstrap]: Failed to ensure system roles', error);
+  }
+
+  // Start auto-backup scheduler
+  try {
+    startScheduler();
+  } catch (error) {
+    console.error('[bootstrap]: Failed to start auto-backup scheduler', error);
   }
 
   const shouldSeedDemoUsers = process.env.SEED_DEMO_USERS === 'true';

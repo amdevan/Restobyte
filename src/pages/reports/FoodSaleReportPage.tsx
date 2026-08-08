@@ -53,7 +53,23 @@ const FoodSaleReportPage: React.FC = () => {
     const data: Record<string, ItemSaleData> = {};
 
     filteredSales.forEach(sale => {
+      // Calculate returned quantities for this sale
+      const returnedQuantities: Record<string, number> = {};
+      if (sale.returns && sale.returns.length > 0) {
+        sale.returns.forEach(ret => {
+          if (ret.items) {
+            ret.items.forEach(retItem => {
+              returnedQuantities[retItem.id] = (returnedQuantities[retItem.id] || 0) + retItem.quantity;
+            });
+          }
+        });
+      }
+
       sale.items.forEach(saleItem => {
+        const returnedQty = returnedQuantities[saleItem.id] || 0;
+        const netQuantity = Math.max(0, saleItem.quantity - returnedQty);
+        if (netQuantity <= 0) return; // Skip fully returned items
+
         if (!data[saleItem.id]) {
           const menuItem = menuItems.find(mi => mi.id === saleItem.id);
           const rawCategory = menuItem?.category;
@@ -70,21 +86,21 @@ const FoodSaleReportPage: React.FC = () => {
               variants: []
           };
         }
-        data[saleItem.id].quantitySold += saleItem.quantity;
-        data[saleItem.id].totalSales += saleItem.quantity * saleItem.price;
+        data[saleItem.id].quantitySold += netQuantity;
+        data[saleItem.id].totalSales += netQuantity * saleItem.price;
 
         // Parse variant from item name (format: "Item Name (Variant)")
         const match = saleItem.name.match(VARIANT_REGEX);
         const variantName = match ? match[2] : 'Default';
         const existingVariant = data[saleItem.id].variants.find(v => v.name === variantName);
         if (existingVariant) {
-          existingVariant.quantitySold += saleItem.quantity;
-          existingVariant.totalSales += saleItem.quantity * saleItem.price;
+          existingVariant.quantitySold += netQuantity;
+          existingVariant.totalSales += netQuantity * saleItem.price;
         } else {
           data[saleItem.id].variants.push({
             name: variantName,
-            quantitySold: saleItem.quantity,
-            totalSales: saleItem.quantity * saleItem.price
+            quantitySold: netQuantity,
+            totalSales: netQuantity * saleItem.price
           });
         }
       });

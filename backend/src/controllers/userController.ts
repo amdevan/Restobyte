@@ -15,6 +15,7 @@ async function ensureOutletBelongsToTenant(outletId: string, tenantId: string) {
 }
 
 export const getUsers = async (req: Request, res: Response) => {
+  try {
   const auth = req as AuthRequest;
   const user = auth.user;
   if (!user) {
@@ -79,12 +80,17 @@ export const getUsers = async (req: Request, res: Response) => {
       tenantId: true,
       isActive: true,
       isSuperAdmin: true,
+      employeeId: true,
       createdAt: true,
       updatedAt: true,
     } as any),
     orderBy: { createdAt: 'asc' },
   } as any);
   res.json(users);
+  } catch (err) {
+    console.error('getUsers error:', err);
+    res.status(500).json({ message: 'Failed to fetch users' });
+  }
 };
 
 export const createUser = async (req: Request, res: Response) => {
@@ -95,7 +101,7 @@ export const createUser = async (req: Request, res: Response) => {
     return;
   }
 
-  const { username, email, phone, password, roleId, outletId, outletIds, isActive, isSuperAdmin, tenantId: bodyTenantId } = req.body || {};
+  const { username, email, phone, password, roleId, outletId, outletIds, isActive, isSuperAdmin, tenantId: bodyTenantId, employeeId } = req.body || {};
   const trimmedUsername = typeof username === 'string' ? username.trim() : '';
   const rawPassword = typeof password === 'string' ? password : '';
   const requestedOutletIds: string[] = Array.isArray(outletIds)
@@ -173,6 +179,7 @@ export const createUser = async (req: Request, res: Response) => {
       tenantId,
       isActive: typeof isActive === 'boolean' ? isActive : true,
       isSuperAdmin: user?.isSuperAdmin ? Boolean(isSuperAdmin) : false,
+      employeeId: typeof employeeId === 'string' ? employeeId : null,
     },
     select: {
       id: true,
@@ -185,6 +192,7 @@ export const createUser = async (req: Request, res: Response) => {
       tenantId: true,
       isActive: true,
       isSuperAdmin: true,
+      employeeId: true,
       createdAt: true,
       updatedAt: true,
     },
@@ -215,7 +223,7 @@ export const updateUser = async (req: Request, res: Response) => {
     }
   }
 
-  const { username, email, phone, password, roleId, outletId, outletIds, isActive, isSuperAdmin } = req.body || {};
+  const { username, email, phone, password, roleId, outletId, outletIds, isActive, isSuperAdmin, employeeId } = req.body || {};
   const nextUsername = typeof username === 'string' ? username.trim() : undefined;
   const nextOutletId = typeof outletId === 'string' ? outletId : undefined;
   const nextOutletIds: string[] | undefined = Array.isArray(outletIds)
@@ -278,6 +286,7 @@ export const updateUser = async (req: Request, res: Response) => {
     ...(nextOutletId ? { outletId: nextOutletId } : {}),
     ...(nextOutletIds ? { outletIds: nextOutletIds, outletId: (nextOutletIds[0] || nextOutletId || existing.outletId) } : {}),
     ...(actor?.isSuperAdmin ? { isSuperAdmin: Boolean(isSuperAdmin) } : {}),
+    ...(employeeId !== undefined ? { employeeId: typeof employeeId === 'string' ? employeeId : null } : {}),
   };
 
   if (typeof password === 'string' && password.length > 0) {
@@ -303,6 +312,7 @@ export const updateUser = async (req: Request, res: Response) => {
       tenantId: true,
       isActive: true,
       isSuperAdmin: true,
+      employeeId: true,
       createdAt: true,
       updatedAt: true,
     },

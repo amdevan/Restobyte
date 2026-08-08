@@ -91,6 +91,7 @@ const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({ isOpen,
       quantity: 1,
       isVeg: item.isVegetarian,
       notes: addonNotes,
+      variationName: item.variations.length > 1 ? selectedVariation.name : undefined,
     };
 
     onSave(configuredItem);

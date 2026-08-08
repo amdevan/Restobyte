@@ -11,6 +11,7 @@ interface StockAdjustmentLine {
   quantity: string;
   reasonForItem?: string;
   showDropdown: boolean;
+  searchQuery: string;
 }
 
 const ADJUSTMENT_TYPES: { value: StockAdjustmentType; label: string; icon: React.ReactNode; color: string }[] = [
@@ -62,6 +63,7 @@ const StockAdjustmentsPage: React.FC = () => {
         quantity: '',
         reasonForItem: '',
         showDropdown: false,
+        searchQuery: '',
       },
     ]);
   };
@@ -298,33 +300,63 @@ const StockAdjustmentsPage: React.FC = () => {
                         </div>
 
                         {line.showDropdown && (
-                          <div className="absolute z-30 left-0 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-48 overflow-y-auto">
-                            {stockItems.map(item => {
-                              const lv = getStockLevel(item);
-                              return (
-                                <div
-                                  key={item.id}
-                                  className={`px-3 py-2.5 cursor-pointer hover:bg-sky-50 flex items-center justify-between border-b border-gray-50 last:border-0 transition-colors ${
-                                    line.stockItemId === item.id ? 'bg-sky-50' : ''
-                                  }`}
-                                  onMouseDown={(e) => {
-                                    e.preventDefault();
-                                    selectStockItem(line.id, item);
-                                  }}
-                                >
-                                  <div className="flex items-center gap-2 min-w-0">
-                                    <FiSearch className="w-3.5 h-3.5 text-sky-600 flex-shrink-0" />
-                                    <span className="text-sm font-medium text-gray-900 truncate">{item.name}</span>
-                                    <span className="text-xs text-gray-400 hidden sm:inline">({item.category})</span>
-                                  </div>
-                                  <div className="flex items-center gap-2 flex-shrink-0">
-                                    <span className={`text-xs font-semibold px-1.5 py-0.5 rounded border ${lv.color}`}>
-                                      {item.quantity} {item.unit}
-                                    </span>
-                                  </div>
+                          <div className="absolute z-30 left-0 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl">
+                            {/* Search input inside dropdown */}
+                            <div className="sticky top-0 bg-white border-b border-gray-100 p-2 rounded-t-xl">
+                              <div className="relative">
+                                <FiSearch className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                                <input
+                                  type="text"
+                                  placeholder="Search stock items..."
+                                  value={line.searchQuery || ''}
+                                  onChange={(e) => handleLineChange(line.id, 'searchQuery', e.target.value)}
+                                  className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none"
+                                  autoFocus
+                                />
+                              </div>
+                            </div>
+                            <div className="max-h-48 overflow-y-auto">
+                              {stockItems
+                                .filter(item => {
+                                  const q = (line.searchQuery || '').toLowerCase();
+                                  if (!q) return true;
+                                  return item.name.toLowerCase().includes(q) || item.category.toLowerCase().includes(q);
+                                })
+                                .map(item => {
+                                  const lv = getStockLevel(item);
+                                  return (
+                                    <div
+                                      key={item.id}
+                                      className={`px-3 py-2.5 cursor-pointer hover:bg-sky-50 flex items-center justify-between border-b border-gray-50 last:border-0 transition-colors ${
+                                        line.stockItemId === item.id ? 'bg-sky-50' : ''
+                                      }`}
+                                      onMouseDown={(e) => {
+                                        e.preventDefault();
+                                        selectStockItem(line.id, item);
+                                      }}
+                                    >
+                                      <div className="flex items-center gap-2 min-w-0">
+                                        <span className="text-sm font-medium text-gray-900 truncate">{item.name}</span>
+                                        <span className="text-xs text-gray-400 hidden sm:inline">({item.category})</span>
+                                      </div>
+                                      <div className="flex items-center gap-2 flex-shrink-0">
+                                        <span className={`text-xs font-semibold px-1.5 py-0.5 rounded border ${lv.color}`}>
+                                          {item.quantity} {item.unit}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              {stockItems.filter(item => {
+                                const q = (line.searchQuery || '').toLowerCase();
+                                if (!q) return true;
+                                return item.name.toLowerCase().includes(q) || item.category.toLowerCase().includes(q);
+                              }).length === 0 && (
+                                <div className="px-3 py-4 text-center text-sm text-gray-400">
+                                  No items match "{line.searchQuery}"
                                 </div>
-                              );
-                            })}
+                              )}
+                            </div>
                           </div>
                         )}
                       </div>

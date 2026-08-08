@@ -24,16 +24,21 @@ import { StockItem, SalesTrendDataPoint, Sale, Purchase, Expense } from '../type
 import DashboardStatCard from '@/components/dashboard/DashboardStatCard';
 import SalesTrendChart from '@/components/dashboard/SalesTrendChart';
 import RecentActivityCard from '@/components/dashboard/RecentActivityCard';
+import OrderTypeDistributionChart from '@/components/dashboard/OrderTypeDistributionChart';
+import PaymentMethodDistributionChart from '@/components/dashboard/PaymentMethodDistributionChart';
+import TopItemsList from '@/components/dashboard/TopItemsList';
 import OutletSelector from '@/components/common/OutletSelector';
 
 const getDateString = (date: Date): string => date.toISOString().split('T')[0];
 
 const DashboardPage: React.FC = () => {
-  const { sales, stockItems, purchases, expenses, activeOutletIds, customers, currencies, applicationSettings } = useRestaurantData();
+  const { sales, stockItems, purchases, expenses, activeOutletIds, customers, currencies, applicationSettings, refreshData } = useRestaurantData();
   const navigate = useNavigate();
   const [dailySpecial, setDailySpecial] = useState<{ name: string; description: string } | null>(null);
   const [isLoadingSpecial, setIsLoadingSpecial] = useState(true);
   const [specialError, setSpecialError] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastRefreshTime, setLastRefreshTime] = useState<Date | null>(null);
 
   const [activeFilter, setActiveFilter] = useState<'today' | '7d' | '30d' | 'custom'>('today');
   const [startDate, setStartDate] = useState(getDateString(new Date()));
@@ -52,6 +57,25 @@ const DashboardPage: React.FC = () => {
         document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
+
+  // Auto-refresh: poll every 30 seconds to pick up changes from other sessions/tabs
+  useEffect(() => {
+    const interval = setInterval(() => {
+      refreshData().then(() => setLastRefreshTime(new Date()));
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [refreshData]);
+
+  // Manual refresh handler
+  const handleManualRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await refreshData();
+      setLastRefreshTime(new Date());
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   const fetchSpecial = async () => {
     setIsLoadingSpecial(true);
@@ -166,6 +190,7 @@ const DashboardPage: React.FC = () => {
       });
       
       const totalIncome = totalSalesAmount;
+      const netProfit = totalSalesAmount - totalPurchases - totalExpensesAmount;
 
       return { 
           totalSales: totalSalesAmount, 
@@ -178,6 +203,7 @@ const DashboardPage: React.FC = () => {
           totalIncome,
           cashInHand,
           cashAtBank,
+          netProfit,
       };
   }, [filteredSales, filteredPurchases, filteredExpenses, customers]);
 
@@ -366,8 +392,24 @@ const DashboardPage: React.FC = () => {
               <span className="hidden sm:inline-flex items-center rounded-full border border-gray-200/70 bg-white/70 px-2.5 py-1 text-[11px] font-semibold text-gray-600">
                 {periodLabel}
               </span>
+              <button
+                type="button"
+                onClick={handleManualRefresh}
+                disabled={isRefreshing}
+                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors disabled:opacity-50"
+                title="Refresh data"
+              >
+                <FiRefreshCw size={16} className={isRefreshing ? 'animate-spin' : ''} />
+              </button>
             </div>
-            <div className="text-sm text-gray-500 mt-1">Overview of your business performance</div>
+            <div className="text-sm text-gray-500 mt-1">
+              Overview of your business performance
+              {lastRefreshTime && (
+                <span className="ml-2 text-[11px] text-gray-400">
+                  Updated {lastRefreshTime.toLocaleTimeString()}
+                </span>
+              )}
+            </div>
             <div className="mt-3 max-w-[380px]">
               <OutletSelector />
             </div>
@@ -473,6 +515,16 @@ const DashboardPage: React.FC = () => {
               sparklinePoints={series.income}
               sparklineColor="#2563eb"
               iconBgClass="bg-gradient-to-br from-blue-500 to-sky-400"
+              iconColorClass="text-white"
+            />
+            <DashboardStatCard
+              title="Net Profit"
+              subtitle={periodLabel}
+              value={formatAmount(keyMetrics.netProfit)}
+              icon={<FiZap />}
+              path="/app/report"
+              sparklineColor="#10b981"
+              iconBgClass="bg-gradient-to-br from-emerald-500 to-teal-400"
               iconColorClass="text-white"
             />
             <DashboardStatCard
@@ -588,7 +640,7 @@ const DashboardPage: React.FC = () => {
           >
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_240px] gap-4 items-stretch">
               <div className="min-w-0">
-                <SalesTrendChart data={salesTrendData} color="#2563eb" />
+                <SalesTrendChart data={salesTrendData} color="#2563eb" formatValue={(v) => formatAmount(v)} />
               </div>
               <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 flex flex-col justify-between">
                 <div className="space-y-4">
@@ -640,6 +692,30 @@ const DashboardPage: React.FC = () => {
               </div>
             </div>
           </Card>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            <Card
+              title="Order Types"
+              icon={<FiShoppingCart className="text-blue-600" />}
+              className="!shadow-sm border border-gray-200/70 rounded-2xl"
+            >
+              <OrderTypeDistributionChart sales={filteredSales} />
+            </Card>
+            <Card
+              title="Payment Methods"
+              icon={<FiCreditCard className="text-emerald-600" />}
+              className="!shadow-sm border border-gray-200/70 rounded-2xl"
+            >
+              <PaymentMethodDistributionChart sales={filteredSales} />
+            </Card>
+            <Card
+              title="Top Selling Items"
+              icon={<FiTrendingUp className="text-violet-600" />}
+              className="!shadow-sm border border-gray-200/70 rounded-2xl"
+            >
+              <TopItemsList sales={filteredSales} limit={5} />
+            </Card>
+          </div>
         </div>
 
         <div className="space-y-4 xl:sticky xl:top-6 self-start">

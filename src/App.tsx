@@ -8,6 +8,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation, Outlet, useNavigat
 
 import { RestaurantDataProvider, useRestaurantData } from './hooks/useRestaurantData';
 import { AuthProvider, useAuth } from './hooks/useAuth';
+import ErrorBoundary from './components/common/ErrorBoundary';
 import MobileProvider from './hooks/useMobileApp';
 import { isSaaSDomain } from '@/utils/domain';
 
@@ -21,6 +22,7 @@ import PublicHomePage from '@/pages/public/PublicHomePage';
 import PublicMenuPage from '@/pages/public/PublicMenuPage';
 import PublicAboutPage from '@/pages/public/PublicAboutPage';
 import PublicInvoicePage from '@/pages/public/PublicInvoicePage';
+const PublicQrMenuPage = React.lazy(() => import('./pages/public/PublicQrMenuPage'));
 const PublicContactPage = React.lazy(() => import('./pages/public/PublicContactPage'));
 const SaaSBlogsPage = React.lazy(() => import('./pages/public/SaaSBlogsPage'));
 const SaaSContactPage = React.lazy(() => import('./pages/public/SaaSContactPage'));
@@ -77,6 +79,7 @@ const ViewStockLevelsActualPage = React.lazy(() => import('./pages/stock/ViewSto
 const AddStockEntryActualPage = React.lazy(() => import('./pages/stock/AddStockEntryPage'));
 const StockAdjustmentsActualPage = React.lazy(() => import('./pages/stock/StockAdjustmentsPage'));
 const ManageSuppliersActualPage = React.lazy(() => import('./pages/stock/ManageSuppliersPage'));
+const SupplierProfilePage = React.lazy(() => import('./pages/stock/SupplierProfilePage'));
 const ManageAreasFloorsPage = React.lazy(() => import('./pages/settings/ManageAreasFloorsPage'));
 const ManageKitchensPage = React.lazy(() => import('./pages/settings/ManageKitchensPage'));
 const ManagePrintersPage = React.lazy(() => import('./pages/settings/ManagePrintersPage'));
@@ -129,6 +132,7 @@ const WaiterTipsReportPage = React.lazy(() => import('./pages/reports/WaiterTips
 const AuditLogReportPage = React.lazy(() => import('./pages/reports/AuditLogReportPage'));
 const AvailableLoyaltyPointReportPage = React.lazy(() => import('./pages/reports/AvailableLoyaltyPointReportPage'));
 const UsageLoyaltyPointReportPage = React.lazy(() => import('./pages/reports/UsageLoyaltyPointReportPage'));
+const BackupDashboardPage = React.lazy(() => import('./pages/BackupDashboardPage'));
 const ProductionReportPage = React.lazy(() => import('./pages/reports/ProductionReportPage'));
 const AttendanceReportPage = React.lazy(() => import('./pages/reports/AttendanceReportPage'));
 const SupplierDueReportPage = React.lazy(() => import('./pages/reports/SupplierDueReportPage'));
@@ -247,7 +251,7 @@ const RestaurantPanelRoutes = () => {
         if (requiredFeatureKey && !hasPlanFeature(requiredFeatureKey)) {
             return <FeatureDisabledPage type="feature" featureName={featureName} reason="This feature is not included in your current plan." />;
         }
-        return page;
+        return <ErrorBoundary fallbackTitle={`Error in ${featureName}`}>{page}</ErrorBoundary>;
     };
 
 
@@ -315,6 +319,7 @@ const RestaurantPanelRoutes = () => {
             <Route path="stock/add-entry" element={<OperationalPage page={<AddStockEntryActualPage />} featureName="Add Stock Entry" requiredFeatureKey="inventory" />} />
             <Route path="stock/adjustments" element={<OperationalPage page={<StockAdjustmentsActualPage />} featureName="Stock Adjustments" requiredFeatureKey="inventory" />} />
             <Route path="stock/suppliers" element={<OperationalPage page={<ManageSuppliersActualPage />} featureName="Manage Suppliers" requiredFeatureKey="inventory" />} />
+            <Route path="stock/suppliers/:supplierId" element={<OperationalPage page={<SupplierProfilePage />} featureName="Supplier Profile" requiredFeatureKey="inventory" />} />
             <Route path="stock/low-stock-report" element={<OperationalPage page={<LowStockReportActualPage />} featureName="Low Stock Report" requiredFeatureKey="inventory" />} />
             <Route path="stock/recipes" element={<OperationalPage page={<RecipeManagementPage />} featureName="Recipe Management" requiredFeatureKey="inventory" />} />
             <Route path="sale" element={<OperationalPage page={<SalesHistoryPage />} featureName="Sale History" requiredFeatureKey="customers" />} />
@@ -326,12 +331,13 @@ const RestaurantPanelRoutes = () => {
             <Route path="supplier-due-payment" element={<OperationalPage page={<ActualSupplierDuePaymentPage />} featureName="Supplier Due Payment" requiredFeatureKey="purchase" />} />
             <Route path="expense" element={<OperationalPage page={<FunctionalExpensePage />} featureName="Expense Management" requiredFeatureKey="purchase" />} />
             <Route path="waste" element={<FunctionalWastePage />} />
-            <Route path="account-user" element={<AccountAndUserPage />} />
-            <Route path="employees" element={<FunctionalEmployeesPage />} />
+            <Route path="backup" element={<BackupDashboardPage />} />
+            <Route path="account-user" element={<ProtectedRoute requiredPermissions={['users.view']}><AccountAndUserPage /></ProtectedRoute>} />
+            <Route path="employees" element={<ProtectedRoute requiredPermissions={['users.view']}><FunctionalEmployeesPage /></ProtectedRoute>} />
             <Route path="attendance" element={<FunctionalAttendancePage />} />
             <Route path="payroll" element={<FunctionalPayrollPage />} />
-            <Route path="report" element={<ReportDashboardPage />} />
-            <Route path="reports/register-report" element={<RegisterReportPage />} />
+            <Route path="report" element={<ProtectedRoute requiredPermissions={['reports.view']}><ReportDashboardPage /></ProtectedRoute>} />
+            <Route path="reports/register-report" element={<ProtectedRoute requiredPermissions={['reports.view']}><RegisterReportPage /></ProtectedRoute>} />
             <Route path="reports/z-report" element={<ZReportPage />} />
             <Route path="reports/kitchen-performance-report" element={<KitchenPerformanceReportPage />} />
             <Route path="reports/product-analysis-report" element={<ProductAnalysisReportPage />} />
@@ -467,7 +473,10 @@ const AppContent: React.FC = () => {
             
             {/* Public Invoice Route */}
             <Route path="/invoice/:id" element={<PublicInvoicePage />} />
-            
+
+            {/* Public QR Menu — no login required */}
+            <Route path="/qr-menu/:tableId" element={<React.Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="w-10 h-10 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" /></div>}><PublicQrMenuPage /></React.Suspense>} />
+
             {/* Customer Panel Routes */}
             <Route path="/customer" element={isAuthenticated && user?.roleId === 'role-customer' ? <CustomerLayout /> : <Navigate to="/public/login" replace />}>
                 <Route index element={<Navigate to="dashboard" replace />} />

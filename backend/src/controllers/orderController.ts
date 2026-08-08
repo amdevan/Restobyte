@@ -20,8 +20,8 @@ const canAccessOutlet = async (user: NonNullable<AuthRequest['user']>, outletId?
   return allowedOutletIds === null || allowedOutletIds.includes(String(outletId));
 };
 
-const normalizeOrderItems = (items: any[] = []) =>
-  items
+const normalizeOrderItems = (items: any[] = []) => {
+  const mapped = items
     .map((it) => ({
       menuItemId: typeof it?.menuItemId === 'string' && it.menuItemId.trim()
         ? it.menuItemId
@@ -30,8 +30,24 @@ const normalizeOrderItems = (items: any[] = []) =>
           : '',
       quantity: Number(it?.quantity || 0),
       unitPrice: Number(it?.unitPrice ?? it?.price ?? 0),
+      variationName: it?.variationName || null,
+      notes: it?.notes || it?.note || null,
     }))
     .filter((it) => it.menuItemId && it.quantity > 0);
+
+  // Merge items with the same menuItemId AND variationName by summing quantities
+  const merged = new Map<string, { menuItemId: string; quantity: number; unitPrice: number; variationName: string | null; notes: string | null }>();
+  for (const item of mapped) {
+    const key = `${item.menuItemId}__${item.variationName || ''}`;
+    const existing = merged.get(key);
+    if (existing) {
+      existing.quantity += item.quantity;
+    } else {
+      merged.set(key, { ...item });
+    }
+  }
+  return Array.from(merged.values());
+};
 
 const normalizeSaleData = (saleData: any, outletId: string, customerId?: string | null) => {
   if (!saleData || typeof saleData !== 'object') return null;

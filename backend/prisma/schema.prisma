@@ -207,6 +207,7 @@ model User {
   outletIds    Json?
   email        String?              @unique
   phone        String?              @unique
+  employeeId   String?              // Linked employee record
   customer     Customer?
   loginHistory TenantLoginHistory[]
   outlet       Outlet?              @relation(fields: [outletId], references: [id])
@@ -415,4 +416,19 @@ model Printer {
   updatedAt         DateTime @updatedAt
   autoPrintBOT      Boolean  @default(false)
   autoPrintDelivery Boolean  @default(false)
+}
+
+model BackupHistory {
+  id            String   @id @default(uuid())
+  filename      String
+  type          String   @default("full") // full, products, customers, inventory, sales, settings, employees, uploaded
+  label         String?
+  sizeBytes     Int      @default(0)
+  checksum      String?
+  encrypted     Boolean  @default(false)
+  status        String   @default("PENDING") // PENDING, SUCCESS, FAILED
+  errorMessage  String?
+  createdById   String?
+  outletId      String?
+  createdAt     DateTime @default(now())
 }

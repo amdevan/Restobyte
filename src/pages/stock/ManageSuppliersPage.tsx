@@ -1,15 +1,17 @@
 
 
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useRestaurantData } from '@/hooks/useRestaurantData';
 import { Supplier } from '@/types';
 import Button from '@/components/common/Button';
 import Card from '@/components/common/Card';
 import Modal from '@/components/common/Modal';
 import SupplierForm from '@/components/stock/SupplierForm';
-import { FiPlusCircle, FiEdit, FiTrash2, FiUsers, FiPhone, FiMail } from 'react-icons/fi';
+import { FiPlusCircle, FiEdit, FiTrash2, FiUsers, FiPhone, FiMail, FiEye } from 'react-icons/fi';
 
 const ManageSuppliersPage: React.FC = () => {
+  const navigate = useNavigate();
   const { suppliers, addSupplier, updateSupplier, deleteSupplier } = useRestaurantData();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
@@ -67,7 +69,9 @@ const ManageSuppliersPage: React.FC = () => {
             <tbody className="bg-white divide-y divide-gray-200">
               {suppliers.map(supplier => (
                 <tr key={supplier.id} className="hover:bg-sky-50 transition-all duration-200">
-                  <td className="py-3 px-4 text-sm font-medium text-gray-800">{supplier.name}</td>
+                  <td className="py-3 px-4 text-sm font-medium text-sky-600 hover:text-sky-800 cursor-pointer" onClick={() => navigate(`/app/stock/suppliers/${supplier.id}`)}>
+                    {supplier.name}
+                  </td>
                   <td className="py-3 px-4 text-sm text-gray-600">{supplier.contactPerson || '-'}</td>
                   <td className="py-3 px-4 text-sm text-gray-600">
                     {supplier.phone ? (<a href={`tel:${supplier.phone}`} className="hover:text-sky-600 flex items-center"><FiPhone size={12} className="mr-1.5"/>{supplier.phone}</a>) : '-'}
@@ -77,6 +81,9 @@ const ManageSuppliersPage: React.FC = () => {
                   </td>
                   <td className="py-3 px-4 text-sm">
                     <div className="flex space-x-2">
+                      <Button onClick={() => navigate(`/app/stock/suppliers/${supplier.id}`)} variant="primary" size="sm" aria-label="View Supplier">
+                        <FiEye />
+                      </Button>
                       <Button onClick={() => handleOpenModalForEdit(supplier)} variant="secondary" size="sm" aria-label="Edit Supplier">
                         <FiEdit />
                       </Button>

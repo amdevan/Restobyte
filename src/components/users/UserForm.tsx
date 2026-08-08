@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { User, Role, Outlet } from '../../types';
+import { User, Role, Outlet, Employee } from '../../types';
 import { useRestaurantData } from '../../hooks/useRestaurantData';
 import Input from '../common/Input';
 import Button from '../common/Button';
@@ -14,12 +14,13 @@ interface UserFormProps {
 }
 
 const UserForm: React.FC<UserFormProps> = ({ initialData, onSubmit, onUpdate, onClose }) => {
-  const { roles, outlets } = useRestaurantData();
+  const { roles, outlets, employees } = useRestaurantData();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [roleId, setRoleId] = useState('');
   const [outletIds, setOutletIds] = useState<string[]>([]);
+  const [employeeId, setEmployeeId] = useState('');
   const [isActive, setIsActive] = useState(true);
   const [passwordError, setPasswordError] = useState('');
   const [submitError, setSubmitError] = useState('');
@@ -34,6 +35,7 @@ const UserForm: React.FC<UserFormProps> = ({ initialData, onSubmit, onUpdate, on
         ? (initialData as any).outletIds.map((v: any) => String(v)).filter(Boolean)
         : (initialData.outletId ? [String(initialData.outletId)] : []);
       setOutletIds(initialOutletIds);
+      setEmployeeId(initialData.employeeId || '');
       setIsActive(initialData.isActive);
       // Password fields are intentionally left blank for editing
       setPassword('');
@@ -44,6 +46,7 @@ const UserForm: React.FC<UserFormProps> = ({ initialData, onSubmit, onUpdate, on
       setConfirmPassword('');
       setRoleId('');
       setOutletIds([]);
+      setEmployeeId('');
       setIsActive(true);
     }
     setPasswordError('');
@@ -89,6 +92,7 @@ const UserForm: React.FC<UserFormProps> = ({ initialData, onSubmit, onUpdate, on
         roleId,
         outletId: outletIds[0] || '',
         outletIds,
+        employeeId: employeeId || undefined,
         isActive,
     };
     
@@ -130,11 +134,20 @@ const UserForm: React.FC<UserFormProps> = ({ initialData, onSubmit, onUpdate, on
       {passwordError && <p className="text-xs text-red-600 -mt-2">{passwordError}</p>}
       {submitError && <p className="text-xs text-red-600 -mt-2">{submitError}</p>}
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Role *</label>
           <select value={roleId} onChange={(e) => setRoleId(e.target.value)} className="w-full p-2 border border-gray-300 rounded-md" required>
             {roles.map(role => <option key={role.id} value={role.id}>{role.name}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Employee (Optional)</label>
+          <select value={employeeId} onChange={(e) => setEmployeeId(e.target.value)} className="w-full p-2 border border-gray-300 rounded-md">
+            <option value="">-- No Employee --</option>
+            {employees.filter(e => e.isActive).map(emp => (
+              <option key={emp.id} value={emp.id}>{emp.name} ({emp.employeeId})</option>
+            ))}
           </select>
         </div>
         <div>

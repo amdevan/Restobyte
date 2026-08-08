@@ -87,6 +87,7 @@ export interface SaleItem {
   notes?: string; // For item-specific notes like "no onions"
   discountType?: 'fixed' | 'percentage'; // Per-item discount type
   discountValue?: number; // Per-item discount value
+  variationName?: string; // Selected variation name (e.g. "Large", "Small")
 }
 
 export interface Customer {
@@ -185,6 +186,7 @@ export interface Sale {
   splitDetails?: Split[]; // To store the details of how the bill was split
   kdsStatus?: 'new' | 'in-progress' | 'ready' | 'served' | 'on-hold'; // Status for Kitchen Display System
   kdsReadyTimestamp?: string; // ISO string for when order is marked 'ready'
+  returns?: SaleReturn[]; // Sales returns linked to this sale
 }
 
 export interface SaleReturnItem {
@@ -193,6 +195,7 @@ export interface SaleReturnItem {
   price: number;
   quantity: number; // Quantity being returned
   reason?: string;
+  variationName?: string;
 }
 
 export interface SaleReturn {
@@ -204,6 +207,7 @@ export interface SaleReturn {
   refundMethod?: string; // e.g., "Cash", "Card", "Original"
   refundDate: string; // ISO string
   outletId: string;
+  returnType?: 'stock_return' | 'waste'; // Stock Return or Waste Food
   createdAt?: string;
   updatedAt?: string;
 }
@@ -238,6 +242,7 @@ export interface Recipe {
   menuItemId: string;
   menuItemName: string;
   category: string;
+  variationName?: string; // Optional: specific variant (e.g. "Large", "Small") — empty means base recipe
   ingredients: RecipeIngredient[];
   yieldQuantity: number; // how many portions this recipe makes
   yieldUnit: string; // 'portions', 'plates', etc.
@@ -789,6 +794,7 @@ export interface User {
   tenantId?: string;
   isActive: boolean;
   isSuperAdmin?: boolean;
+  employeeId?: string; // Linked employee record
 }
 
 export interface DeliveryPartner {

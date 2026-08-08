@@ -112,6 +112,22 @@ async function start() {
     process.exit(1);
   }
 
+  // Auto-migrate: ensure missing columns exist in production database
+  const autoMigrations = [
+    'ALTER TABLE "Order" ADD COLUMN IF NOT EXISTS "tableNumber" TEXT',
+    'ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "employeeId" TEXT',
+    'ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "outletIds" JSONB',
+  ];
+  for (const sql of autoMigrations) {
+    try {
+      await prisma.$executeRawUnsafe(sql);
+    } catch (error: any) {
+      if (!error?.message?.includes('already exists')) {
+        console.warn(`[bootstrap]: Auto-migrate warning: ${error?.message}`);
+      }
+    }
+  }
+
   if (typeof process.env.RESET_SUPERADMIN_PASSWORD === 'string' && process.env.RESET_SUPERADMIN_PASSWORD.trim()) {
     const username = typeof process.env.RESET_SUPERADMIN_USERNAME === 'string' && process.env.RESET_SUPERADMIN_USERNAME.trim()
       ? process.env.RESET_SUPERADMIN_USERNAME.trim()

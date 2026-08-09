@@ -1164,6 +1164,60 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         }
     }, [isAuthenticated, logout]);
 
+    const createSupplierInApi = useCallback(async (outletId: string, supplier: Omit<Supplier, 'id'>): Promise<Supplier | null> => {
+        if (!isAuthenticated) return null;
+        const token = localStorage.getItem('authToken');
+        if (!token) return null;
+        try {
+            const res = await fetch(`${API_BASE_URL}/stock/suppliers`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ ...supplier, outletId }),
+            });
+            if (res.status === 401) { logout(); return null; }
+            if (!res.ok) return null;
+            return await res.json().catch(() => null);
+        } catch (err) {
+            console.error("Failed to create supplier:", err);
+            return null;
+        }
+    }, [isAuthenticated, logout]);
+
+    const updateSupplierInApi = useCallback(async (outletId: string, supplier: Supplier): Promise<boolean> => {
+        if (!isAuthenticated) return false;
+        const token = localStorage.getItem('authToken');
+        if (!token) return false;
+        try {
+            const res = await fetch(`${API_BASE_URL}/stock/suppliers/${supplier.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ ...supplier, outletId }),
+            });
+            if (res.status === 401) { logout(); return false; }
+            return res.ok;
+        } catch (err) {
+            console.error("Failed to update supplier:", err);
+            return false;
+        }
+    }, [isAuthenticated, logout]);
+
+    const deleteSupplierInApi = useCallback(async (supplierId: string): Promise<boolean> => {
+        if (!isAuthenticated) return false;
+        const token = localStorage.getItem('authToken');
+        if (!token) return false;
+        try {
+            const res = await fetch(`${API_BASE_URL}/stock/suppliers/${supplierId}`, {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (res.status === 401) { logout(); return false; }
+            return res.ok;
+        } catch (err) {
+            console.error("Failed to delete supplier:", err);
+            return false;
+        }
+    }, [isAuthenticated, logout]);
+
     const fetchRecipesFromApi = useCallback(async (outletId: string): Promise<Recipe[]> => {
         if (!isAuthenticated) return [];
         const token = localStorage.getItem('authToken');
@@ -3290,37 +3344,37 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         },
 
         suppliers,
-        addSupplier: (supplierData) => {
-            const outletId = selectedDataOutletId || 'unknown';
-            const newSupplier = { ...supplierData, id: `sup-${Date.now()}`, outletId };
-            const nextSuppliers = [...suppliersRef.current, newSupplier];
+        addSupplier: async (supplierData) => {
+            const outletId = selectedDataOutletId;
+            if (!outletId) return { ...supplierData, id: `sup-${Date.now()}` };
+            const created = await createSupplierInApi(outletId, supplierData);
+            if (created) {
+                const nextSuppliers = [...suppliersRef.current, created];
+                suppliersRef.current = nextSuppliers;
+                setSuppliers(nextSuppliers);
+                return created;
+            }
+            // Fallback: save locally if API fails
+            const local = { ...supplierData, id: `sup-${Date.now()}`, outletId };
+            const nextSuppliers = [...suppliersRef.current, local];
             suppliersRef.current = nextSuppliers;
             setSuppliers(nextSuppliers);
-            if (outletId) {
-                markOutletAppDataMutated('suppliers', outletId);
-                persistOutletCollectionImmediately('suppliers', outletId, nextSuppliers);
-            }
-            return newSupplier;
+            return local;
         },
-        updateSupplier: (supplier) => {
-            const outletId = selectedDataOutletId || 'unknown';
+        updateSupplier: async (supplier) => {
+            const outletId = selectedDataOutletId;
+            if (outletId) {
+                await updateSupplierInApi(outletId, supplier);
+            }
             const nextSuppliers = suppliersRef.current.map(s => s.id === supplier.id ? supplier : s);
             suppliersRef.current = nextSuppliers;
             setSuppliers(nextSuppliers);
-            if (outletId) {
-                markOutletAppDataMutated('suppliers', outletId);
-                persistOutletCollectionImmediately('suppliers', outletId, nextSuppliers);
-            }
         },
-        deleteSupplier: (supplierId) => {
-            const outletId = selectedDataOutletId || 'unknown';
+        deleteSupplier: async (supplierId) => {
+            await deleteSupplierInApi(supplierId);
             const nextSuppliers = suppliersRef.current.filter(s => s.id !== supplierId);
             suppliersRef.current = nextSuppliers;
             setSuppliers(nextSuppliers);
-            if (outletId) {
-                markOutletAppDataMutated('suppliers', outletId);
-                persistOutletCollectionImmediately('suppliers', outletId, nextSuppliers);
-            }
         },
 
         customers,

@@ -7,8 +7,8 @@ import { FiSave, FiXCircle } from 'react-icons/fi';
 
 interface SupplierFormProps {
   initialData?: Supplier | null;
-  onSubmit: (data: Omit<Supplier, 'id'>) => void;
-  onUpdate: (data: Supplier) => void;
+  onSubmit: (data: Omit<Supplier, 'id'>) => void | Promise<void>;
+  onUpdate: (data: Supplier) => void | Promise<void>;
   onClose: () => void;
 }
 

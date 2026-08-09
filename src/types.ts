@@ -1229,9 +1229,9 @@ export interface RestaurantDataContextType {
     autoDecreaseStockOnWaste: (wasteRecord: WasteRecord) => void;
 
     suppliers: Supplier[];
-    addSupplier: (supplierData: Omit<Supplier, 'id'>) => Supplier;
-    updateSupplier: (supplier: Supplier) => void;
-    deleteSupplier: (supplierId: string) => void;
+    addSupplier: (supplierData: Omit<Supplier, 'id'>) => Promise<Supplier>;
+    updateSupplier: (supplier: Supplier) => Promise<void>;
+    deleteSupplier: (supplierId: string) => Promise<void>;
 
     customers: Customer[];
     customerPayments: CustomerPayment[];

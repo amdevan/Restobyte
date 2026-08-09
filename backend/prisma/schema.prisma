@@ -509,15 +509,16 @@ model StockAdjustmentItem {
 }
 
 model Supplier {
-  id        String   @id @default(uuid())
-  outletId  String
-  name      String
-  phone     String?
-  email     String?
-  address   String?
-  notes     String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String   @id @default(uuid())
+  outletId      String
+  name          String
+  contactPerson String?
+  phone         String?
+  email         String?
+  address       String?
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   @@index([outletId])
 }

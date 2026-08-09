@@ -288,7 +288,7 @@ export const createSupplier = async (req: Request, res: Response) => {
   const user = (req as AuthRequest).user;
   if (!user) { res.status(403).json({ message: 'Unauthorized' }); return; }
 
-  const { outletId, name, phone, email, address, notes } = req.body;
+  const { outletId, name, contactPerson, phone, email, address, notes } = req.body;
   if (!outletId || !name) { res.status(400).json({ message: 'outletId and name are required' }); return; }
   if (!await validateOutletAccess(user, String(outletId))) { res.status(403).json({ message: 'Unauthorized' }); return; }
 
@@ -296,6 +296,7 @@ export const createSupplier = async (req: Request, res: Response) => {
     data: {
       outletId: String(outletId),
       name,
+      contactPerson: contactPerson || null,
       phone: phone || null,
       email: email || null,
       address: address || null,
@@ -314,11 +315,12 @@ export const updateSupplier = async (req: Request, res: Response) => {
   if (!existing) { res.status(404).json({ message: 'Supplier not found' }); return; }
   if (!await validateOutletAccess(user, existing.outletId)) { res.status(403).json({ message: 'Unauthorized' }); return; }
 
-  const { name, phone, email, address, notes } = req.body;
+  const { name, contactPerson, phone, email, address, notes } = req.body;
   const supplier = await prisma.supplier.update({
     where: { id },
     data: {
       ...(name !== undefined ? { name } : {}),
+      ...(contactPerson !== undefined ? { contactPerson } : {}),
       ...(phone !== undefined ? { phone } : {}),
       ...(email !== undefined ? { email } : {}),
       ...(address !== undefined ? { address } : {}),

@@ -167,10 +167,10 @@ const AddStockEntryPage: React.FC = () => {
     setShowSupplierDropdown(false);
   };
 
-  const handleAddNewSupplier = () => {
+  const handleAddNewSupplier = async () => {
     const name = supplierSearch.trim();
     if (!name) return;
-    const newSupplier = addSupplier({ name });
+    const newSupplier = await addSupplier({ name });
     setEntry(prev => ({
       ...prev,
       supplierName: newSupplier.name,

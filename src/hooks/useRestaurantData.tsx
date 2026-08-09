@@ -1400,7 +1400,6 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             } },
             { key: 'stockEntries', fallback: [] as StockEntry[], getValue: () => stockEntries, setValue: (value) => setStockEntries(value) },
             { key: 'stockAdjustments', fallback: [] as StockAdjustment[], getValue: () => stockAdjustments, setValue: (value) => setStockAdjustments(value) },
-            { key: 'suppliers', fallback: [] as Supplier[], getValue: () => suppliersRef.current, setValue: (value) => { suppliersRef.current = value; setSuppliers(value); } },
             { key: 'areasFloors', fallback: initialAreasFloors, getValue: () => areasFloors, setValue: (value) => setAreasFloors(value) },
             { key: 'kitchens', fallback: initialKitchens, getValue: () => kitchens, setValue: (value) => setKitchens(value) },
             { 
@@ -1527,7 +1526,6 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             { key: 'stockItems', value: stockItems },
             { key: 'stockEntries', value: stockEntries },
             { key: 'stockAdjustments', value: stockAdjustments },
-            { key: 'suppliers', value: suppliers },
             { key: 'areasFloors', value: areasFloors },
             { key: 'kitchens', value: kitchens },
             { key: 'printers', value: printers },

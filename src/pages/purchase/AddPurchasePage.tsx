@@ -73,12 +73,12 @@ const AddPurchasePage: React.FC = () => {
     return overallSubTotal + tax - discount;
   }, [overallSubTotal, taxAmount, discountAmount]);
 
-  const handleAddNewSupplier = () => {
+  const handleAddNewSupplier = async () => {
     if (!newSupplierName.trim()) {
         alert("Please enter a name for the new supplier.");
         return;
     }
-    const createdSupplier = contextAddSupplier({ name: newSupplierName.trim() });
+    const createdSupplier = await contextAddSupplier({ name: newSupplierName.trim() });
     setSelectedSupplierId(createdSupplier.id);
     setShowAddSupplier(false);
     setNewSupplierName('');

@@ -6,7 +6,7 @@ import { StockItem } from '@/types';
 import Card from '@/components/common/Card';
 import Input from '@/components/common/Input';
 import Button from '@/components/common/Button';
-import { FiSearch, FiArchive, FiAlertTriangle, FiCheckCircle, FiTrendingDown, FiX, FiEdit2, FiSave } from 'react-icons/fi';
+import { FiSearch, FiArchive, FiAlertTriangle, FiCheckCircle, FiTrendingDown, FiX, FiEdit2, FiSave, FiTrash2 } from 'react-icons/fi';
 
 type SortField = 'name' | 'category' | 'quantity' | 'status';
 type SortDir = 'asc' | 'desc';
@@ -14,7 +14,7 @@ type StatusFilter = 'all' | 'in-stock' | 'low' | 'out';
 const PAGE_SIZE = 25;
 
 const ViewStockLevelsPage: React.FC = () => {
-  const { stockItems, updateStockItem } = useRestaurantData();
+  const { stockItems, updateStockItem, deleteStockItem } = useRestaurantData();
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -25,6 +25,7 @@ const ViewStockLevelsPage: React.FC = () => {
   // Edit state
   const [editingItem, setEditingItem] = useState<StockItem | null>(null);
   const [editForm, setEditForm] = useState({ name: '', category: '', quantity: 0, unit: 'pcs', lowStockThreshold: 0, costPerUnit: 0 });
+  const [deletingItem, setDeletingItem] = useState<StockItem | null>(null);
 
   const categories = useMemo(() => {
     const cats = new Set(stockItems.map(i => i.category).filter(Boolean));
@@ -222,13 +223,22 @@ const ViewStockLevelsPage: React.FC = () => {
                         </span>
                       </td>
                       <td className="py-3 px-4 text-center">
-                        <button
-                          onClick={() => openEdit(item)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-sky-700 bg-sky-50 border border-sky-200 rounded-lg hover:bg-sky-100 transition-colors"
-                        >
-                          <FiEdit2 size={12} />
-                          Edit
-                        </button>
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            onClick={() => openEdit(item)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-sky-700 bg-sky-50 border border-sky-200 rounded-lg hover:bg-sky-100 transition-colors"
+                          >
+                            <FiEdit2 size={12} />
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => setDeletingItem(item)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-red-700 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors"
+                          >
+                            <FiTrash2 size={12} />
+                            Delete
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -350,6 +360,39 @@ const ViewStockLevelsPage: React.FC = () => {
             <div className="flex justify-end gap-3 mt-6">
               <Button variant="secondary" onClick={() => setEditingItem(null)}>Cancel</Button>
               <Button onClick={saveEdit} leftIcon={<FiSave size={14} />}>Save Changes</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deletingItem && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setDeletingItem(null)}>
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                <FiTrash2 size={18} className="text-red-600" />
+                Delete Stock Item
+              </h2>
+              <button onClick={() => setDeletingItem(null)} className="p-1 hover:bg-gray-100 rounded-lg">
+                <FiX size={18} />
+              </button>
+            </div>
+            <p className="text-sm text-gray-600 mb-6">
+              Are you sure you want to delete <strong>{deletingItem.name}</strong>? This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-3">
+              <Button variant="secondary" onClick={() => setDeletingItem(null)}>Cancel</Button>
+              <Button
+                variant="danger"
+                onClick={() => {
+                  deleteStockItem(deletingItem.id);
+                  setDeletingItem(null);
+                }}
+                leftIcon={<FiTrash2 size={14} />}
+              >
+                Delete
+              </Button>
             </div>
           </div>
         </div>

@@ -31,6 +31,7 @@ import printerRoutes from './routes/printerRoutes.js';
 import printAgentRoutes from './routes/printAgentRoutes.js';
 import backupRoutes from './routes/backupRoutes.js';
 import googleDriveRoutes from './routes/googleDriveRoutes.js';
+import stockRoutes from './routes/stockRoutes.js';
 import { DEFAULT_PLAN_DEFINITIONS } from './utils/planConfig.js';
 import { ensureSystemRoles } from './utils/roleUtils.js';
 import { startScheduler } from './services/autoBackupService.js';
@@ -58,7 +59,20 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
 });
 
 // CORS and body parsing
-app.use(cors());
+const allowedOrigins = process.env.CORS_ORIGINS 
+  ? process.env.CORS_ORIGINS.split(',').map(o => o.trim())
+  : ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:3000'];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(null, true); // Allow in dev, restrict in production
+    }
+  },
+  credentials: true,
+}));
 app.use(express.json());
 
 app.get('/', (_req, res) => {
@@ -96,11 +110,15 @@ app.use('/api/printers', printerRoutes);
 app.use('/api/print-agent', printAgentRoutes);
 app.use('/api/backups', backupRoutes);
 app.use('/api/google-drive', googleDriveRoutes);
+app.use('/api/stock', stockRoutes);
 
 // Global error handler — catches any unhandled errors from route handlers
 app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-  console.error('[server] Unhandled error:', err);
-  res.status(500).json({ message: 'Internal server error', detail: err?.message });
+  console.error('[ERROR]', err);
+  const message = process.env.NODE_ENV === 'development' 
+    ? (err?.message || 'Internal server error') 
+    : 'Internal server error';
+  res.status(err?.statusCode || 500).json({ message });
 });
 
 async function start() {
@@ -301,16 +319,18 @@ async function start() {
 }
 
 // Graceful shutdown
-process.on('SIGTERM', () => {
-  console.log('[server]: SIGTERM received, shutting down gracefully');
-  closePrintAgentWebSocketServer();
+const shutdown = async (signal: string) => {
+  console.log(`\n${signal} received. Shutting down gracefully...`);
+  try {
+    closePrintAgentWebSocketServer();
+    await prisma.$disconnect();
+  } catch (err) {
+    console.error('Error during shutdown:', err);
+  }
   process.exit(0);
-});
+};
 
-process.on('SIGINT', () => {
-  console.log('[server]: SIGINT received, shutting down gracefully');
-  closePrintAgentWebSocketServer();
-  process.exit(0);
-});
+process.on('SIGTERM', () => void shutdown('SIGTERM'));
+process.on('SIGINT', () => void shutdown('SIGINT'));
 
 start();

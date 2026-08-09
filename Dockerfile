@@ -1,15 +1,13 @@
-FROM node:20-alpine AS build
+FROM node:22-alpine AS build
 
 WORKDIR /app
 
-# Copy package files
+# Copy package files first for better caching
 COPY package*.json ./
 RUN npm ci
 
-# Copy source
+# Copy source and build
 COPY . .
-
-# Build the app
 RUN npm run build
 
 # Production image

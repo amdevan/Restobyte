@@ -3,7 +3,11 @@ import { WebSocketServer, WebSocket } from 'ws';
 import jwt from 'jsonwebtoken';
 import prisma from '../db/prisma.js';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your_super_secret_key';
+if (!process.env.JWT_SECRET) {
+  console.error('FATAL: JWT_SECRET environment variable is not set!');
+  process.exit(1);
+}
+const JWT_SECRET = process.env.JWT_SECRET;
 
 // Type for extended WebSocket properties
 interface ExtendedWebSocket extends WebSocket {

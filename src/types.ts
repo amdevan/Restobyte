@@ -746,7 +746,7 @@ export interface Outlet {
   id: string;
   name: string; // Internal name, e.g., "Main Branch"
   restaurantName: string; // Public name for receipts
-  slug: string; // URL-friendly identifier
+  slug?: string; // URL-friendly identifier
   address: string;
   phone: string;
   email?: string;
@@ -802,6 +802,7 @@ export interface DeliveryPartner {
     name: string;
     commissionRate?: number; // as a percentage, e.g., 15 for 15%
     isEnabled: boolean;
+    outletId?: string;
 }
 
 export interface KOT {
@@ -1205,7 +1206,9 @@ export interface RestaurantDataContextType {
     deletePreMadeFoodItem: (itemId: string) => void;
 
     stockItems: StockItem[];
+    updateStockItem: (itemId: string, updates: Partial<StockItem>) => void;
     updateStockItemQuantity: (itemId: string, quantityValue: number, changeType?: 'increase' | 'decrease' | 'set') => void;
+    deleteStockItem: (itemId: string) => void;
     findOrCreateStockItem: (details: { name: string; category: string; unit: string; lowStockThreshold: number, costPerUnit?: number }) => StockItem;
 
     stockEntries: StockEntry[];

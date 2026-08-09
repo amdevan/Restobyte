@@ -330,7 +330,7 @@ const initialApplicationSettings: ApplicationSettings = {
 };
 
 const initialOutlets: Outlet[] = [
-    { id: 'outlet-1', name: 'Main Branch', restaurantName: 'RestoByte Main', address: '123 Main St, Anytown', phone: '555-111-2222', outletType: 'Restaurant', taxes: [{id: 'tax-1', name: 'VAT', rate: 5}], plan: 'Pro', subscriptionStatus: 'active', registrationDate: new Date().toISOString() },
+    { id: 'outlet-1', name: 'Main Branch', restaurantName: 'RestoByte Main', slug: 'main-branch', address: '123 Main St, Anytown', phone: '555-111-2222', outletType: 'Restaurant', taxes: [{id: 'tax-1', name: 'VAT', rate: 5}], plan: 'Pro', subscriptionStatus: 'active', registrationDate: new Date().toISOString() },
 ];
 
 const initialRoles: Role[] = [
@@ -1074,6 +1074,113 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         }
     }, [isAuthenticated, logout]);
 
+    // ==================== Stock API (dedicated endpoints) ====================
+
+    const fetchStockItems = useCallback(async (outletId: string): Promise<StockItem[]> => {
+        if (!isAuthenticated) return [];
+        const token = localStorage.getItem('authToken');
+        if (!token) return [];
+        try {
+            const res = await fetch(`${API_BASE_URL}/stock/items?outletId=${encodeURIComponent(outletId)}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (res.status === 401) { logout(); return []; }
+            if (!res.ok) return [];
+            return await res.json().catch(() => []);
+        } catch (err) {
+            console.error("Failed to fetch stock items:", err);
+            return [];
+        }
+    }, [isAuthenticated, logout]);
+
+    const persistStockItems = useCallback(async (outletId: string, items: StockItem[]): Promise<void> => {
+        if (!isAuthenticated) return;
+        const token = localStorage.getItem('authToken');
+        if (!token) return;
+        try {
+            const res = await fetch(`${API_BASE_URL}/stock/items/bulk`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ outletId, items }),
+            });
+            if (res.status === 401) { logout(); return; }
+            if (!res.ok) {
+                const err = await res.json().catch(() => null);
+                console.error("Failed to persist stock items:", err?.message || res.statusText);
+            }
+        } catch (err) {
+            console.error("Failed to persist stock items:", err);
+        }
+    }, [isAuthenticated, logout]);
+
+    const fetchStockEntries = useCallback(async (outletId: string): Promise<StockEntry[]> => {
+        if (!isAuthenticated) return [];
+        const token = localStorage.getItem('authToken');
+        if (!token) return [];
+        try {
+            const res = await fetch(`${API_BASE_URL}/stock/entries?outletId=${encodeURIComponent(outletId)}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (res.status === 401) { logout(); return []; }
+            if (!res.ok) return [];
+            return await res.json().catch(() => []);
+        } catch (err) {
+            console.error("Failed to fetch stock entries:", err);
+            return [];
+        }
+    }, [isAuthenticated, logout]);
+
+    const fetchStockAdjustments = useCallback(async (outletId: string): Promise<StockAdjustment[]> => {
+        if (!isAuthenticated) return [];
+        const token = localStorage.getItem('authToken');
+        if (!token) return [];
+        try {
+            const res = await fetch(`${API_BASE_URL}/stock/adjustments?outletId=${encodeURIComponent(outletId)}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (res.status === 401) { logout(); return []; }
+            if (!res.ok) return [];
+            return await res.json().catch(() => []);
+        } catch (err) {
+            console.error("Failed to fetch stock adjustments:", err);
+            return [];
+        }
+    }, [isAuthenticated, logout]);
+
+    const fetchSuppliersFromApi = useCallback(async (outletId: string): Promise<Supplier[]> => {
+        if (!isAuthenticated) return [];
+        const token = localStorage.getItem('authToken');
+        if (!token) return [];
+        try {
+            const res = await fetch(`${API_BASE_URL}/stock/suppliers?outletId=${encodeURIComponent(outletId)}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (res.status === 401) { logout(); return []; }
+            if (!res.ok) return [];
+            return await res.json().catch(() => []);
+        } catch (err) {
+            console.error("Failed to fetch suppliers:", err);
+            return [];
+        }
+    }, [isAuthenticated, logout]);
+
+    const fetchRecipesFromApi = useCallback(async (outletId: string): Promise<Recipe[]> => {
+        if (!isAuthenticated) return [];
+        const token = localStorage.getItem('authToken');
+        if (!token) return [];
+        try {
+            const res = await fetch(`${API_BASE_URL}/stock/recipes?outletId=${encodeURIComponent(outletId)}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (res.status === 401) { logout(); return []; }
+            if (!res.ok) return [];
+            return await res.json().catch(() => []);
+        } catch (err) {
+            console.error("Failed to fetch recipes:", err);
+            return [];
+        }
+    }, [isAuthenticated, logout]);
+
     const fetchUserAppData = useCallback(async (key: string) => {
         if (!isAuthenticated) return null;
         const token = localStorage.getItem('authToken');
@@ -1284,7 +1391,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 key: 'applicationSettings',
                 fallback: initialApplicationSettings,
                 getValue: () => applicationSettings,
-                setValue: (value) => setApplicationSettings({ ...initialApplicationSettings, ...(value || {}) })
+                setValue: (value) => setApplicationSettings(value && typeof value === 'object' && Object.keys(value).length > 0 ? value : initialApplicationSettings)
             },
             { key: 'soundSettings', fallback: { soundsEnabled: true } as SoundSettings, getValue: () => soundSettings, setValue: (value) => setSoundSettings(value) },
             { key: 'addonGroups', fallback: initialAddonGroups, getValue: () => addonGroups, setValue: (value) => setAddonGroups(value) },
@@ -1307,7 +1414,11 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 return;
             }
 
-            const nextValue = loaded ?? fallback;
+            // If API returns null or empty object (network error, 401, corrupted data),
+            // keep current in-memory value instead of falling back to demo/initial data
+            // which would wipe real user data.
+            const hasData = loaded && typeof loaded === 'object' && !Array.isArray(loaded) ? Object.keys(loaded).length > 0 : Array.isArray(loaded) ? true : Boolean(loaded);
+            const nextValue = hasData ? loaded : getValue();
             outletAppDataSerializedRef.current[scopeKey] = JSON.stringify(nextValue);
             setValue(nextValue);
             outletAppDataReadyRef.current[scopeKey] = true;
@@ -1317,6 +1428,40 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             cancelled = true;
         };
     }, [isAuthenticated, selectedDataOutletId, fetchOutletAppData]);
+
+    // ==================== Stock data from dedicated API ====================
+    useEffect(() => {
+        if (!isAuthenticated || !selectedDataOutletId) return;
+
+        let cancelled = false;
+
+        const loadStock = async () => {
+            const [items, entries, adjustments, suppliersList, recipesList] = await Promise.all([
+                fetchStockItems(selectedDataOutletId),
+                fetchStockEntries(selectedDataOutletId),
+                fetchStockAdjustments(selectedDataOutletId),
+                fetchSuppliersFromApi(selectedDataOutletId),
+                fetchRecipesFromApi(selectedDataOutletId),
+            ]);
+
+            if (cancelled) return;
+
+            // Only update if we got data (empty array is valid - means no stock yet)
+            if (items.length > 0 || stockItemsRef.current.length === 0) {
+                stockItemsRef.current = items;
+                setStockItems(items);
+            }
+            setStockEntries(entries);
+            setStockAdjustments(adjustments);
+            suppliersRef.current = suppliersList;
+            setSuppliers(suppliersList);
+            setRecipes(recipesList);
+        };
+
+        void loadStock();
+
+        return () => { cancelled = true; };
+    }, [isAuthenticated, selectedDataOutletId, fetchStockItems, fetchStockEntries, fetchStockAdjustments, fetchSuppliersFromApi, fetchRecipesFromApi]);
 
     useEffect(() => {
         if (!isAuthenticated || !selectedDataOutletId) return;
@@ -2384,12 +2529,11 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         }
         stockItemsRef.current = updatedStock;
         setStockItems(updatedStock);
-        if (activeOutletIds.length === 1) {
-            const oid = activeOutletIds[0];
-            markOutletAppDataMutated('stockItems', oid);
-            persistOutletCollectionImmediately('stockItems', oid, updatedStock);
+        const oid = selectedDataOutletId;
+        if (oid) {
+            void persistStockItems(oid, updatedStock);
         }
-    }, [recipes, activeOutletIds]);
+    }, [recipes, selectedDataOutletId, persistStockItems]);
 
     const restoreStockForOrder = useCallback((sale: Sale) => {
         let updatedStock = [...stockItemsRef.current];
@@ -2412,12 +2556,11 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         }
         stockItemsRef.current = updatedStock;
         setStockItems(updatedStock);
-        if (activeOutletIds.length === 1) {
-            const oid = activeOutletIds[0];
-            markOutletAppDataMutated('stockItems', oid);
-            persistOutletCollectionImmediately('stockItems', oid, updatedStock);
+        const oid = selectedDataOutletId;
+        if (oid) {
+            void persistStockItems(oid, updatedStock);
         }
-    }, [recipes, activeOutletIds]);
+    }, [recipes, selectedDataOutletId, persistStockItems]);
 
     const restoreStockForReturn = useCallback((returnItems: { id: string; quantity: number; variationName?: string }[]) => {
         let updatedStock = [...stockItemsRef.current];
@@ -2438,12 +2581,11 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         }
         stockItemsRef.current = updatedStock;
         setStockItems(updatedStock);
-        if (activeOutletIds.length === 1) {
-            const oid = activeOutletIds[0];
-            markOutletAppDataMutated('stockItems', oid);
-            persistOutletCollectionImmediately('stockItems', oid, updatedStock);
+        const oid = selectedDataOutletId;
+        if (oid) {
+            void persistStockItems(oid, updatedStock);
         }
-    }, [recipes, activeOutletIds]);
+    }, [recipes, selectedDataOutletId, persistStockItems]);
 
     const autoIncreaseStockOnPurchase = useCallback((purchase: Purchase) => {
         let updatedStock = [...stockItemsRef.current];
@@ -2480,12 +2622,11 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         }
         stockItemsRef.current = updatedStock;
         setStockItems(updatedStock);
-        if (activeOutletIds.length === 1) {
-            const oid = activeOutletIds[0];
-            markOutletAppDataMutated('stockItems', oid);
-            persistOutletCollectionImmediately('stockItems', oid, updatedStock);
+        const oid = selectedDataOutletId;
+        if (oid) {
+            void persistStockItems(oid, updatedStock);
         }
-    }, [activeOutletIds]);
+    }, [selectedDataOutletId, persistStockItems]);
 
     const autoDecreaseStockOnWaste = useCallback((wasteRecord: WasteRecord) => {
         let updatedStock = [...stockItemsRef.current];
@@ -2498,12 +2639,11 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         }
         stockItemsRef.current = updatedStock;
         setStockItems(updatedStock);
-        if (activeOutletIds.length === 1) {
-            const oid = activeOutletIds[0];
-            markOutletAppDataMutated('stockItems', oid);
-            persistOutletCollectionImmediately('stockItems', oid, updatedStock);
+        const oid = selectedDataOutletId;
+        if (oid) {
+            void persistStockItems(oid, updatedStock);
         }
-    }, [activeOutletIds]);
+    }, [selectedDataOutletId, persistStockItems]);
 
     const contextValue: RestaurantDataContextType = useMemo(() => ({
         // Implement all functions from RestaurantDataContextType
@@ -3057,8 +3197,16 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             stockItemsRef.current = nextStock;
             setStockItems(nextStock);
             if (outletId) {
-                markOutletAppDataMutated('stockItems', outletId);
-                persistOutletCollectionImmediately('stockItems', outletId, nextStock);
+                void persistStockItems(outletId, nextStock);
+            }
+        },
+        deleteStockItem: (itemId: string) => {
+            const outletId = selectedDataOutletId;
+            const nextStock = stockItemsRef.current.filter(item => item.id !== itemId);
+            stockItemsRef.current = nextStock;
+            setStockItems(nextStock);
+            if (outletId) {
+                void persistStockItems(outletId, nextStock);
             }
         },
         updateStockItemQuantity: (itemId, quantityValue, changeType = 'increase') => {
@@ -3076,8 +3224,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             stockItemsRef.current = nextStock;
             setStockItems(nextStock);
             if (outletId) {
-                markOutletAppDataMutated('stockItems', outletId);
-                persistOutletCollectionImmediately('stockItems', outletId, nextStock);
+                void persistStockItems(outletId, nextStock);
             }
         },
         findOrCreateStockItem: (details) => {
@@ -3089,8 +3236,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             stockItemsRef.current = nextStock;
             setStockItems(nextStock);
             if (outletId) {
-                markOutletAppDataMutated('stockItems', outletId);
-                persistOutletCollectionImmediately('stockItems', outletId, nextStock);
+                void persistStockItems(outletId, nextStock);
             }
             return newItem;
         },
@@ -3112,10 +3258,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             stockItemsRef.current = updatedStock;
             setStockItems(updatedStock);
             if (outletId) {
-                markOutletAppDataMutated('stockEntries', outletId);
-                persistOutletCollectionImmediately('stockEntries', outletId, nextEntries);
-                markOutletAppDataMutated('stockItems', outletId);
-                persistOutletCollectionImmediately('stockItems', outletId, updatedStock);
+                void persistStockItems(outletId, updatedStock);
             }
             return newEntry;
         },
@@ -3142,10 +3285,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             stockItemsRef.current = updatedStock;
             setStockItems(updatedStock);
             if (outletId) {
-                markOutletAppDataMutated('stockAdjustments', outletId);
-                persistOutletCollectionImmediately('stockAdjustments', outletId, nextAdjustments);
-                markOutletAppDataMutated('stockItems', outletId);
-                persistOutletCollectionImmediately('stockItems', outletId, updatedStock);
+                void persistStockItems(outletId, updatedStock);
             }
         },
 
@@ -3438,14 +3578,44 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         },
 
         areasFloors,
-        addAreaFloor: (areaFloorData) => setAreasFloors(prev => [...prev, { ...areaFloorData, id: `af-${Date.now()}` }]),
-        updateAreaFloor: (areaFloor) => setAreasFloors(prev => prev.map(af => af.id === areaFloor.id ? areaFloor : af)),
-        deleteAreaFloor: (areaFloorId) => setAreasFloors(prev => prev.filter(af => af.id !== areaFloorId)),
+        addAreaFloor: (areaFloorData) => {
+            const outletId = selectedDataOutletId;
+            const next = [...areasFloors, { ...areaFloorData, id: `af-${Date.now()}` }];
+            setAreasFloors(next);
+            if (outletId) { markOutletAppDataMutated('areasFloors', outletId); persistOutletCollectionImmediately('areasFloors', outletId, next); }
+        },
+        updateAreaFloor: (areaFloor) => {
+            const outletId = selectedDataOutletId;
+            const next = areasFloors.map(af => af.id === areaFloor.id ? areaFloor : af);
+            setAreasFloors(next);
+            if (outletId) { markOutletAppDataMutated('areasFloors', outletId); persistOutletCollectionImmediately('areasFloors', outletId, next); }
+        },
+        deleteAreaFloor: (areaFloorId) => {
+            const outletId = selectedDataOutletId;
+            const next = areasFloors.filter(af => af.id !== areaFloorId);
+            setAreasFloors(next);
+            if (outletId) { markOutletAppDataMutated('areasFloors', outletId); persistOutletCollectionImmediately('areasFloors', outletId, next); }
+        },
 
         kitchens,
-        addKitchen: (kitchenData) => setKitchens(prev => [...prev, { ...kitchenData, id: `k-${Date.now()}` }]),
-        updateKitchen: (kitchen) => setKitchens(prev => prev.map(k => k.id === kitchen.id ? kitchen : k)),
-        deleteKitchen: (kitchenId) => setKitchens(prev => prev.filter(k => k.id !== kitchenId)),
+        addKitchen: (kitchenData) => {
+            const outletId = selectedDataOutletId;
+            const next = [...kitchens, { ...kitchenData, id: `k-${Date.now()}` }];
+            setKitchens(next);
+            if (outletId) { markOutletAppDataMutated('kitchens', outletId); persistOutletCollectionImmediately('kitchens', outletId, next); }
+        },
+        updateKitchen: (kitchen) => {
+            const outletId = selectedDataOutletId;
+            const next = kitchens.map(k => k.id === kitchen.id ? kitchen : k);
+            setKitchens(next);
+            if (outletId) { markOutletAppDataMutated('kitchens', outletId); persistOutletCollectionImmediately('kitchens', outletId, next); }
+        },
+        deleteKitchen: (kitchenId) => {
+            const outletId = selectedDataOutletId;
+            const next = kitchens.filter(k => k.id !== kitchenId);
+            setKitchens(next);
+            if (outletId) { markOutletAppDataMutated('kitchens', outletId); persistOutletCollectionImmediately('kitchens', outletId, next); }
+        },
 
         printers,
         addPrinter: async (printerData) => {
@@ -3565,18 +3735,46 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         },
 
         counters,
-        addCounter: (counterData) => setCounters(prev => [...prev, { ...counterData, id: `c-${Date.now()}` }]),
-        updateCounter: (counter) => setCounters(prev => prev.map(c => c.id === counter.id ? counter : c)),
-        deleteCounter: (counterId) => setCounters(prev => prev.filter(c => c.id !== counterId)),
+        addCounter: (counterData) => {
+            const outletId = selectedDataOutletId;
+            const next = [...counters, { ...counterData, id: `c-${Date.now()}` }];
+            setCounters(next);
+            if (outletId) { markOutletAppDataMutated('counters', outletId); persistOutletCollectionImmediately('counters', outletId, next); }
+        },
+        updateCounter: (counter) => {
+            const outletId = selectedDataOutletId;
+            const next = counters.map(c => c.id === counter.id ? counter : c);
+            setCounters(next);
+            if (outletId) { markOutletAppDataMutated('counters', outletId); persistOutletCollectionImmediately('counters', outletId, next); }
+        },
+        deleteCounter: (counterId) => {
+            const outletId = selectedDataOutletId;
+            const next = counters.filter(c => c.id !== counterId);
+            setCounters(next);
+            if (outletId) { markOutletAppDataMutated('counters', outletId); persistOutletCollectionImmediately('counters', outletId, next); }
+        },
 
         waiters,
         addWaiter: (waiterData) => {
+            const outletId = selectedDataOutletId;
             const newWaiter = { ...waiterData, id: `w-${Date.now()}` };
-            setWaiters(prev => [...prev, newWaiter]);
+            const next = [...waiters, newWaiter];
+            setWaiters(next);
+            if (outletId) { markOutletAppDataMutated('waiters', outletId); persistOutletCollectionImmediately('waiters', outletId, next); }
             return newWaiter;
         },
-        updateWaiter: (waiter) => setWaiters(prev => prev.map(w => w.id === waiter.id ? waiter : w)),
-        deleteWaiter: (waiterId) => setWaiters(prev => prev.filter(w => w.id !== waiterId)),
+        updateWaiter: (waiter) => {
+            const outletId = selectedDataOutletId;
+            const next = waiters.map(w => w.id === waiter.id ? waiter : w);
+            setWaiters(next);
+            if (outletId) { markOutletAppDataMutated('waiters', outletId); persistOutletCollectionImmediately('waiters', outletId, next); }
+        },
+        deleteWaiter: (waiterId) => {
+            const outletId = selectedDataOutletId;
+            const next = waiters.filter(w => w.id !== waiterId);
+            setWaiters(next);
+            if (outletId) { markOutletAppDataMutated('waiters', outletId); persistOutletCollectionImmediately('waiters', outletId, next); }
+        },
 
         currencies,
         addCurrency: async (currencyData) => {
@@ -3650,9 +3848,24 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         },
 
         denominations,
-        addDenomination: (data) => setDenominations(prev => [...prev, { ...data, id: `den-${Date.now()}` }]),
-        updateDenomination: (data) => setDenominations(prev => prev.map(d => d.id === data.id ? data : d)),
-        deleteDenomination: (id) => setDenominations(prev => prev.filter(d => d.id !== id)),
+        addDenomination: (data) => {
+            const outletId = selectedDataOutletId;
+            const next = [...denominations, { ...data, id: `den-${Date.now()}` }];
+            setDenominations(next);
+            if (outletId) { markOutletAppDataMutated('denominations', outletId); persistOutletCollectionImmediately('denominations', outletId, next); }
+        },
+        updateDenomination: (data) => {
+            const outletId = selectedDataOutletId;
+            const next = denominations.map(d => d.id === data.id ? data : d);
+            setDenominations(next);
+            if (outletId) { markOutletAppDataMutated('denominations', outletId); persistOutletCollectionImmediately('denominations', outletId, next); }
+        },
+        deleteDenomination: (id) => {
+            const outletId = selectedDataOutletId;
+            const next = denominations.filter(d => d.id !== id);
+            setDenominations(next);
+            if (outletId) { markOutletAppDataMutated('denominations', outletId); persistOutletCollectionImmediately('denominations', outletId, next); }
+        },
 
         purchases,
         addPurchase: (purchaseData) => {
@@ -3884,10 +4097,18 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         },
         
         paymentMethods,
-        updatePaymentMethod: (method) => setPaymentMethods(prev => prev.map(p => p.id === method.id ? method : p)),
+        updatePaymentMethod: (method) => {
+            const outletId = selectedDataOutletId;
+            const next = paymentMethods.map(p => p.id === method.id ? method : p);
+            setPaymentMethods(next);
+            if (outletId) { markOutletAppDataMutated('paymentMethods', outletId); persistOutletCollectionImmediately('paymentMethods', outletId, next); }
+        },
         addPaymentMethod: (name: string) => {
+            const outletId = selectedDataOutletId;
             const newMethod: PaymentMethod = { id: `pm-${Date.now()}`, name, isEnabled: true };
-            setPaymentMethods(prev => [...prev, newMethod]);
+            const next = [...paymentMethods, newMethod];
+            setPaymentMethods(next);
+            if (outletId) { markOutletAppDataMutated('paymentMethods', outletId); persistOutletCollectionImmediately('paymentMethods', outletId, next); }
             return newMethod;
         },
         removePaymentMethod: (id: string) => {
@@ -3932,13 +4153,42 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         isSelfOrderEnabled, setSelfOrderStatus,
         isReservationOrderEnabled, setReservationOrderStatus,
         reservationOrderReceivingUserIds, setReservationOrderReceivingUserIds,
-        reservationSettings, setReservationSettings,
+        reservationSettings,
+        setReservationSettings: (settings: ReservationSettings) => {
+            const outletId = selectedDataOutletId;
+            setReservationSettings(settings);
+            if (outletId) { markOutletAppDataMutated('reservationSettings', outletId); persistOutletCollectionImmediately('reservationSettings', outletId, settings); }
+        },
         websiteSettings, 
-        updateWebsiteSettings: (settings) => setWebsiteSettings(prev => ({...prev, ...settings})),
+        updateWebsiteSettings: (settings) => {
+            const outletId = selectedDataOutletId;
+            const next = { ...websiteSettings, ...settings };
+            setWebsiteSettings(next);
+            if (outletId) {
+                markOutletAppDataMutated('websiteSettings', outletId);
+                persistOutletCollectionImmediately('websiteSettings', outletId, next);
+            }
+        },
         applicationSettings,
-        updateApplicationSettings: (settings) => setApplicationSettings(prev => ({...prev, ...settings})),
+        updateApplicationSettings: (settings) => {
+            const outletId = selectedDataOutletId;
+            const next = { ...applicationSettings, ...settings };
+            setApplicationSettings(next);
+            if (outletId) {
+                markOutletAppDataMutated('applicationSettings', outletId);
+                persistOutletCollectionImmediately('applicationSettings', outletId, next);
+            }
+        },
         soundSettings,
-        updateSoundSettings: (settings) => setSoundSettings(prev => ({...prev, ...settings})),
+        updateSoundSettings: (settings) => {
+            const outletId = selectedDataOutletId;
+            const next = { ...soundSettings, ...settings };
+            setSoundSettings(next);
+            if (outletId) {
+                markOutletAppDataMutated('soundSettings', outletId);
+                persistOutletCollectionImmediately('soundSettings', outletId, next);
+            }
+        },
 
         outlets, activeOutletIds, setActiveOutletIds,
         getActiveOutlets: () => outlets.filter(o => activeOutletIds.includes(o.id)),

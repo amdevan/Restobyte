@@ -432,3 +432,121 @@ model BackupHistory {
   outletId      String?
   createdAt     DateTime @default(now())
 }
+
+model StockItem {
+  id               String   @id @default(uuid())
+  outletId         String
+  name             String
+  category         String
+  quantity         Float    @default(0)
+  unit             String
+  lowStockThreshold Float  @default(0)
+  costPerUnit      Float    @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  stockEntries     StockEntryItem[]
+  stockAdjustments StockAdjustmentItem[]
+  recipeIngredients RecipeIngredient[]
+
+  @@index([outletId])
+}
+
+model StockEntry {
+  id          String   @id @default(uuid())
+  outletId    String
+  date        DateTime @default(now())
+  supplierId  String?
+  notes       String?
+  totalCost   Float    @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  items       StockEntryItem[]
+
+  @@index([outletId])
+}
+
+model StockEntryItem {
+  id              String    @id @default(uuid())
+  stockEntryId    String
+  stockItemId     String
+  quantityAdded   Float
+  costPerUnit     Float     @default(0)
+
+  stockEntry      StockEntry @relation(fields: [stockEntryId], references: [id], onDelete: Cascade)
+  stockItem       StockItem  @relation(fields: [stockItemId], references: [id], onDelete: Cascade)
+
+  @@index([stockEntryId])
+  @@index([stockItemId])
+}
+
+model StockAdjustment {
+  id          String   @id @default(uuid())
+  outletId    String
+  date        DateTime @default(now())
+  reason      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  items       StockAdjustmentItem[]
+
+  @@index([outletId])
+}
+
+model StockAdjustmentItem {
+  id                String          @id @default(uuid())
+  stockAdjustmentId String
+  stockItemId       String
+  quantity          Float
+  adjustmentType    String          // Increase, Decrease, SetTo
+
+  stockAdjustment   StockAdjustment @relation(fields: [stockAdjustmentId], references: [id], onDelete: Cascade)
+  stockItem         StockItem       @relation(fields: [stockItemId], references: [id], onDelete: Cascade)
+
+  @@index([stockAdjustmentId])
+  @@index([stockItemId])
+}
+
+model Supplier {
+  id        String   @id @default(uuid())
+  outletId  String
+  name      String
+  phone     String?
+  email     String?
+  address   String?
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([outletId])
+}
+
+model Recipe {
+  id              String   @id @default(uuid())
+  outletId        String
+  menuItemId      String
+  variationName   String?
+  yieldQuantity   Float    @default(1)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  ingredients     RecipeIngredient[]
+
+  @@unique([outletId, menuItemId, variationName])
+  @@index([outletId])
+}
+
+model RecipeIngredient {
+  id                String   @id @default(uuid())
+  recipeId          String
+  stockItemId       String
+  quantityRequired  Float
+  unit              String?
+
+  recipe            Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  stockItem         StockItem? @relation(fields: [stockItemId], references: [id], onDelete: SetNull)
+
+  @@index([recipeId])
+  @@index([stockItemId])
+}

@@ -5,7 +5,11 @@ import jwt from 'jsonwebtoken';
 import type { AuthRequest } from '../middleware/authMiddleware.js';
 import { validateRoleForUser } from './roleController.js';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your_super_secret_key';
+if (!process.env.JWT_SECRET) {
+  console.error('FATAL: JWT_SECRET environment variable is not set!');
+  process.exit(1);
+}
+const JWT_SECRET = process.env.JWT_SECRET;
 
 const getClientIp = (req: Request): string | null => {
   const forwarded = req.headers['x-forwarded-for'];
@@ -183,7 +187,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: 'Server error', error: error instanceof Error ? error.message : String(error) });
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
@@ -300,11 +304,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     console.error('[login]: Error name:', error instanceof Error ? error.name : 'Unknown');
     console.error('[login]: Error message:', error instanceof Error ? error.message : String(error));
     console.error('[login]: Stack trace:', error instanceof Error ? error.stack : 'No stack available');
-    res.status(500).json({ 
-      message: 'Server error', 
-      error: error instanceof Error ? error.message : String(error),
-      stack: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.stack : undefined) : undefined 
-    });
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
@@ -363,6 +363,6 @@ export const impersonate = async (req: Request, res: Response): Promise<void> =>
     });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: 'Server error', error: error instanceof Error ? error.message : String(error) });
+    res.status(500).json({ message: 'Server error' });
   }
 };

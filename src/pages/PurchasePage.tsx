@@ -203,6 +203,7 @@ const PurchasePage: React.FC = () => {
                     <th className="py-3 px-4 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Invoice #</th>
                     <SortHeader field="totalAmount" label="Total" align="right" />
                     <th className="py-3 px-4 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Payment</th>
+                    <th className="py-3 px-4 text-right text-xs font-medium text-gray-600 uppercase tracking-wider">Due</th>
                     <SortHeader field="items" label="Items" align="center" />
                     <th className="py-3 px-4 text-center text-xs font-medium text-gray-600 uppercase tracking-wider">Actions</th>
                   </tr>
@@ -243,6 +244,16 @@ const PurchasePage: React.FC = () => {
                             </span>
                           )}
                         </div>
+                      </td>
+                      <td className="py-3 px-4 text-sm text-right">
+                        {(() => {
+                          const due = p.grandTotalAmount - (p.paidAmount || 0);
+                          return due > 0 ? (
+                            <span className="font-semibold text-red-600"><Money amount={due} /></span>
+                          ) : (
+                            <span className="text-green-600 font-medium text-xs">Paid</span>
+                          );
+                        })()}
                       </td>
                       <td className="py-3 px-4 text-sm text-gray-600 text-center">
                         <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-sky-100 text-sky-700 text-xs font-bold">

@@ -7,7 +7,7 @@ import SupplierForm from '@/components/stock/SupplierForm';
 import Money from '@/components/common/Money';
 import { FiPlusCircle, FiEdit2, FiTrash2, FiUsers, FiPhone, FiMail, FiSearch, FiX, FiEye, FiShoppingCart, FiDollarSign, FiArchive, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 
-type SortField = 'name' | 'contactPerson' | 'phone' | 'totalPurchases' | 'totalSpent';
+type SortField = 'name' | 'contactPerson' | 'phone' | 'totalPurchases' | 'totalSpent' | 'totalDue';
 type SortDir = 'asc' | 'desc';
 const PAGE_SIZE = 15;
 
@@ -26,14 +26,15 @@ const ManageSuppliersPage: React.FC = () => {
 
   // Calculate per-supplier stats
   const supplierStats = useMemo(() => {
-    const stats: Record<string, { totalPurchases: number; totalSpent: number; lastPurchaseDate: string | null }> = {};
+    const stats: Record<string, { totalPurchases: number; totalSpent: number; totalDue: number; lastPurchaseDate: string | null }> = {};
     for (const s of suppliers) {
-      stats[s.id] = { totalPurchases: 0, totalSpent: 0, lastPurchaseDate: null };
+      stats[s.id] = { totalPurchases: 0, totalSpent: 0, totalDue: 0, lastPurchaseDate: null };
     }
     for (const p of purchases) {
       if (p.supplierId && stats[p.supplierId]) {
         stats[p.supplierId].totalPurchases += 1;
         stats[p.supplierId].totalSpent += p.grandTotalAmount;
+        stats[p.supplierId].totalDue += Math.max(0, p.grandTotalAmount - (p.paidAmount || 0));
         const pDate = new Date(p.date).toISOString();
         if (!stats[p.supplierId].lastPurchaseDate || pDate > stats[p.supplierId].lastPurchaseDate!) {
           stats[p.supplierId].lastPurchaseDate = pDate;
@@ -45,6 +46,7 @@ const ManageSuppliersPage: React.FC = () => {
 
   const totalPurchasesCount = useMemo(() => purchases.length, [purchases]);
   const totalSpent = useMemo(() => purchases.reduce((sum, p) => sum + p.grandTotalAmount, 0), [purchases]);
+  const totalDue = useMemo(() => purchases.reduce((sum, p) => sum + Math.max(0, p.grandTotalAmount - (p.paidAmount || 0)), 0), [purchases]);
 
   const filteredSuppliers = useMemo(() => {
     let items = suppliers.filter(s => {
@@ -63,6 +65,7 @@ const ManageSuppliersPage: React.FC = () => {
       else if (sortField === 'phone') cmp = (a.phone || '').localeCompare(b.phone || '');
       else if (sortField === 'totalPurchases') cmp = (supplierStats[a.id]?.totalPurchases || 0) - (supplierStats[b.id]?.totalPurchases || 0);
       else if (sortField === 'totalSpent') cmp = (supplierStats[a.id]?.totalSpent || 0) - (supplierStats[b.id]?.totalSpent || 0);
+      else if (sortField === 'totalDue') cmp = (supplierStats[a.id]?.totalDue || 0) - (supplierStats[b.id]?.totalDue || 0);
       return sortDir === 'asc' ? cmp : -cmp;
     });
 
@@ -161,6 +164,15 @@ const ManageSuppliersPage: React.FC = () => {
             <p className="text-lg font-bold text-gray-900"><Money amount={totalSpent} /></p>
           </div>
         </div>
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center">
+            <FiDollarSign className="w-5 h-5 text-red-600" />
+          </div>
+          <div>
+            <p className="text-xs font-medium text-gray-500 uppercase">Total Due</p>
+            <p className="text-lg font-bold text-red-600"><Money amount={totalDue} /></p>
+          </div>
+        </div>
       </div>
 
       {/* Table */}
@@ -187,6 +199,7 @@ const ManageSuppliersPage: React.FC = () => {
                     <th className="py-3 px-4 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Email</th>
                     <SortHeader field="totalPurchases" label="Purchases" align="right" />
                     <SortHeader field="totalSpent" label="Total Spent" align="right" />
+                    <SortHeader field="totalDue" label="Due" align="right" />
                     <th className="py-3 px-4 text-center text-xs font-medium text-gray-600 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
@@ -230,6 +243,13 @@ const ManageSuppliersPage: React.FC = () => {
                         </td>
                         <td className="py-3 px-4 text-sm font-semibold text-gray-800 text-right">
                           {stats.totalSpent > 0 ? <Money amount={stats.totalSpent} /> : <span className="text-gray-400">-</span>}
+                        </td>
+                        <td className="py-3 px-4 text-sm text-right">
+                          {stats.totalDue > 0 ? (
+                            <span className="font-semibold text-red-600"><Money amount={stats.totalDue} /></span>
+                          ) : (
+                            <span className="text-green-600 text-xs font-medium">Clear</span>
+                          )}
                         </td>
                         <td className="py-3 px-4 text-center">
                           <div className="flex items-center justify-center gap-1">
@@ -306,8 +326,8 @@ const ManageSuppliersPage: React.FC = () => {
           <div className="p-6">
             <SupplierForm
               initialData={editingSupplier}
-              onSubmit={addSupplier}
-              onUpdate={updateSupplier}
+              onSubmit={async (data) => { await addSupplier(data); }}
+              onUpdate={async (data) => { await updateSupplier(data); }}
               onClose={handleCloseModal}
             />
           </div>

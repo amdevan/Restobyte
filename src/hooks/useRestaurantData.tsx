@@ -1341,6 +1341,59 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         }
     }, [isAuthenticated, logout]);
 
+    const fetchExpenseCategoriesFromApi = useCallback(async (outletId: string): Promise<ExpenseCategory[]> => {
+        if (!isAuthenticated) return [];
+        const token = localStorage.getItem('authToken');
+        if (!token) return [];
+        try {
+            const res = await fetch(`${API_BASE_URL}/expenses/categories?outletId=${outletId}`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (res.status === 401) { logout(); return []; }
+            if (!res.ok) return [];
+            return (await res.json().catch(() => [])) as ExpenseCategory[];
+        } catch (err) {
+            console.error("Failed to fetch expense categories:", err);
+            return [];
+        }
+    }, [isAuthenticated, logout]);
+
+    const createExpenseCategoryInApi = useCallback(async (outletId: string, name: string): Promise<ExpenseCategory | null> => {
+        if (!isAuthenticated) return null;
+        const token = localStorage.getItem('authToken');
+        if (!token) return null;
+        try {
+            const res = await fetch(`${API_BASE_URL}/expenses/categories`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ outletId, name }),
+            });
+            if (res.status === 401) { logout(); return null; }
+            if (!res.ok) return null;
+            return await res.json().catch(() => null);
+        } catch (err) {
+            console.error("Failed to create expense category:", err);
+            return null;
+        }
+    }, [isAuthenticated, logout]);
+
+    const deleteExpenseCategoryInApi = useCallback(async (categoryId: string): Promise<boolean> => {
+        if (!isAuthenticated) return false;
+        const token = localStorage.getItem('authToken');
+        if (!token) return false;
+        try {
+            const res = await fetch(`${API_BASE_URL}/expenses/categories/${categoryId}`, {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (res.status === 401) { logout(); return false; }
+            return res.ok;
+        } catch (err) {
+            console.error("Failed to delete expense category:", err);
+            return false;
+        }
+    }, [isAuthenticated, logout]);
+
     const createExpenseInApi = useCallback(async (outletId: string, expense: Omit<Expense, 'id'>): Promise<Expense | null> => {
         if (!isAuthenticated) return null;
         const token = localStorage.getItem('authToken');
@@ -1764,11 +1817,14 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 return;
             }
 
-            // If API returns null or empty object (network error, 401, corrupted data),
-            // keep current in-memory value instead of falling back to demo/initial data
-            // which would wipe real user data.
-            const hasData = loaded && typeof loaded === 'object' && !Array.isArray(loaded) ? Object.keys(loaded).length > 0 : Array.isArray(loaded) ? true : Boolean(loaded);
-            const nextValue = hasData ? loaded : getValue();
+            // If API returns null, empty object, or empty array, use fallback value
+            // (e.g., initial demo data) to prevent wiping real user data.
+            const hasData = loaded && typeof loaded === 'object' && !Array.isArray(loaded)
+                ? Object.keys(loaded).length > 0
+                : Array.isArray(loaded)
+                    ? loaded.length > 0
+                    : Boolean(loaded);
+            const nextValue = hasData ? loaded : fallback;
             outletAppDataSerializedRef.current[scopeKey] = JSON.stringify(nextValue);
             setValue(nextValue);
             outletAppDataReadyRef.current[scopeKey] = true;
@@ -1786,7 +1842,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         let cancelled = false;
 
         const loadStock = async () => {
-            const [items, entries, adjustments, suppliersList, recipesList, purchasesList, expensesList, employeesList, attendanceList] = await Promise.all([
+            const [items, entries, adjustments, suppliersList, recipesList, purchasesList, expensesList, expenseCategoriesList, employeesList, attendanceList, payrollList] = await Promise.all([
                 fetchStockItems(selectedDataOutletId),
                 fetchStockEntries(selectedDataOutletId),
                 fetchStockAdjustments(selectedDataOutletId),
@@ -1794,8 +1850,10 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 fetchRecipesFromApi(selectedDataOutletId),
                 fetchPurchasesFromApi(selectedDataOutletId),
                 fetchExpensesFromApi(selectedDataOutletId),
+                fetchExpenseCategoriesFromApi(selectedDataOutletId),
                 fetchEmployeesFromApi(selectedDataOutletId),
                 fetchAttendanceFromApi(selectedDataOutletId),
+                fetchPayrollFromApi(selectedDataOutletId),
             ]);
 
             if (cancelled) return;
@@ -1814,15 +1872,21 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             setPurchases(purchasesList);
             expensesRef.current = expensesList;
             setExpenses(expensesList);
+            // Only overwrite expense categories if API returned data (not empty)
+            if (expenseCategoriesList.length > 0 || expenseCategoriesRef.current.length === 0) {
+                expenseCategoriesRef.current = expenseCategoriesList;
+                setExpenseCategories(expenseCategoriesList);
+            }
             employeesRef.current = employeesList;
             setEmployees(employeesList);
             setAttendanceRecords(attendanceList);
+            setPayrollRecords(payrollList);
         };
 
         void loadStock();
 
         return () => { cancelled = true; };
-    }, [isAuthenticated, selectedDataOutletId, fetchStockItems, fetchStockEntries, fetchStockAdjustments, fetchSuppliersFromApi, fetchRecipesFromApi, fetchPurchasesFromApi, fetchExpensesFromApi, fetchEmployeesFromApi, fetchAttendanceFromApi]);
+    }, [isAuthenticated, selectedDataOutletId, fetchStockItems, fetchStockEntries, fetchStockAdjustments, fetchSuppliersFromApi, fetchRecipesFromApi, fetchPurchasesFromApi, fetchExpensesFromApi, fetchExpenseCategoriesFromApi, fetchEmployeesFromApi, fetchAttendanceFromApi, fetchPayrollFromApi]);
 
     useEffect(() => {
         if (!isAuthenticated || !selectedDataOutletId) return;
@@ -4233,10 +4297,6 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             const nextPurchases = purchasesRef.current.map(p => p.id === purchase.id ? purchase : p);
             purchasesRef.current = nextPurchases;
             setPurchases(nextPurchases);
-            if (outletId) {
-                markOutletAppDataMutated('purchases', outletId);
-                persistOutletCollectionImmediately('purchases', outletId, nextPurchases);
-            }
         },
         deletePurchase: async (purchaseId) => {
             await deletePurchaseInApi(purchaseId);
@@ -4263,40 +4323,34 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             } : purchase);
             purchasesRef.current = nextPurchases;
             setPurchases(nextPurchases);
-            if (outletId) {
-                markOutletAppDataMutated('purchases', outletId);
-                persistOutletCollectionImmediately('purchases', outletId, nextPurchases);
-            }
         },
 
         expenseCategories,
-        addExpenseCategory: (categoryData) => {
+        addExpenseCategory: async (categoryData) => {
+            const outletId = selectedDataOutletId;
+            if (outletId) {
+                const created = await createExpenseCategoryInApi(outletId, categoryData.name);
+                if (created) {
+                    expenseCategoriesRef.current = [...expenseCategoriesRef.current, created];
+                    setExpenseCategories(expenseCategoriesRef.current);
+                    return created;
+                }
+            }
             const newCat = { ...categoryData, id: `exp-cat-${Date.now()}` };
             expenseCategoriesRef.current = [...expenseCategoriesRef.current, newCat];
             setExpenseCategories(expenseCategoriesRef.current);
-            if (selectedDataOutletId) {
-                markOutletAppDataMutated('expenseCategories', selectedDataOutletId);
-                persistOutletCollectionImmediately('expenseCategories', selectedDataOutletId, expenseCategoriesRef.current);
-            }
             return newCat;
         },
         updateExpenseCategory: (category) => {
             const nextCategories = expenseCategoriesRef.current.map(c => c.id === category.id ? category : c);
             expenseCategoriesRef.current = nextCategories;
             setExpenseCategories(nextCategories);
-            if (selectedDataOutletId) {
-                markOutletAppDataMutated('expenseCategories', selectedDataOutletId);
-                persistOutletCollectionImmediately('expenseCategories', selectedDataOutletId, nextCategories);
-            }
         },
-        deleteExpenseCategory: (categoryId) => {
+        deleteExpenseCategory: async (categoryId) => {
+            await deleteExpenseCategoryInApi(categoryId);
             const nextCategories = expenseCategoriesRef.current.filter(c => c.id !== categoryId);
             expenseCategoriesRef.current = nextCategories;
             setExpenseCategories(nextCategories);
-            if (selectedDataOutletId) {
-                markOutletAppDataMutated('expenseCategories', selectedDataOutletId);
-                persistOutletCollectionImmediately('expenseCategories', selectedDataOutletId, nextCategories);
-            }
         },
 
         expenses,
@@ -4323,10 +4377,6 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             const nextExpenses = expensesRef.current.map(e => e.id === expense.id ? expense : e);
             expensesRef.current = nextExpenses;
             setExpenses(nextExpenses);
-            if (outletId) {
-                markOutletAppDataMutated('expenses', outletId);
-                persistOutletCollectionImmediately('expenses', outletId, nextExpenses);
-            }
         },
         deleteExpense: async (expenseId) => {
             await deleteExpenseInApi(expenseId);
@@ -5226,30 +5276,16 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             };
             const nextRecipes = [...recipes, newRecipe];
             setRecipes(nextRecipes);
-            if (outletId) {
-                markOutletAppDataMutated('recipes', outletId);
-                persistOutletCollectionImmediately('recipes', outletId, nextRecipes);
-            }
             return newRecipe;
         },
         updateRecipe: (recipe) => {
             const outletId = resolveOutletDataId(recipe.outletId) || selectedDataOutletId;
             const nextRecipes = recipes.map(r => r.id === recipe.id ? { ...recipe, outletId: outletId || recipe.outletId } : r);
             setRecipes(nextRecipes);
-            if (outletId) {
-                markOutletAppDataMutated('recipes', outletId);
-                persistOutletCollectionImmediately('recipes', outletId, nextRecipes);
-            }
         },
         deleteRecipe: (recipeId) => {
-            const recipe = recipes.find(r => r.id === recipeId);
-            const outletId = recipe ? (resolveOutletDataId(recipe.outletId) || selectedDataOutletId) : selectedDataOutletId;
             const nextRecipes = recipes.filter(r => r.id !== recipeId);
             setRecipes(nextRecipes);
-            if (outletId) {
-                markOutletAppDataMutated('recipes', outletId);
-                persistOutletCollectionImmediately('recipes', outletId, nextRecipes);
-            }
         },
 
         checkStockAvailability: (menuItemId, orderQuantity = 1) => {

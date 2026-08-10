@@ -1,5 +1,5 @@
 import type { Request, Response } from 'express';
-import prisma from '../db/prisma.js';
+import prisma, { withRetry } from '../db/prisma.js';
 import { AuthRequest } from '../middleware/authMiddleware.js';
 
 async function validateOutletAccess(user: any, outletId: string): Promise<boolean> {
@@ -25,10 +25,10 @@ export const getEmployees = async (req: Request, res: Response) => {
   if (!outletId) { res.status(400).json({ message: 'outletId is required' }); return; }
   if (!await validateOutletAccess(user, String(outletId))) { res.status(403).json({ message: 'Unauthorized' }); return; }
 
-  const employees = await prisma.employee.findMany({
+  const employees = await withRetry(() => prisma.employee.findMany({
     where: { outletId: String(outletId) },
     orderBy: { name: 'asc' },
-  });
+  }));
   res.json(employees);
 };
 
@@ -40,7 +40,7 @@ export const createEmployee = async (req: Request, res: Response) => {
   if (!outletId) { res.status(400).json({ message: 'outletId is required' }); return; }
   if (!await validateOutletAccess(user, String(outletId))) { res.status(403).json({ message: 'Unauthorized' }); return; }
 
-  const employee = await prisma.employee.create({
+  const employee = await withRetry(() => prisma.employee.create({
     data: {
       outletId: String(outletId),
       name,
@@ -59,7 +59,7 @@ export const createEmployee = async (req: Request, res: Response) => {
       waiterId: waiterId || null,
       photoUrl: photoUrl || null,
     },
-  });
+  }));
   res.status(201).json(employee);
 };
 

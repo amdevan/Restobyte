@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import prisma from '../db/prisma.js';
+import prisma, { withRetry } from '../db/prisma.js';
 import { AuthRequest } from '../middleware/authMiddleware.js';
 
 // Helper to validate outlet access
@@ -26,10 +26,10 @@ export const getExpenses = async (req: Request, res: Response) => {
   if (!outletId) { res.status(400).json({ message: 'outletId is required' }); return; }
   if (!await validateOutletAccess(user, outletId)) { res.status(403).json({ message: 'Unauthorized' }); return; }
 
-  const expenses = await prisma.expense.findMany({
+  const expenses = await withRetry(() => prisma.expense.findMany({
     where: { outletId },
     orderBy: { date: 'desc' },
-  });
+  }));
   res.json(expenses);
 };
 
@@ -44,7 +44,7 @@ export const createExpense = async (req: Request, res: Response) => {
   }
   if (!await validateOutletAccess(user, outletId)) { res.status(403).json({ message: 'Unauthorized' }); return; }
 
-  const expense = await prisma.expense.create({
+  const expense = await withRetry(() => prisma.expense.create({
     data: {
       outletId,
       date: date ? new Date(date) : new Date(),
@@ -56,7 +56,7 @@ export const createExpense = async (req: Request, res: Response) => {
       paymentMethod,
       referenceNumber: referenceNumber || null,
     },
-  });
+  }));
   res.status(201).json(expense);
 };
 

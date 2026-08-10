@@ -1,5 +1,5 @@
 import type { Request, Response } from 'express';
-import prisma from '../db/prisma.js';
+import prisma, { withRetry } from '../db/prisma.js';
 import { AuthRequest } from '../middleware/authMiddleware.js';
 
 // Helper to validate outlet access
@@ -26,10 +26,10 @@ export const getStockItems = async (req: Request, res: Response) => {
   if (!outletId) { res.status(400).json({ message: 'outletId is required' }); return; }
   if (!await validateOutletAccess(user, String(outletId))) { res.status(403).json({ message: 'Unauthorized' }); return; }
 
-  const items = await prisma.stockItem.findMany({
+  const items = await withRetry(() => prisma.stockItem.findMany({
     where: { outletId: String(outletId) },
     orderBy: { name: 'asc' },
-  });
+  }));
   res.json(items);
 };
 
@@ -41,7 +41,7 @@ export const createStockItem = async (req: Request, res: Response) => {
   if (!outletId) { res.status(400).json({ message: 'outletId is required' }); return; }
   if (!await validateOutletAccess(user, String(outletId))) { res.status(403).json({ message: 'Unauthorized' }); return; }
 
-  const item = await prisma.stockItem.create({
+  const item = await withRetry(() => prisma.stockItem.create({
     data: {
       outletId: String(outletId),
       name,
@@ -51,7 +51,7 @@ export const createStockItem = async (req: Request, res: Response) => {
       lowStockThreshold: Number(lowStockThreshold) || 0,
       costPerUnit: Number(costPerUnit) || 0,
     },
-  });
+  }));
   res.status(201).json(item);
 };
 
@@ -139,11 +139,11 @@ export const getStockEntries = async (req: Request, res: Response) => {
   if (!outletId) { res.status(400).json({ message: 'outletId is required' }); return; }
   if (!await validateOutletAccess(user, String(outletId))) { res.status(403).json({ message: 'Unauthorized' }); return; }
 
-  const entries = await prisma.stockEntry.findMany({
+  const entries = await withRetry(() => prisma.stockEntry.findMany({
     where: { outletId: String(outletId) },
     include: { items: true },
     orderBy: { date: 'desc' },
-  });
+  }));
   res.json(entries);
 };
 
@@ -277,10 +277,10 @@ export const getSuppliers = async (req: Request, res: Response) => {
   if (!outletId) { res.status(400).json({ message: 'outletId is required' }); return; }
   if (!await validateOutletAccess(user, String(outletId))) { res.status(403).json({ message: 'Unauthorized' }); return; }
 
-  const suppliers = await prisma.supplier.findMany({
+  const suppliers = await withRetry(() => prisma.supplier.findMany({
     where: { outletId: String(outletId) },
     orderBy: { name: 'asc' },
-  });
+  }));
   res.json(suppliers);
 };
 
@@ -292,7 +292,7 @@ export const createSupplier = async (req: Request, res: Response) => {
   if (!outletId || !name) { res.status(400).json({ message: 'outletId and name are required' }); return; }
   if (!await validateOutletAccess(user, String(outletId))) { res.status(403).json({ message: 'Unauthorized' }); return; }
 
-  const supplier = await prisma.supplier.create({
+  const supplier = await withRetry(() => prisma.supplier.create({
     data: {
       outletId: String(outletId),
       name,
@@ -302,7 +302,7 @@ export const createSupplier = async (req: Request, res: Response) => {
       address: address || null,
       notes: notes || null,
     },
-  });
+  }));
   res.status(201).json(supplier);
 };
 

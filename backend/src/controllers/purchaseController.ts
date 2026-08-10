@@ -1,5 +1,5 @@
 import type { Request, Response } from 'express';
-import prisma from '../db/prisma.js';
+import prisma, { withRetry } from '../db/prisma.js';
 import { AuthRequest } from '../middleware/authMiddleware.js';
 
 // Helper to validate outlet access
@@ -26,11 +26,11 @@ export const getPurchases = async (req: Request, res: Response) => {
   if (!outletId) { res.status(400).json({ message: 'outletId is required' }); return; }
   if (!await validateOutletAccess(user, String(outletId))) { res.status(403).json({ message: 'Unauthorized' }); return; }
 
-  const purchases = await prisma.purchase.findMany({
+  const purchases = await withRetry(() => prisma.purchase.findMany({
     where: { outletId: String(outletId) },
     include: { items: true, payments: true },
     orderBy: { date: 'desc' },
-  });
+  }));
   res.json(purchases);
 };
 

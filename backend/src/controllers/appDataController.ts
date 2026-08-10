@@ -1,5 +1,5 @@
 import type { Request, Response } from 'express';
-import prisma from '../db/prisma.js';
+import prisma, { withRetry } from '../db/prisma.js';
 import { AuthRequest } from '../middleware/authMiddleware.js';
 
 const getAccessibleOutletIds = async (user: NonNullable<AuthRequest['user']>) => {
@@ -47,9 +47,9 @@ export const getAppData = async (req: Request, res: Response) => {
     return;
   }
 
-  const record = await prisma.outletAppData.findUnique({
+  const record = await withRetry(() => prisma.outletAppData.findUnique({
     where: { outletId_key: { outletId, key } },
-  });
+  }));
 
   res.json({
     key,
@@ -89,11 +89,11 @@ export const upsertAppData = async (req: Request, res: Response) => {
     return;
   }
 
-  const record = await prisma.outletAppData.upsert({
+  const record = await withRetry(() => prisma.outletAppData.upsert({
     where: { outletId_key: { outletId, key } },
     update: { data },
     create: { outletId, key, data },
-  });
+  }));
 
   res.json({
     key,

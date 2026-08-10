@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { authenticate } from '../middleware/authMiddleware.js';
+import { requirePermission } from '../utils/roleUtils.js';
 import {
   getPurchases,
   getPurchaseById,
@@ -12,11 +13,11 @@ import {
 const router = Router();
 router.use(authenticate);
 
-router.get('/', getPurchases);
-router.get('/:id', getPurchaseById);
-router.post('/', createPurchase);
-router.put('/:id', updatePurchase);
-router.delete('/:id', deletePurchase);
-router.post('/:id/payments', recordSupplierPayment);
+router.get('/', requirePermission('purchase.view'), getPurchases);
+router.get('/:id', requirePermission('purchase.view'), getPurchaseById);
+router.post('/', requirePermission('purchase.create'), createPurchase);
+router.put('/:id', requirePermission('purchase.edit'), updatePurchase);
+router.delete('/:id', requirePermission('purchase.delete'), deletePurchase);
+router.post('/:id/payments', requirePermission('purchase.edit'), recordSupplierPayment);
 
 export default router;

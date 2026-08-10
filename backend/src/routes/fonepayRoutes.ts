@@ -1,7 +1,11 @@
 import { Router } from 'express';
+import { authenticate } from '../middleware/authMiddleware.js';
 import { createQR, getStatus, markPaid } from '../controllers/fonepayController.js';
 
 const router = Router();
+
+// All fonepay routes require authentication
+router.use(authenticate);
 
 // Create a new Fonepay QR session
 router.post('/create-qr', createQR);

@@ -202,7 +202,7 @@ const RestaurantLayout: React.FC<{ children: React.ReactNode }> = ({ children })
           { path: "/app/panel/pos", label: "POS", icon: <FiShoppingCart />, featureKey: 'pos', requiredPermissions: ['pos.create_order', 'pos.edit_order'] },
           { path: "/app/panel/kitchen-display", label: "Kitchen Display", icon: <FiMonitor />, featureKey: 'kds', requiredPermissions: ['kitchen.display'] },
           { path: "/app/panel/customer-display", label: "Customer Display", icon: <FiTv />, featureKey: 'customerDisplay' },
-          { path: "/app/mobile-scanner", label: "Mobile Scanner", icon: <FiLayout /> },
+          { path: "/app/mobile-scanner", label: "Mobile Scanner", icon: <FiLayout />, requiredPermissions: ['pos.view'] },
         ]
       },
       {
@@ -214,8 +214,8 @@ const RestaurantLayout: React.FC<{ children: React.ReactNode }> = ({ children })
         isCloudKitchenHidden: true,
         featureKey: 'tables',
         items: [
-          { path: "/app/tables", label: "Tables", icon: <FiGrid />, featureKey: 'tables' },
-          { path: "/app/reservations", label: "Reservations", icon: <FiCalendar />, featureKey: 'reservations' },
+          { path: "/app/tables", label: "Tables", icon: <FiGrid />, featureKey: 'tables', requiredPermissions: ['tables.view'] },
+          { path: "/app/reservations", label: "Reservations", icon: <FiCalendar />, featureKey: 'reservations', requiredPermissions: ['reservations.view'] },
         ]
       },
       {
@@ -226,8 +226,8 @@ const RestaurantLayout: React.FC<{ children: React.ReactNode }> = ({ children })
         isOperational: true,
         featureKey: 'whatsapp',
         items: [
-          { path: "/app/whatsapp/order-menu", label: "Order Menu", icon: <FiShoppingCart />, featureKey: 'whatsapp' },
-          { path: "/app/whatsapp/settings", label: "Settings", icon: <FiSettings />, featureKey: 'whatsapp' },
+          { path: "/app/whatsapp/order-menu", label: "Order Menu", icon: <FiShoppingCart />, featureKey: 'whatsapp', requiredPermissions: ['settings.view'] },
+          { path: "/app/whatsapp/settings", label: "Settings", icon: <FiSettings />, featureKey: 'whatsapp', requiredPermissions: ['settings.view'] },
         ]
       },
       {
@@ -237,10 +237,10 @@ const RestaurantLayout: React.FC<{ children: React.ReactNode }> = ({ children })
         matchPaths: ['/app/item/', '/app/menu'],
         featureKey: 'menu',
         items: [
-          { path: "/app/item/list-food-menu-category", label: "Food Categories", icon: <FiClipboard />, featureKey: 'menu', requiredPermissions: ['inventory.add_product', 'inventory.edit_product'] },
-          { path: "/app/menu", label: "Food Menu", icon: <FiList />, featureKey: 'menu' },
-          { path: "/app/item/list-pre-made-food", label: "Pre-Made Food", icon: <FiBox />, featureKey: 'menu' },
-          { path: "/app/item/manage-addons", label: "Manage Add-ons", icon: <FiPlusCircle />, featureKey: 'menu' },
+          { path: "/app/item/list-food-menu-category", label: "Food Categories", icon: <FiClipboard />, featureKey: 'menu', requiredPermissions: ['menu.view'] },
+          { path: "/app/menu", label: "Food Menu", icon: <FiList />, featureKey: 'menu', requiredPermissions: ['menu.view'] },
+          { path: "/app/item/list-pre-made-food", label: "Pre-Made Food", icon: <FiBox />, featureKey: 'menu', requiredPermissions: ['menu.view'] },
+          { path: "/app/item/manage-addons", label: "Manage Add-ons", icon: <FiPlusCircle />, featureKey: 'menu', requiredPermissions: ['menu.view'] },
         ]
       },
       {
@@ -250,12 +250,12 @@ const RestaurantLayout: React.FC<{ children: React.ReactNode }> = ({ children })
         matchPaths: ['/app/stock/'],
         featureKey: 'inventory',
         items: [
-          { path: "/app/stock/levels", label: "View Stock Levels", icon: <FiDatabase />, featureKey: 'inventory', requiredPermissions: ['inventory.view_reports'] },
-          { path: "/app/stock/add-entry", label: "Add Stock Entry", icon: <FiArrowDownCircle />, featureKey: 'inventory', requiredPermissions: ['inventory.add_product'] },
-          { path: "/app/stock/adjustments", label: "Stock Adjustments", icon: <FiTool />, featureKey: 'inventory', requiredPermissions: ['inventory.stock_adjustment'] },
-          { path: "/app/stock/suppliers", label: "Manage Suppliers", icon: <FiUsers />, featureKey: 'inventory', requiredPermissions: ['inventory.add_product', 'inventory.edit_product'] },
-          { path: "/app/stock/low-stock-report", label: "Low Stock Report", icon: <FiAlertTriangle />, featureKey: 'inventory', requiredPermissions: ['inventory.view_reports'] },
-          { path: "/app/stock/recipes", label: "Recipe Management", icon: <FiBook />, featureKey: 'inventory', requiredPermissions: ['inventory.view_reports'] },
+          { path: "/app/stock/levels", label: "View Stock Levels", icon: <FiDatabase />, featureKey: 'inventory', requiredPermissions: ['inventory.view'] },
+          { path: "/app/stock/add-entry", label: "Add Stock Entry", icon: <FiArrowDownCircle />, featureKey: 'inventory', requiredPermissions: ['inventory.create'] },
+          { path: "/app/stock/adjustments", label: "Stock Adjustments", icon: <FiTool />, featureKey: 'inventory', requiredPermissions: ['inventory.edit'] },
+          { path: "/app/stock/suppliers", label: "Manage Suppliers", icon: <FiUsers />, featureKey: 'inventory', requiredPermissions: ['inventory.view'] },
+          { path: "/app/stock/low-stock-report", label: "Low Stock Report", icon: <FiAlertTriangle />, featureKey: 'inventory', requiredPermissions: ['inventory.view'] },
+          { path: "/app/stock/recipes", label: "Recipe Management", icon: <FiBook />, featureKey: 'inventory', requiredPermissions: ['inventory.view'] },
         ]
       },
       {
@@ -265,9 +265,9 @@ const RestaurantLayout: React.FC<{ children: React.ReactNode }> = ({ children })
         matchPaths: ['/app/sale', '/app/customer', '/app/customer-due-receive'],
         featureKey: 'customers',
         items: [
-          { path: "/app/sale", label: "Sale History", icon: <FiActivity />, featureKey: 'customers', requiredPermissions: ['invoice.view'] },
-          { path: "/app/customer", label: "Manage Customers", icon: <FiUsers />, featureKey: 'customers', requiredPermissions: ['customer.view', 'customer.edit'] },
-          { path: "/app/customer-due-receive", label: "Customer Due Receive", icon: <FiDollarSign />, featureKey: 'customers', requiredPermissions: ['accounting.manage_payments'] },
+          { path: "/app/sale", label: "Sale History", icon: <FiActivity />, featureKey: 'customers', requiredPermissions: ['sales.view'] },
+          { path: "/app/customer", label: "Manage Customers", icon: <FiUsers />, featureKey: 'customers', requiredPermissions: ['customers.view'] },
+          { path: "/app/customer-due-receive", label: "Customer Due Receive", icon: <FiDollarSign />, featureKey: 'customers', requiredPermissions: ['customers.view'] },
         ]
       },
       {
@@ -277,11 +277,11 @@ const RestaurantLayout: React.FC<{ children: React.ReactNode }> = ({ children })
         matchPaths: ['/app/purchase', '/app/supplier-due-payment', '/app/expense', '/app/waste'],
         featureKey: 'purchase',
         items: [
-          { path: "/app/purchase", label: "List Purchases", icon: <FiShoppingCart />, featureKey: 'purchase' },
-          { path: "/app/purchase/add", label: "Add New Purchase", icon: <FiPlusCircle />, featureKey: 'purchase' },
-          { path: "/app/supplier-due-payment", label: "Supplier Due Payment", icon: <FiCreditCard />, featureKey: 'purchase' },
-          { path: "/app/expense", label: "Expense Management", icon: <FiTrendingDown />, featureKey: 'purchase' },
-          { path: "/app/waste", label: "Waste Management", icon: <FiTrash2 />, featureKey: 'purchase' },
+          { path: "/app/purchase", label: "List Purchases", icon: <FiShoppingCart />, featureKey: 'purchase', requiredPermissions: ['purchase.view'] },
+          { path: "/app/purchase/add", label: "Add New Purchase", icon: <FiPlusCircle />, featureKey: 'purchase', requiredPermissions: ['purchase.create'] },
+          { path: "/app/supplier-due-payment", label: "Supplier Due Payment", icon: <FiCreditCard />, featureKey: 'purchase', requiredPermissions: ['purchase.view'] },
+          { path: "/app/expense", label: "Expense Management", icon: <FiTrendingDown />, featureKey: 'purchase', requiredPermissions: ['purchase.view'] },
+          { path: "/app/waste", label: "Waste Management", icon: <FiTrash2 />, featureKey: 'purchase', requiredPermissions: ['inventory.view'] },
         ]
       },
       {
@@ -290,10 +290,10 @@ const RestaurantLayout: React.FC<{ children: React.ReactNode }> = ({ children })
         icon: <FiUsers />,
         matchPaths: ['/app/employees', '/app/account-user', '/app/attendance', '/app/payroll'],
         items: [
-          { path: "/app/account-user", label: "Account and User", icon: <FiUsers />, requiredPermissions: ['users.view', 'users.create', 'users.edit'] },
-          { path: "/app/employees", label: "Employees", icon: <FiUsers /> },
-          { path: "/app/attendance", label: "Attendance", icon: <FiCalendar /> },
-          { path: "/app/payroll", label: "Payroll", icon: <FiDollarSign /> },
+          { path: "/app/account-user", label: "Account and User", icon: <FiUsers />, requiredPermissions: ['users.view'] },
+          { path: "/app/employees", label: "Employees", icon: <FiUsers />, requiredPermissions: ['users.view'] },
+          { path: "/app/attendance", label: "Attendance", icon: <FiCalendar />, requiredPermissions: ['users.view'] },
+          { path: "/app/payroll", label: "Payroll", icon: <FiDollarSign />, requiredPermissions: ['accounting.view'] },
         ]
       },
       {
@@ -302,22 +302,22 @@ const RestaurantLayout: React.FC<{ children: React.ReactNode }> = ({ children })
         icon: <FiSettings />,
         matchPaths: ['/app/settings/'],
         items: [
-          { path: "/app/settings/app-settings", label: "Application Settings", icon: <FiSettings />, requiredPermissions: ['settings.view', 'settings.edit'] },
-          { path: "/app/settings/sound-settings", label: "Sound Settings", icon: <FiVolume2 /> },
-          { path: "/app/settings/white-label", label: "White Label", icon: <FiTool /> },
-          { path: "/app/settings/list-printer", label: "Printer", icon: <FiPrinter /> },
-          { path: "/app/settings/list-counter", label: "Counter", icon: <FiMonitor /> },
-          { path: "/app/settings/tax-setting", label: "Tax Setting", icon: <FiPercent /> },
-          { path: "/app/settings/list-multiple-currency", label: "Multiple Currencies", icon: <FiDollarSign /> },
-          { path: "/app/settings/expense-categories", label: "Expense Categories", icon: <FiTag /> },
-          { path: "/app/settings/list-payment-method", label: "Payment Methods", icon: <FiCreditCard /> },
-          { path: "/app/settings/list-denomination", label: "Denominations", icon: <FiArchive /> },
-          { path: "/app/settings/list-delivery-partner", label: "Delivery Partners", icon: <FiTruck /> },
-          { path: "/app/settings/list-area-floor", label: "Areas/Floors", icon: <FiMapPin />, isCloudKitchenHidden: true },
-          { path: "/app/settings/list-table", label: "Table", icon: <FiGrid />, isCloudKitchenHidden: true },
-          { path: "/app/settings/floor-area-plan-design", label: "Floor/Area Plan Design", icon: <FiLayout />, isCloudKitchenHidden: true },
-          { path: "/app/settings/kitchens", label: "Manage Kitchens", icon: <FiCoffee /> },
-          { path: "/app/settings/waiters", label: "Manage Waiters", icon: <FiUsers />, isCloudKitchenHidden: true },
+          { path: "/app/settings/app-settings", label: "Application Settings", icon: <FiSettings />, requiredPermissions: ['settings.view'] },
+          { path: "/app/settings/sound-settings", label: "Sound Settings", icon: <FiVolume2 />, requiredPermissions: ['settings.view'] },
+          { path: "/app/settings/white-label", label: "White Label", icon: <FiTool />, requiredPermissions: ['settings.view'] },
+          { path: "/app/settings/list-printer", label: "Printer", icon: <FiPrinter />, requiredPermissions: ['settings.view'] },
+          { path: "/app/settings/list-counter", label: "Counter", icon: <FiMonitor />, requiredPermissions: ['settings.view'] },
+          { path: "/app/settings/tax-setting", label: "Tax Setting", icon: <FiPercent />, requiredPermissions: ['settings.view'] },
+          { path: "/app/settings/list-multiple-currency", label: "Multiple Currencies", icon: <FiDollarSign />, requiredPermissions: ['settings.view'] },
+          { path: "/app/settings/expense-categories", label: "Expense Categories", icon: <FiTag />, requiredPermissions: ['settings.view'] },
+          { path: "/app/settings/list-payment-method", label: "Payment Methods", icon: <FiCreditCard />, requiredPermissions: ['settings.view'] },
+          { path: "/app/settings/list-denomination", label: "Denominations", icon: <FiArchive />, requiredPermissions: ['settings.view'] },
+          { path: "/app/settings/list-delivery-partner", label: "Delivery Partners", icon: <FiTruck />, requiredPermissions: ['settings.view'] },
+          { path: "/app/settings/list-area-floor", label: "Areas/Floors", icon: <FiMapPin />, isCloudKitchenHidden: true, requiredPermissions: ['settings.view'] },
+          { path: "/app/settings/list-table", label: "Table", icon: <FiGrid />, isCloudKitchenHidden: true, requiredPermissions: ['settings.view'] },
+          { path: "/app/settings/floor-area-plan-design", label: "Floor/Area Plan Design", icon: <FiLayout />, isCloudKitchenHidden: true, requiredPermissions: ['settings.view'] },
+          { path: "/app/settings/kitchens", label: "Manage Kitchens", icon: <FiCoffee />, requiredPermissions: ['settings.view'] },
+          { path: "/app/settings/waiters", label: "Manage Waiters", icon: <FiUsers />, isCloudKitchenHidden: true, requiredPermissions: ['settings.view'] },
         ]
       },
       {
@@ -328,9 +328,9 @@ const RestaurantLayout: React.FC<{ children: React.ReactNode }> = ({ children })
         matchPaths: ['/app/self-order/'],
         featureKey: 'selfOrder',
         items: [
-          { path: "/app/self-order/enable-disable", label: "Enable/Disable", icon: <FiTool />, featureKey: 'selfOrder' },
-          { path: "/app/self-order/qr-generator", label: "Table QR code Generator", icon: <FiGrid />, isCloudKitchenHidden: true, featureKey: 'selfOrder' },
-          { path: "/app/self-order/receiving-user", label: "Order Receiving User", icon: <FiUsers />, featureKey: 'selfOrder' },
+          { path: "/app/self-order/enable-disable", label: "Enable/Disable", icon: <FiTool />, featureKey: 'selfOrder', requiredPermissions: ['settings.view'] },
+          { path: "/app/self-order/qr-generator", label: "Table QR code Generator", icon: <FiGrid />, isCloudKitchenHidden: true, featureKey: 'selfOrder', requiredPermissions: ['settings.view'] },
+          { path: "/app/self-order/receiving-user", label: "Order Receiving User", icon: <FiUsers />, featureKey: 'selfOrder', requiredPermissions: ['settings.view'] },
         ]
       },
       {
@@ -340,22 +340,22 @@ const RestaurantLayout: React.FC<{ children: React.ReactNode }> = ({ children })
         matchPaths: ['/app/website-settings/'],
         featureKey: 'website',
         items: [
-          { path: "/app/website-settings/order-enable-disable", label: "Order Enable/Disable", featureKey: 'website' },
-          { path: "/app/website-settings/order-receiving-user", label: "Order Receiving User", featureKey: 'website' },
-          { path: "/app/website-settings/website-white-label", label: "Website White Label", featureKey: 'website' },
-          { path: "/app/website-settings/home/content", label: "Homepage Content", featureKey: 'website' },
-          { path: "/app/website-settings/home/add-photo", label: "Add Photo", featureKey: 'website' },
-          { path: "/app/website-settings/home/list-photo", label: "List Photo", featureKey: 'website' },
-          { path: "/app/website-settings/home/social-media", label: "Social Media", featureKey: 'website' },
-          { path: "/app/website-settings/ai-website-builder", label: "AI Website Builder", featureKey: 'website' },
-          { path: "/app/website-settings/available-online-foods", label: "Available Online Foods", featureKey: 'website' },
-          { path: "/app/website-settings/about-us-content", label: "About Us Content", featureKey: 'website' },
-          { path: "/app/website-settings/contact-us-content", label: "Contact Us Content", featureKey: 'website' },
-          { path: "/app/website-settings/contact-list", label: "Contact List", featureKey: 'website' },
-          { path: "/app/website-settings/common-menu-page", label: "Common Menu Page", featureKey: 'website' },
-          { path: "/app/website-settings/social-login-setting", label: "Social Login Setting", featureKey: 'website' },
-          { path: "/app/website-settings/email-setting", label: "Email Setting", featureKey: 'website' },
-          { path: "/app/website-settings/payment-setting", label: "Payment Setting", featureKey: 'website' },
+          { path: "/app/website-settings/order-enable-disable", label: "Order Enable/Disable", featureKey: 'website', requiredPermissions: ['settings.view'] },
+          { path: "/app/website-settings/order-receiving-user", label: "Order Receiving User", featureKey: 'website', requiredPermissions: ['settings.view'] },
+          { path: "/app/website-settings/website-white-label", label: "Website White Label", featureKey: 'website', requiredPermissions: ['settings.view'] },
+          { path: "/app/website-settings/home/content", label: "Homepage Content", featureKey: 'website', requiredPermissions: ['settings.view'] },
+          { path: "/app/website-settings/home/add-photo", label: "Add Photo", featureKey: 'website', requiredPermissions: ['settings.view'] },
+          { path: "/app/website-settings/home/list-photo", label: "List Photo", featureKey: 'website', requiredPermissions: ['settings.view'] },
+          { path: "/app/website-settings/home/social-media", label: "Social Media", featureKey: 'website', requiredPermissions: ['settings.view'] },
+          { path: "/app/website-settings/ai-website-builder", label: "AI Website Builder", featureKey: 'website', requiredPermissions: ['settings.view'] },
+          { path: "/app/website-settings/available-online-foods", label: "Available Online Foods", featureKey: 'website', requiredPermissions: ['settings.view'] },
+          { path: "/app/website-settings/about-us-content", label: "About Us Content", featureKey: 'website', requiredPermissions: ['settings.view'] },
+          { path: "/app/website-settings/contact-us-content", label: "Contact Us Content", featureKey: 'website', requiredPermissions: ['settings.view'] },
+          { path: "/app/website-settings/contact-list", label: "Contact List", featureKey: 'website', requiredPermissions: ['settings.view'] },
+          { path: "/app/website-settings/common-menu-page", label: "Common Menu Page", featureKey: 'website', requiredPermissions: ['settings.view'] },
+          { path: "/app/website-settings/social-login-setting", label: "Social Login Setting", featureKey: 'website', requiredPermissions: ['settings.view'] },
+          { path: "/app/website-settings/email-setting", label: "Email Setting", featureKey: 'website', requiredPermissions: ['settings.view'] },
+          { path: "/app/website-settings/payment-setting", label: "Payment Setting", featureKey: 'website', requiredPermissions: ['settings.view'] },
         ]
       },
       {
@@ -364,9 +364,9 @@ const RestaurantLayout: React.FC<{ children: React.ReactNode }> = ({ children })
         icon: <FiBookmark />,
         matchPaths: ['/app/reservation-settings/'],
         items: [
-          { path: "/app/reservation-settings/enable-disable-reservation", label: "Enable/Disable (Reservation)", icon: <FiCalendar /> },
-          { path: "/app/reservation-settings/enable-disable", label: "Order Enable/Disable", icon: <FiTool /> },
-          { path: "/app/reservation-settings/receiving-user", label: "Order Receiving User", icon: <FiUsers /> },
+          { path: "/app/reservation-settings/enable-disable-reservation", label: "Enable/Disable (Reservation)", icon: <FiCalendar />, requiredPermissions: ['settings.view'] },
+          { path: "/app/reservation-settings/enable-disable", label: "Order Enable/Disable", icon: <FiTool />, requiredPermissions: ['settings.view'] },
+          { path: "/app/reservation-settings/receiving-user", label: "Order Receiving User", icon: <FiUsers />, requiredPermissions: ['settings.view'] },
         ]
       },
       {
@@ -375,7 +375,7 @@ const RestaurantLayout: React.FC<{ children: React.ReactNode }> = ({ children })
         icon: <FiDatabase />,
         matchPaths: ['/app/backup'],
         items: [
-          { path: "/app/backup", label: "Backup Dashboard", icon: <FiDatabase /> },
+          { path: "/app/backup", label: "Backup Dashboard", icon: <FiDatabase />, requiredPermissions: ['users.view'] },
         ]
       }
     ];

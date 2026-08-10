@@ -261,113 +261,113 @@ const RestaurantPanelRoutes = () => {
             <Route path="home" element={<Navigate to="/app/dashboard" replace />} />
             <Route path="dashboard" element={<DashboardPage />} />
             <Route path="website-public" element={<LandingPage />} />
-            <Route path="menu" element={<OperationalPage page={<MenuPage />} featureName="Food Menu" requiredFeatureKey="menu" />} />
-            <Route path="item/list-food-menu-category" element={<OperationalPage page={<ListFoodMenuCategoryActualPage />} featureName="Food Categories" requiredFeatureKey="menu" />} />
-            <Route path="item/list-pre-made-food" element={<OperationalPage page={<ListPreMadeFoodActualPage />} featureName="Pre-Made Food" requiredFeatureKey="menu" />} />
-            <Route path="item/manage-addons" element={<OperationalPage page={<ManageAddonsPage />} featureName="Manage Add-ons" requiredFeatureKey="menu" />} />
-            <Route path="settings/sound-settings" element={<SoundSettingsPage />} />
-            <Route path="settings/app-settings" element={<AppSettingsPage />} />
-            <Route path="settings/white-label" element={<WhiteLabelPage />} />
-            <Route path="settings/list-printer" element={<ManagePrintersPage />} />
-            <Route path="settings/list-counter" element={<ManageCountersPage />} />
-            <Route path="settings/tax-setting" element={<TaxSettingPage />} />
-            <Route path="settings/list-multiple-currency" element={<ManageCurrenciesPage />} />
-            <Route path="settings/expense-categories" element={<ManageExpenseCategoriesPage />} />
-            <Route path="settings/list-payment-method" element={<ListPaymentMethodPage />} />
-            <Route path="settings/list-denomination" element={<ManageDenominationsPage />} />
-            <Route path="settings/list-delivery-partner" element={<ListDeliveryPartnerPage />} />
-            <Route path="settings/list-area-floor" element={<OperationalPage page={<ManageAreasFloorsPage />} featureName="Areas/Floors" cloudKitchenDisabled requiredFeatureKey="tables" />} />
-            <Route path="settings/list-table" element={<OperationalPage page={<ManageTablesSettingsPage />} featureName="Table Settings" cloudKitchenDisabled requiredFeatureKey="tables" />} />
-            <Route path="settings/floor-area-plan-design" element={<OperationalPage page={<FloorAreaPlanDesignPage />} featureName="Floor Plan Design" cloudKitchenDisabled requiredFeatureKey="tables" />} />
-            <Route path="settings/kitchens" element={<ManageKitchensPage />} />
-            <Route path="settings/waiters" element={<OperationalPage page={<ManageWaitersPage />} featureName="Waiter Management" cloudKitchenDisabled requiredFeatureKey="tables" />} />
-            <Route path="tables" element={<OperationalPage page={<TablesPage />} featureName="Table Management" cloudKitchenDisabled requiredFeatureKey="tables" />} />
-            <Route path="reservations" element={<OperationalPage page={<ReservationsPage />} featureName="Reservations" cloudKitchenDisabled requiredFeatureKey="reservations" />} />
+            <Route path="menu" element={<ProtectedRoute requiredPermissions={['menu.view']}><OperationalPage page={<MenuPage />} featureName="Food Menu" requiredFeatureKey="menu" /></ProtectedRoute>} />
+            <Route path="item/list-food-menu-category" element={<ProtectedRoute requiredPermissions={['menu.view']}><OperationalPage page={<ListFoodMenuCategoryActualPage />} featureName="Food Categories" requiredFeatureKey="menu" /></ProtectedRoute>} />
+            <Route path="item/list-pre-made-food" element={<ProtectedRoute requiredPermissions={['menu.view']}><OperationalPage page={<ListPreMadeFoodActualPage />} featureName="Pre-Made Food" requiredFeatureKey="menu" /></ProtectedRoute>} />
+            <Route path="item/manage-addons" element={<ProtectedRoute requiredPermissions={['menu.view']}><OperationalPage page={<ManageAddonsPage />} featureName="Manage Add-ons" requiredFeatureKey="menu" /></ProtectedRoute>} />
+            <Route path="settings/sound-settings" element={<ProtectedRoute requiredPermissions={['settings.view']}><SoundSettingsPage /></ProtectedRoute>} />
+            <Route path="settings/app-settings" element={<ProtectedRoute requiredPermissions={['settings.view']}><AppSettingsPage /></ProtectedRoute>} />
+            <Route path="settings/white-label" element={<ProtectedRoute requiredPermissions={['settings.view']}><WhiteLabelPage /></ProtectedRoute>} />
+            <Route path="settings/list-printer" element={<ProtectedRoute requiredPermissions={['settings.view']}><ManagePrintersPage /></ProtectedRoute>} />
+            <Route path="settings/list-counter" element={<ProtectedRoute requiredPermissions={['settings.view']}><ManageCountersPage /></ProtectedRoute>} />
+            <Route path="settings/tax-setting" element={<ProtectedRoute requiredPermissions={['settings.view']}><TaxSettingPage /></ProtectedRoute>} />
+            <Route path="settings/list-multiple-currency" element={<ProtectedRoute requiredPermissions={['settings.view']}><ManageCurrenciesPage /></ProtectedRoute>} />
+            <Route path="settings/expense-categories" element={<ProtectedRoute requiredPermissions={['settings.view']}><ManageExpenseCategoriesPage /></ProtectedRoute>} />
+            <Route path="settings/list-payment-method" element={<ProtectedRoute requiredPermissions={['settings.view']}><ListPaymentMethodPage /></ProtectedRoute>} />
+            <Route path="settings/list-denomination" element={<ProtectedRoute requiredPermissions={['settings.view']}><ManageDenominationsPage /></ProtectedRoute>} />
+            <Route path="settings/list-delivery-partner" element={<ProtectedRoute requiredPermissions={['settings.view']}><ListDeliveryPartnerPage /></ProtectedRoute>} />
+            <Route path="settings/list-area-floor" element={<ProtectedRoute requiredPermissions={['settings.view']}><OperationalPage page={<ManageAreasFloorsPage />} featureName="Areas/Floors" cloudKitchenDisabled requiredFeatureKey="tables" /></ProtectedRoute>} />
+            <Route path="settings/list-table" element={<ProtectedRoute requiredPermissions={['settings.view']}><OperationalPage page={<ManageTablesSettingsPage />} featureName="Table Settings" cloudKitchenDisabled requiredFeatureKey="tables" /></ProtectedRoute>} />
+            <Route path="settings/floor-area-plan-design" element={<ProtectedRoute requiredPermissions={['settings.view']}><OperationalPage page={<FloorAreaPlanDesignPage />} featureName="Floor Plan Design" cloudKitchenDisabled requiredFeatureKey="tables" /></ProtectedRoute>} />
+            <Route path="settings/kitchens" element={<ProtectedRoute requiredPermissions={['settings.view']}><ManageKitchensPage /></ProtectedRoute>} />
+            <Route path="settings/waiters" element={<ProtectedRoute requiredPermissions={['settings.view']}><OperationalPage page={<ManageWaitersPage />} featureName="Waiter Management" cloudKitchenDisabled requiredFeatureKey="tables" /></ProtectedRoute>} />
+            <Route path="tables" element={<ProtectedRoute requiredPermissions={['tables.view']}><OperationalPage page={<TablesPage />} featureName="Table Management" cloudKitchenDisabled requiredFeatureKey="tables" /></ProtectedRoute>} />
+            <Route path="reservations" element={<ProtectedRoute requiredPermissions={['reservations.view']}><OperationalPage page={<ReservationsPage />} featureName="Reservations" cloudKitchenDisabled requiredFeatureKey="reservations" /></ProtectedRoute>} />
             <Route path="pricing" element={<PricingPage />} />
-            <Route path="running-orders" element={<OperationalPage page={<RunningOrdersPage />} featureName="Running Orders" requiredFeatureKey="pos" />} />
-            <Route path="panel/pos" element={<OperationalPage page={<PosPage />} featureName="Point of Sale" requiredFeatureKey="pos" />} />
-            <Route path="panel/pos/:tableId" element={<OperationalPage page={<PosPage />} featureName="Point of Sale" requiredFeatureKey="pos" />} />
-            <Route path="panel/kitchen-display" element={<OperationalPage page={<KitchenDisplayPage />} featureName="Kitchen Display" requiredFeatureKey="kds" />} />
+            <Route path="running-orders" element={<ProtectedRoute requiredPermissions={['orders.view']}><OperationalPage page={<RunningOrdersPage />} featureName="Running Orders" requiredFeatureKey="pos" /></ProtectedRoute>} />
+            <Route path="panel/pos" element={<ProtectedRoute requiredPermissions={['pos.view']}><OperationalPage page={<PosPage />} featureName="Point of Sale" requiredFeatureKey="pos" /></ProtectedRoute>} />
+            <Route path="panel/pos/:tableId" element={<ProtectedRoute requiredPermissions={['pos.view']}><OperationalPage page={<PosPage />} featureName="Point of Sale" requiredFeatureKey="pos" /></ProtectedRoute>} />
+            <Route path="panel/kitchen-display" element={<ProtectedRoute requiredPermissions={['kitchen.view']}><OperationalPage page={<KitchenDisplayPage />} featureName="Kitchen Display" requiredFeatureKey="kds" /></ProtectedRoute>} />
             <Route path="panel/customer-display" element={<OperationalPage page={<CustomerDisplayPage />} featureName="Customer Display" requiredFeatureKey="customerDisplay" />} />
-            <Route path="whatsapp/order-menu" element={<OperationalPage page={<WhatsappOrderMenuPage />} featureName="WhatsApp Order Menu" requiredFeatureKey="whatsapp" />} />
-            <Route path="whatsapp/settings" element={<OperationalPage page={<WhatsappSettingsPage />} featureName="WhatsApp Settings" requiredFeatureKey="whatsapp" />} />
-            <Route path="self-order/enable-disable" element={<OperationalPage page={<EnableDisableSelfOrderPage />} featureName="Self-Order" requiredFeatureKey="selfOrder" />} />
-            <Route path="self-order/qr-generator" element={<OperationalPage page={<TableQrCodeGeneratorPage />} featureName="Table QR Generator" cloudKitchenDisabled requiredFeatureKey="selfOrder" />} />
-            <Route path="self-order/receiving-user" element={<OperationalPage page={<OrderReceivingUserPage />} featureName="Self-Order" requiredFeatureKey="selfOrder" />} />
-            <Route path="website-settings/order-enable-disable" element={<OperationalPage page={<OrderEnableDisablePage />} featureName="Website Ordering" requiredFeatureKey="website" />} />
-            <Route path="website-settings/order-receiving-user" element={<OperationalPage page={<OrderReceivingUserPage />} featureName="Website Ordering" requiredFeatureKey="website" />} />
-            <Route path="website-settings/website-white-label" element={<OperationalPage page={<WebsiteWhiteLabelPage />} featureName="Website White Label" requiredFeatureKey="website" />} />
-            <Route path="website-settings/home/content" element={<OperationalPage page={<HomepageContentPage />} featureName="Homepage Content" requiredFeatureKey="website" />} />
-            <Route path="website-settings/home/add-photo" element={<OperationalPage page={<AddPhotoPage />} featureName="Website Photos" requiredFeatureKey="website" />} />
-            <Route path="website-settings/ai-website-builder" element={<OperationalPage page={<AiWebsiteBuilderPage />} featureName="AI Website Builder" requiredFeatureKey="website" />} />
-            <Route path="website-settings/home/list-photo" element={<OperationalPage page={<ListPhotoPage />} featureName="Website Photos" requiredFeatureKey="website" />} />
-            <Route path="website-settings/home/social-media" element={<OperationalPage page={<SocialMediaPage />} featureName="Social Media" requiredFeatureKey="website" />} />
-            <Route path="website-settings/available-online-foods" element={<OperationalPage page={<AvailableOnlineFoodsPage />} featureName="Available Online Foods" requiredFeatureKey="website" />} />
-            <Route path="website-settings/about-us-content" element={<OperationalPage page={<AboutUsContentPage />} featureName="About Us Content" requiredFeatureKey="website" />} />
-            <Route path="website-settings/contact-us-content" element={<OperationalPage page={<ContactUsContentPage />} featureName="Contact Us Content" requiredFeatureKey="website" />} />
-            <Route path="website-settings/contact-list" element={<OperationalPage page={<ContactListPage />} featureName="Contact List" requiredFeatureKey="website" />} />
-            <Route path="website-settings/common-menu-page" element={<OperationalPage page={<CommonMenuPage />} featureName="Common Menu Page" requiredFeatureKey="website" />} />
-            <Route path="website-settings/social-login-setting" element={<OperationalPage page={<SocialLoginSettingPage />} featureName="Social Login Setting" requiredFeatureKey="website" />} />
-            <Route path="website-settings/email-setting" element={<OperationalPage page={<EmailSettingPage />} featureName="Email Setting" requiredFeatureKey="website" />} />
-            <Route path="website-settings/payment-setting" element={<OperationalPage page={<PaymentSettingPage />} featureName="Payment Setting" requiredFeatureKey="website" />} />
-            <Route path="website-settings/access-data" element={<AccessDataPage />} />
-            <Route path="reservation-settings/enable-disable-reservation" element={<EnableDisableReservationPage />} />
-            <Route path="reservation-settings/enable-disable" element={<EnableDisableReservationOrderPage />} />
-            <Route path="reservation-settings/receiving-user" element={<ReservationOrderReceivingUserPage />} />
-            <Route path="outlet-setting" element={<OutletSettingPage />} />
+            <Route path="whatsapp/order-menu" element={<ProtectedRoute requiredPermissions={['settings.view']}><OperationalPage page={<WhatsappOrderMenuPage />} featureName="WhatsApp Order Menu" requiredFeatureKey="whatsapp" /></ProtectedRoute>} />
+            <Route path="whatsapp/settings" element={<ProtectedRoute requiredPermissions={['settings.view']}><OperationalPage page={<WhatsappSettingsPage />} featureName="WhatsApp Settings" requiredFeatureKey="whatsapp" /></ProtectedRoute>} />
+            <Route path="self-order/enable-disable" element={<ProtectedRoute requiredPermissions={['settings.view']}><OperationalPage page={<EnableDisableSelfOrderPage />} featureName="Self-Order" requiredFeatureKey="selfOrder" /></ProtectedRoute>} />
+            <Route path="self-order/qr-generator" element={<ProtectedRoute requiredPermissions={['settings.view']}><OperationalPage page={<TableQrCodeGeneratorPage />} featureName="Table QR Generator" cloudKitchenDisabled requiredFeatureKey="selfOrder" /></ProtectedRoute>} />
+            <Route path="self-order/receiving-user" element={<ProtectedRoute requiredPermissions={['settings.view']}><OperationalPage page={<OrderReceivingUserPage />} featureName="Self-Order" requiredFeatureKey="selfOrder" /></ProtectedRoute>} />
+            <Route path="website-settings/order-enable-disable" element={<ProtectedRoute requiredPermissions={['settings.view']}><OperationalPage page={<OrderEnableDisablePage />} featureName="Website Ordering" requiredFeatureKey="website" /></ProtectedRoute>} />
+            <Route path="website-settings/order-receiving-user" element={<ProtectedRoute requiredPermissions={['settings.view']}><OperationalPage page={<OrderReceivingUserPage />} featureName="Website Ordering" requiredFeatureKey="website" /></ProtectedRoute>} />
+            <Route path="website-settings/website-white-label" element={<ProtectedRoute requiredPermissions={['settings.view']}><OperationalPage page={<WebsiteWhiteLabelPage />} featureName="Website White Label" requiredFeatureKey="website" /></ProtectedRoute>} />
+            <Route path="website-settings/home/content" element={<ProtectedRoute requiredPermissions={['settings.view']}><OperationalPage page={<HomepageContentPage />} featureName="Homepage Content" requiredFeatureKey="website" /></ProtectedRoute>} />
+            <Route path="website-settings/home/add-photo" element={<ProtectedRoute requiredPermissions={['settings.view']}><OperationalPage page={<AddPhotoPage />} featureName="Website Photos" requiredFeatureKey="website" /></ProtectedRoute>} />
+            <Route path="website-settings/ai-website-builder" element={<ProtectedRoute requiredPermissions={['settings.view']}><OperationalPage page={<AiWebsiteBuilderPage />} featureName="AI Website Builder" requiredFeatureKey="website" /></ProtectedRoute>} />
+            <Route path="website-settings/home/list-photo" element={<ProtectedRoute requiredPermissions={['settings.view']}><OperationalPage page={<ListPhotoPage />} featureName="Website Photos" requiredFeatureKey="website" /></ProtectedRoute>} />
+            <Route path="website-settings/home/social-media" element={<ProtectedRoute requiredPermissions={['settings.view']}><OperationalPage page={<SocialMediaPage />} featureName="Social Media" requiredFeatureKey="website" /></ProtectedRoute>} />
+            <Route path="website-settings/available-online-foods" element={<ProtectedRoute requiredPermissions={['settings.view']}><OperationalPage page={<AvailableOnlineFoodsPage />} featureName="Available Online Foods" requiredFeatureKey="website" /></ProtectedRoute>} />
+            <Route path="website-settings/about-us-content" element={<ProtectedRoute requiredPermissions={['settings.view']}><OperationalPage page={<AboutUsContentPage />} featureName="About Us Content" requiredFeatureKey="website" /></ProtectedRoute>} />
+            <Route path="website-settings/contact-us-content" element={<ProtectedRoute requiredPermissions={['settings.view']}><OperationalPage page={<ContactUsContentPage />} featureName="Contact Us Content" requiredFeatureKey="website" /></ProtectedRoute>} />
+            <Route path="website-settings/contact-list" element={<ProtectedRoute requiredPermissions={['settings.view']}><OperationalPage page={<ContactListPage />} featureName="Contact List" requiredFeatureKey="website" /></ProtectedRoute>} />
+            <Route path="website-settings/common-menu-page" element={<ProtectedRoute requiredPermissions={['settings.view']}><OperationalPage page={<CommonMenuPage />} featureName="Common Menu Page" requiredFeatureKey="website" /></ProtectedRoute>} />
+            <Route path="website-settings/social-login-setting" element={<ProtectedRoute requiredPermissions={['settings.view']}><OperationalPage page={<SocialLoginSettingPage />} featureName="Social Login Setting" requiredFeatureKey="website" /></ProtectedRoute>} />
+            <Route path="website-settings/email-setting" element={<ProtectedRoute requiredPermissions={['settings.view']}><OperationalPage page={<EmailSettingPage />} featureName="Email Setting" requiredFeatureKey="website" /></ProtectedRoute>} />
+            <Route path="website-settings/payment-setting" element={<ProtectedRoute requiredPermissions={['settings.view']}><OperationalPage page={<PaymentSettingPage />} featureName="Payment Setting" requiredFeatureKey="website" /></ProtectedRoute>} />
+            <Route path="website-settings/access-data" element={<ProtectedRoute requiredPermissions={['settings.view']}><AccessDataPage /></ProtectedRoute>} />
+            <Route path="reservation-settings/enable-disable-reservation" element={<ProtectedRoute requiredPermissions={['settings.view']}><EnableDisableReservationPage /></ProtectedRoute>} />
+            <Route path="reservation-settings/enable-disable" element={<ProtectedRoute requiredPermissions={['settings.view']}><EnableDisableReservationOrderPage /></ProtectedRoute>} />
+            <Route path="reservation-settings/receiving-user" element={<ProtectedRoute requiredPermissions={['settings.view']}><ReservationOrderReceivingUserPage /></ProtectedRoute>} />
+            <Route path="outlet-setting" element={<ProtectedRoute requiredPermissions={['settings.view']}><OutletSettingPage /></ProtectedRoute>} />
             <Route path="subscription" element={<OperationalPage page={<SubscriptionPage />} featureName="Subscription" requiredFeatureKey="subscription" />} />
-            <Route path="stock/levels" element={<OperationalPage page={<ViewStockLevelsActualPage />} featureName="Stock Levels" requiredFeatureKey="inventory" />} />
-            <Route path="stock/add-entry" element={<OperationalPage page={<AddStockEntryActualPage />} featureName="Add Stock Entry" requiredFeatureKey="inventory" />} />
-            <Route path="stock/adjustments" element={<OperationalPage page={<StockAdjustmentsActualPage />} featureName="Stock Adjustments" requiredFeatureKey="inventory" />} />
-            <Route path="stock/suppliers" element={<OperationalPage page={<ManageSuppliersActualPage />} featureName="Manage Suppliers" requiredFeatureKey="inventory" />} />
-            <Route path="stock/suppliers/:supplierId" element={<OperationalPage page={<SupplierProfilePage />} featureName="Supplier Profile" requiredFeatureKey="inventory" />} />
-            <Route path="stock/low-stock-report" element={<OperationalPage page={<LowStockReportActualPage />} featureName="Low Stock Report" requiredFeatureKey="inventory" />} />
-            <Route path="stock/recipes" element={<OperationalPage page={<RecipeManagementPage />} featureName="Recipe Management" requiredFeatureKey="inventory" />} />
-            <Route path="sale" element={<OperationalPage page={<SalesHistoryPage />} featureName="Sale History" requiredFeatureKey="customers" />} />
-            <Route path="customer" element={<OperationalPage page={<CustomerPage />} featureName="Manage Customers" requiredFeatureKey="customers" />} />
-            <Route path="customer/:customerId" element={<OperationalPage page={<CustomerDetailPage />} featureName="Customer Details" requiredFeatureKey="customers" />} />
-            <Route path="customer-due-receive" element={<OperationalPage page={<CustomerDueReceivePageActual />} featureName="Customer Due Receive" requiredFeatureKey="customers" />} />
-            <Route path="purchase" element={<OperationalPage page={<ActualPurchasePage />} featureName="Purchases" requiredFeatureKey="purchase" />} />
-            <Route path="purchase/add" element={<OperationalPage page={<AddPurchaseActualPage />} featureName="Add Purchase" requiredFeatureKey="purchase" />} />
-            <Route path="purchase/edit/:id" element={<OperationalPage page={<EditPurchasePage />} featureName="Edit Purchase" requiredFeatureKey="purchase" />} />
-            <Route path="supplier-due-payment" element={<OperationalPage page={<ActualSupplierDuePaymentPage />} featureName="Supplier Due Payment" requiredFeatureKey="purchase" />} />
-            <Route path="expense" element={<OperationalPage page={<FunctionalExpensePage />} featureName="Expense Management" requiredFeatureKey="purchase" />} />
-            <Route path="waste" element={<FunctionalWastePage />} />
-            <Route path="backup" element={<BackupDashboardPage />} />
+            <Route path="stock/levels" element={<ProtectedRoute requiredPermissions={['inventory.view']}><OperationalPage page={<ViewStockLevelsActualPage />} featureName="Stock Levels" requiredFeatureKey="inventory" /></ProtectedRoute>} />
+            <Route path="stock/add-entry" element={<ProtectedRoute requiredPermissions={['inventory.create']}><OperationalPage page={<AddStockEntryActualPage />} featureName="Add Stock Entry" requiredFeatureKey="inventory" /></ProtectedRoute>} />
+            <Route path="stock/adjustments" element={<ProtectedRoute requiredPermissions={['inventory.edit']}><OperationalPage page={<StockAdjustmentsActualPage />} featureName="Stock Adjustments" requiredFeatureKey="inventory" /></ProtectedRoute>} />
+            <Route path="stock/suppliers" element={<ProtectedRoute requiredPermissions={['inventory.view']}><OperationalPage page={<ManageSuppliersActualPage />} featureName="Manage Suppliers" requiredFeatureKey="inventory" /></ProtectedRoute>} />
+            <Route path="stock/suppliers/:supplierId" element={<ProtectedRoute requiredPermissions={['inventory.view']}><OperationalPage page={<SupplierProfilePage />} featureName="Supplier Profile" requiredFeatureKey="inventory" /></ProtectedRoute>} />
+            <Route path="stock/low-stock-report" element={<ProtectedRoute requiredPermissions={['inventory.view']}><OperationalPage page={<LowStockReportActualPage />} featureName="Low Stock Report" requiredFeatureKey="inventory" /></ProtectedRoute>} />
+            <Route path="stock/recipes" element={<ProtectedRoute requiredPermissions={['inventory.view']}><OperationalPage page={<RecipeManagementPage />} featureName="Recipe Management" requiredFeatureKey="inventory" /></ProtectedRoute>} />
+            <Route path="sale" element={<ProtectedRoute requiredPermissions={['sales.view']}><OperationalPage page={<SalesHistoryPage />} featureName="Sale History" requiredFeatureKey="customers" /></ProtectedRoute>} />
+            <Route path="customer" element={<ProtectedRoute requiredPermissions={['customers.view']}><OperationalPage page={<CustomerPage />} featureName="Manage Customers" requiredFeatureKey="customers" /></ProtectedRoute>} />
+            <Route path="customer/:customerId" element={<ProtectedRoute requiredPermissions={['customers.view']}><OperationalPage page={<CustomerDetailPage />} featureName="Customer Details" requiredFeatureKey="customers" /></ProtectedRoute>} />
+            <Route path="customer-due-receive" element={<ProtectedRoute requiredPermissions={['customers.view']}><OperationalPage page={<CustomerDueReceivePageActual />} featureName="Customer Due Receive" requiredFeatureKey="customers" /></ProtectedRoute>} />
+            <Route path="purchase" element={<ProtectedRoute requiredPermissions={['purchase.view']}><OperationalPage page={<ActualPurchasePage />} featureName="Purchases" requiredFeatureKey="purchase" /></ProtectedRoute>} />
+            <Route path="purchase/add" element={<ProtectedRoute requiredPermissions={['purchase.create']}><OperationalPage page={<AddPurchaseActualPage />} featureName="Add Purchase" requiredFeatureKey="purchase" /></ProtectedRoute>} />
+            <Route path="purchase/edit/:id" element={<ProtectedRoute requiredPermissions={['purchase.edit']}><OperationalPage page={<EditPurchasePage />} featureName="Edit Purchase" requiredFeatureKey="purchase" /></ProtectedRoute>} />
+            <Route path="supplier-due-payment" element={<ProtectedRoute requiredPermissions={['purchase.view']}><OperationalPage page={<ActualSupplierDuePaymentPage />} featureName="Supplier Due Payment" requiredFeatureKey="purchase" /></ProtectedRoute>} />
+            <Route path="expense" element={<ProtectedRoute requiredPermissions={['purchase.view']}><OperationalPage page={<FunctionalExpensePage />} featureName="Expense Management" requiredFeatureKey="purchase" /></ProtectedRoute>} />
+            <Route path="waste" element={<ProtectedRoute requiredPermissions={['inventory.view']}><FunctionalWastePage /></ProtectedRoute>} />
+            <Route path="backup" element={<ProtectedRoute requiredPermissions={['users.view']}><BackupDashboardPage /></ProtectedRoute>} />
             <Route path="account-user" element={<ProtectedRoute requiredPermissions={['users.view']}><AccountAndUserPage /></ProtectedRoute>} />
             <Route path="employees" element={<ProtectedRoute requiredPermissions={['users.view']}><FunctionalEmployeesPage /></ProtectedRoute>} />
-            <Route path="attendance" element={<FunctionalAttendancePage />} />
-            <Route path="payroll" element={<FunctionalPayrollPage />} />
+            <Route path="attendance" element={<ProtectedRoute requiredPermissions={['users.view']}><FunctionalAttendancePage /></ProtectedRoute>} />
+            <Route path="payroll" element={<ProtectedRoute requiredPermissions={['accounting.view']}><FunctionalPayrollPage /></ProtectedRoute>} />
             <Route path="report" element={<ProtectedRoute requiredPermissions={['reports.view']}><ReportDashboardPage /></ProtectedRoute>} />
             <Route path="reports/register-report" element={<ProtectedRoute requiredPermissions={['reports.view']}><RegisterReportPage /></ProtectedRoute>} />
-            <Route path="reports/z-report" element={<ZReportPage />} />
-            <Route path="reports/kitchen-performance-report" element={<KitchenPerformanceReportPage />} />
-            <Route path="reports/product-analysis-report" element={<ProductAnalysisReportPage />} />
-            <Route path="reports/daily-summary-report" element={<DailySummaryReportActualPage />} />
-            <Route path="reports/food-sale-report" element={<FoodSaleReportPage />} />
-            <Route path="reports/daily-sale-report" element={<DailySaleReportPage />} />
-            <Route path="reports/detailed-sale-report" element={<DetailedSaleReportPage />} />
-            <Route path="reports/consumption-report" element={<ConsumptionReportPage />} />
-            <Route path="reports/stock-report" element={<StockReportPage />} />
-            <Route path="reports/profit-loss-report" element={<ProfitLossReportPage />} />
-            <Route path="reports/supplier-ledger-report" element={<SupplierLedgerReportPage />} />
-            <Route path="reports/customer-ledger-report" element={<CustomerLedgerReportPage />} />
-            <Route path="reports/tax-report" element={<TaxReportPage />} />
-            <Route path="reports/food-menu-sale-by-category" element={<FoodMenuSaleByCategoryPage />} />
-            <Route path="reports/waiter-tips-report" element={<WaiterTipsReportPage />} />
-            <Route path="reports/audit-log-report" element={<AuditLogReportPage />} />
-            <Route path="reports/available-loyalty-point-report" element={<AvailableLoyaltyPointReportPage />} />
-            <Route path="reports/usage-loyalty-point-report" element={<UsageLoyaltyPointReportPage />} />
-            <Route path="reports/production-report" element={<ProductionReportPage />} />
-            <Route path="reports/attendance-report" element={<AttendanceReportPage />} />
-            <Route path="reports/supplier-due-report" element={<SupplierDueReportPage />} />
-            <Route path="reports/customer-due-report" element={<CustomerDueReportPage />} />
-            <Route path="reports/purchase-report" element={<PurchaseReportPage />} />
-            <Route path="reports/expense-report" element={<ExpenseReportPage />} />
-            <Route path="reports/waste-report" element={<WasteReportPage />} />
-            <Route path="production" element={<ProductionPage />} />
-            <Route path="send-sms" element={<SendSmsPage />} />
-            <Route path="mobile-scanner" element={<MobileScanner />} />
+            <Route path="reports/z-report" element={<ProtectedRoute requiredPermissions={['reports.view']}><ZReportPage /></ProtectedRoute>} />
+            <Route path="reports/kitchen-performance-report" element={<ProtectedRoute requiredPermissions={['reports.view']}><KitchenPerformanceReportPage /></ProtectedRoute>} />
+            <Route path="reports/product-analysis-report" element={<ProtectedRoute requiredPermissions={['reports.view']}><ProductAnalysisReportPage /></ProtectedRoute>} />
+            <Route path="reports/daily-summary-report" element={<ProtectedRoute requiredPermissions={['reports.view']}><DailySummaryReportActualPage /></ProtectedRoute>} />
+            <Route path="reports/food-sale-report" element={<ProtectedRoute requiredPermissions={['reports.view']}><FoodSaleReportPage /></ProtectedRoute>} />
+            <Route path="reports/daily-sale-report" element={<ProtectedRoute requiredPermissions={['reports.view']}><DailySaleReportPage /></ProtectedRoute>} />
+            <Route path="reports/detailed-sale-report" element={<ProtectedRoute requiredPermissions={['reports.view']}><DetailedSaleReportPage /></ProtectedRoute>} />
+            <Route path="reports/consumption-report" element={<ProtectedRoute requiredPermissions={['reports.view']}><ConsumptionReportPage /></ProtectedRoute>} />
+            <Route path="reports/stock-report" element={<ProtectedRoute requiredPermissions={['reports.view']}><StockReportPage /></ProtectedRoute>} />
+            <Route path="reports/profit-loss-report" element={<ProtectedRoute requiredPermissions={['reports.view']}><ProfitLossReportPage /></ProtectedRoute>} />
+            <Route path="reports/supplier-ledger-report" element={<ProtectedRoute requiredPermissions={['reports.view']}><SupplierLedgerReportPage /></ProtectedRoute>} />
+            <Route path="reports/customer-ledger-report" element={<ProtectedRoute requiredPermissions={['reports.view']}><CustomerLedgerReportPage /></ProtectedRoute>} />
+            <Route path="reports/tax-report" element={<ProtectedRoute requiredPermissions={['reports.view']}><TaxReportPage /></ProtectedRoute>} />
+            <Route path="reports/food-menu-sale-by-category" element={<ProtectedRoute requiredPermissions={['reports.view']}><FoodMenuSaleByCategoryPage /></ProtectedRoute>} />
+            <Route path="reports/waiter-tips-report" element={<ProtectedRoute requiredPermissions={['reports.view']}><WaiterTipsReportPage /></ProtectedRoute>} />
+            <Route path="reports/audit-log-report" element={<ProtectedRoute requiredPermissions={['reports.view']}><AuditLogReportPage /></ProtectedRoute>} />
+            <Route path="reports/available-loyalty-point-report" element={<ProtectedRoute requiredPermissions={['reports.view']}><AvailableLoyaltyPointReportPage /></ProtectedRoute>} />
+            <Route path="reports/usage-loyalty-point-report" element={<ProtectedRoute requiredPermissions={['reports.view']}><UsageLoyaltyPointReportPage /></ProtectedRoute>} />
+            <Route path="reports/production-report" element={<ProtectedRoute requiredPermissions={['reports.view']}><ProductionReportPage /></ProtectedRoute>} />
+            <Route path="reports/attendance-report" element={<ProtectedRoute requiredPermissions={['reports.view']}><AttendanceReportPage /></ProtectedRoute>} />
+            <Route path="reports/supplier-due-report" element={<ProtectedRoute requiredPermissions={['reports.view']}><SupplierDueReportPage /></ProtectedRoute>} />
+            <Route path="reports/customer-due-report" element={<ProtectedRoute requiredPermissions={['reports.view']}><CustomerDueReportPage /></ProtectedRoute>} />
+            <Route path="reports/purchase-report" element={<ProtectedRoute requiredPermissions={['reports.view']}><PurchaseReportPage /></ProtectedRoute>} />
+            <Route path="reports/expense-report" element={<ProtectedRoute requiredPermissions={['reports.view']}><ExpenseReportPage /></ProtectedRoute>} />
+            <Route path="reports/waste-report" element={<ProtectedRoute requiredPermissions={['reports.view']}><WasteReportPage /></ProtectedRoute>} />
+            <Route path="production" element={<ProtectedRoute requiredPermissions={['inventory.view']}><ProductionPage /></ProtectedRoute>} />
+            <Route path="send-sms" element={<ProtectedRoute requiredPermissions={['settings.view']}><SendSmsPage /></ProtectedRoute>} />
+            <Route path="mobile-scanner" element={<ProtectedRoute requiredPermissions={['pos.view']}><MobileScanner /></ProtectedRoute>} />
             <Route path="*" element={<Navigate to="/app/dashboard" replace />} />
         </Routes>
     );

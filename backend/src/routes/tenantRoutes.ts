@@ -4,14 +4,17 @@ import { authenticate } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
+// Public: create tenant during registration
 router.post('/', createTenant);
+// All other routes require authentication
+router.use(authenticate);
 router.get('/', listTenants);
 router.get('/:id/details', getTenantDetails);
-router.post('/:id/invoices/:invoiceId/remind', authenticate, sendInvoiceReminder);
-router.get('/me-currency', authenticate, getMyTenantCurrency);
-router.get('/me-entitlements', authenticate, getMyTenantEntitlements);
-router.put('/me-plan', authenticate, updateMyTenantPlan);
 router.put('/:id', updateTenant);
 router.delete('/:id', deleteTenant);
+router.post('/:id/invoices/:invoiceId/remind', sendInvoiceReminder);
+router.get('/me-currency', getMyTenantCurrency);
+router.get('/me-entitlements', getMyTenantEntitlements);
+router.put('/me-plan', updateMyTenantPlan);
 
 export default router;

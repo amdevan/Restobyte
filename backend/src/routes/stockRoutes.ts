@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { authenticate } from '../middleware/authMiddleware.js';
+import { requirePermission } from '../utils/roleUtils.js';
 import {
   getStockItems,
   createStockItem,
@@ -25,30 +26,30 @@ const router = Router();
 router.use(authenticate);
 
 // Stock Items
-router.get('/items', getStockItems);
-router.post('/items', createStockItem);
+router.get('/items', requirePermission('inventory.view'), getStockItems);
+router.post('/items', requirePermission('inventory.create'), createStockItem);
 router.put('/items/bulk', bulkUpsertStockItems);
-router.put('/items/:id', updateStockItem);
-router.delete('/items/:id', deleteStockItem);
+router.put('/items/:id', requirePermission('inventory.edit'), updateStockItem);
+router.delete('/items/:id', requirePermission('inventory.delete'), deleteStockItem);
 
 // Stock Entries
-router.get('/entries', getStockEntries);
-router.post('/entries', createStockEntry);
-router.delete('/entries/:id', deleteStockEntry);
+router.get('/entries', requirePermission('inventory.view'), getStockEntries);
+router.post('/entries', requirePermission('inventory.create'), createStockEntry);
+router.delete('/entries/:id', requirePermission('inventory.delete'), deleteStockEntry);
 
 // Stock Adjustments
-router.get('/adjustments', getStockAdjustments);
-router.post('/adjustments', createStockAdjustment);
+router.get('/adjustments', requirePermission('inventory.view'), getStockAdjustments);
+router.post('/adjustments', requirePermission('inventory.edit'), createStockAdjustment);
 
 // Suppliers
-router.get('/suppliers', getSuppliers);
-router.post('/suppliers', createSupplier);
-router.put('/suppliers/:id', updateSupplier);
-router.delete('/suppliers/:id', deleteSupplier);
+router.get('/suppliers', requirePermission('inventory.view'), getSuppliers);
+router.post('/suppliers', requirePermission('inventory.create'), createSupplier);
+router.put('/suppliers/:id', requirePermission('inventory.edit'), updateSupplier);
+router.delete('/suppliers/:id', requirePermission('inventory.delete'), deleteSupplier);
 
 // Recipes
-router.get('/recipes', getRecipes);
-router.post('/recipes', upsertRecipe);
-router.delete('/recipes/:id', deleteRecipe);
+router.get('/recipes', requirePermission('inventory.view'), getRecipes);
+router.post('/recipes', requirePermission('inventory.create'), upsertRecipe);
+router.delete('/recipes/:id', requirePermission('inventory.delete'), deleteRecipe);
 
 export default router;

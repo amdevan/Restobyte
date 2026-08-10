@@ -25,6 +25,7 @@ const ExpensePage: React.FC = () => {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const filteredExpenses = useMemo(() => {
     return expenses.filter(expense => {
@@ -90,9 +91,7 @@ const ExpensePage: React.FC = () => {
   };
   
   const handleDeleteExpense = (expenseId: string) => {
-    if (window.confirm("Are you sure you want to delete this expense record?")) {
-        deleteExpense(expenseId);
-    }
+    setDeletingId(expenseId);
   };
   
   const totalExpensesValue = useMemo(() => {
@@ -254,6 +253,19 @@ const ExpensePage: React.FC = () => {
           onClose={handleCloseModal}
         />
       </Modal>
+
+      {deletingId && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl p-6 max-w-md w-full">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Delete Expense</h3>
+                <p className="text-gray-600 mb-6">Are you sure you want to delete this expense? This action cannot be undone.</p>
+                <div className="flex justify-end gap-3">
+                    <button onClick={() => setDeletingId(null)} className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">Cancel</button>
+                    <button onClick={async () => { await deleteExpense(deletingId); setDeletingId(null); }} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">Delete</button>
+                </div>
+            </div>
+        </div>
+      )}
     </div>
   );
 };

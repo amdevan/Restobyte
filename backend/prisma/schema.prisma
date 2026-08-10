@@ -523,6 +523,92 @@ model Supplier {
   @@index([outletId])
 }
 
+model Purchase {
+  id                    String   @id @default(uuid())
+  outletId              String
+  purchaseNumber        String
+  date                  DateTime @default(now())
+  supplierId            String?
+  supplierName          String?
+  supplierInvoiceNumber String?
+  subTotalAmount        Float    @default(0)
+  taxAmount             Float    @default(0)
+  discountAmount        Float    @default(0)
+  grandTotalAmount      Float    @default(0)
+  paidAmount            Float    @default(0)
+  notes                 String?
+  stockEntryId          String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  items                 PurchaseItem[]
+  payments              SupplierPayment[]
+
+  @@index([outletId])
+  @@index([supplierId])
+}
+
+model PurchaseItem {
+  id                String   @id @default(uuid())
+  purchaseId        String
+  stockItemId       String?
+  itemName          String
+  category          String   @default("")
+  unit              String   @default("pcs")
+  lowStockThreshold Float    @default(0)
+  quantityPurchased Float
+  costPerUnit       Float
+  subTotal          Float
+  createdAt         DateTime @default(now())
+
+  purchase          Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+
+  @@index([purchaseId])
+}
+
+model SupplierPayment {
+  id            String   @id @default(uuid())
+  purchaseId    String
+  amountPaid    Float
+  paymentDate   DateTime @default(now())
+  paymentMethod String
+  reference     String?
+  notes         String?
+  createdAt     DateTime @default(now())
+
+  purchase      Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+
+  @@index([purchaseId])
+}
+
+model ExpenseCategory {
+  id        String   @id @default(uuid())
+  outletId  String
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([outletId])
+}
+
+model Expense {
+  id              String   @id @default(uuid())
+  outletId        String
+  date            DateTime @default(now())
+  categoryId      String
+  categoryName    String
+  amount          Float
+  payee           String?
+  description     String?
+  paymentMethod   String
+  referenceNumber String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([outletId])
+  @@index([categoryId])
+}
+
 model Recipe {
   id              String   @id @default(uuid())
   outletId        String

@@ -1285,9 +1285,9 @@ export interface RestaurantDataContextType {
     deleteDenomination: (id: string) => void;
 
     purchases: Purchase[];
-    addPurchase: (purchaseData: Omit<Purchase, 'id' | 'date' | 'stockEntryId'>) => Purchase;
+    addPurchase: (purchaseData: Omit<Purchase, 'id' | 'stockEntryId'> & { date?: string }) => Promise<Purchase>;
     updatePurchase: (purchase: Purchase) => void;
-    deletePurchase: (purchaseId: string) => void;
+    deletePurchase: (purchaseId: string) => Promise<void>;
     recordSupplierPayment: (purchaseId: string, amountPaid: number, paymentDate: string, paymentMethod: string, reference?: string, notes?: string) => void;
 
     expenseCategories: ExpenseCategory[];
@@ -1296,9 +1296,9 @@ export interface RestaurantDataContextType {
     deleteExpenseCategory: (categoryId: string) => void;
 
     expenses: Expense[];
-    addExpense: (expenseData: Omit<Expense, 'id'>) => Expense;
+    addExpense: (expenseData: Omit<Expense, 'id'>) => Promise<Expense>;
     updateExpense: (expense: Expense) => void;
-    deleteExpense: (expenseId: string) => void;
+    deleteExpense: (expenseId: string) => Promise<void>;
 
     wasteRecords: WasteRecord[];
     addWasteRecord: (recordData: Omit<WasteRecord, 'id'>) => WasteRecord;

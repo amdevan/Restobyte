@@ -1218,6 +1218,114 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         }
     }, [isAuthenticated, logout]);
 
+    // Purchase API functions
+    const fetchPurchasesFromApi = useCallback(async (outletId: string): Promise<Purchase[]> => {
+        if (!isAuthenticated) return [];
+        const token = localStorage.getItem('authToken');
+        if (!token) return [];
+        try {
+            const res = await fetch(`${API_BASE_URL}/purchases?outletId=${outletId}`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (res.status === 401) { logout(); return []; }
+            if (!res.ok) return [];
+            return (await res.json().catch(() => [])) as Purchase[];
+        } catch (err) {
+            console.error("Failed to fetch purchases:", err);
+            return [];
+        }
+    }, [isAuthenticated, logout]);
+
+    const createPurchaseInApi = useCallback(async (outletId: string, purchase: Omit<Purchase, 'id'>): Promise<Purchase | null> => {
+        if (!isAuthenticated) return null;
+        const token = localStorage.getItem('authToken');
+        if (!token) return null;
+        try {
+            const res = await fetch(`${API_BASE_URL}/purchases`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ ...purchase, outletId }),
+            });
+            if (res.status === 401) { logout(); return null; }
+            if (!res.ok) return null;
+            return await res.json().catch(() => null);
+        } catch (err) {
+            console.error("Failed to create purchase:", err);
+            return null;
+        }
+    }, [isAuthenticated, logout]);
+
+    const deletePurchaseInApi = useCallback(async (purchaseId: string): Promise<boolean> => {
+        if (!isAuthenticated) return false;
+        const token = localStorage.getItem('authToken');
+        if (!token) return false;
+        try {
+            const res = await fetch(`${API_BASE_URL}/purchases/${purchaseId}`, {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (res.status === 401) { logout(); return false; }
+            return res.ok;
+        } catch (err) {
+            console.error("Failed to delete purchase:", err);
+            return false;
+        }
+    }, [isAuthenticated, logout]);
+
+    // Expense API functions
+    const fetchExpensesFromApi = useCallback(async (outletId: string): Promise<Expense[]> => {
+        if (!isAuthenticated) return [];
+        const token = localStorage.getItem('authToken');
+        if (!token) return [];
+        try {
+            const res = await fetch(`${API_BASE_URL}/expenses?outletId=${outletId}`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (res.status === 401) { logout(); return []; }
+            if (!res.ok) return [];
+            return (await res.json().catch(() => [])) as Expense[];
+        } catch (err) {
+            console.error("Failed to fetch expenses:", err);
+            return [];
+        }
+    }, [isAuthenticated, logout]);
+
+    const createExpenseInApi = useCallback(async (outletId: string, expense: Omit<Expense, 'id'>): Promise<Expense | null> => {
+        if (!isAuthenticated) return null;
+        const token = localStorage.getItem('authToken');
+        if (!token) return null;
+        try {
+            const res = await fetch(`${API_BASE_URL}/expenses`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ ...expense, outletId }),
+            });
+            if (res.status === 401) { logout(); return null; }
+            if (!res.ok) return null;
+            return await res.json().catch(() => null);
+        } catch (err) {
+            console.error("Failed to create expense:", err);
+            return null;
+        }
+    }, [isAuthenticated, logout]);
+
+    const deleteExpenseInApi = useCallback(async (expenseId: string): Promise<boolean> => {
+        if (!isAuthenticated) return false;
+        const token = localStorage.getItem('authToken');
+        if (!token) return false;
+        try {
+            const res = await fetch(`${API_BASE_URL}/expenses/${expenseId}`, {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (res.status === 401) { logout(); return false; }
+            return res.ok;
+        } catch (err) {
+            console.error("Failed to delete expense:", err);
+            return false;
+        }
+    }, [isAuthenticated, logout]);
+
     const fetchRecipesFromApi = useCallback(async (outletId: string): Promise<Recipe[]> => {
         if (!isAuthenticated) return [];
         const token = localStorage.getItem('authToken');
@@ -1426,9 +1534,6 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             { key: 'counters', fallback: initialCounters, getValue: () => counters, setValue: (value) => setCounters(value) },
             { key: 'waiters', fallback: initialWaiters, getValue: () => waiters, setValue: (value) => setWaiters(value) },
             { key: 'denominations', fallback: initialDenominations, getValue: () => denominations, setValue: (value) => setDenominations(value) },
-            { key: 'purchases', fallback: initialPurchases, getValue: () => purchasesRef.current, setValue: (value) => setPurchases(value) },
-            { key: 'expenseCategories', fallback: initialExpenseCategories, getValue: () => expenseCategoriesRef.current, setValue: (value) => setExpenseCategories(value) },
-            { key: 'expenses', fallback: initialExpenses, getValue: () => expensesRef.current, setValue: (value) => setExpenses(value) },
             { key: 'wasteRecords', fallback: initialWasteRecords, getValue: () => wasteRecordsRef.current, setValue: (value) => setWasteRecords(value) },
             { key: 'employees', fallback: [] as Employee[], getValue: () => employeesRef.current, setValue: (value) => { employeesRef.current = value; setEmployees(value); } },
             { key: 'attendanceRecords', fallback: initialAttendanceRecords, getValue: () => attendanceRecords, setValue: (value) => setAttendanceRecords(value) },
@@ -1489,12 +1594,14 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         let cancelled = false;
 
         const loadStock = async () => {
-            const [items, entries, adjustments, suppliersList, recipesList] = await Promise.all([
+            const [items, entries, adjustments, suppliersList, recipesList, purchasesList, expensesList] = await Promise.all([
                 fetchStockItems(selectedDataOutletId),
                 fetchStockEntries(selectedDataOutletId),
                 fetchStockAdjustments(selectedDataOutletId),
                 fetchSuppliersFromApi(selectedDataOutletId),
                 fetchRecipesFromApi(selectedDataOutletId),
+                fetchPurchasesFromApi(selectedDataOutletId),
+                fetchExpensesFromApi(selectedDataOutletId),
             ]);
 
             if (cancelled) return;
@@ -1509,12 +1616,16 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             suppliersRef.current = suppliersList;
             setSuppliers(suppliersList);
             setRecipes(recipesList);
+            purchasesRef.current = purchasesList;
+            setPurchases(purchasesList);
+            expensesRef.current = expensesList;
+            setExpenses(expensesList);
         };
 
         void loadStock();
 
         return () => { cancelled = true; };
-    }, [isAuthenticated, selectedDataOutletId, fetchStockItems, fetchStockEntries, fetchStockAdjustments, fetchSuppliersFromApi, fetchRecipesFromApi]);
+    }, [isAuthenticated, selectedDataOutletId, fetchStockItems, fetchStockEntries, fetchStockAdjustments, fetchSuppliersFromApi, fetchRecipesFromApi, fetchPurchasesFromApi, fetchExpensesFromApi]);
 
     useEffect(() => {
         if (!isAuthenticated || !selectedDataOutletId) return;
@@ -1532,9 +1643,6 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             { key: 'counters', value: counters },
             { key: 'waiters', value: waiters },
             { key: 'denominations', value: denominations },
-            { key: 'purchases', value: purchases },
-            { key: 'expenseCategories', value: expenseCategories },
-            { key: 'expenses', value: expenses },
             { key: 'wasteRecords', value: wasteRecords },
             { key: 'employees', value: employees },
             { key: 'attendanceRecords', value: attendanceRecords },
@@ -3920,23 +4028,22 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         },
 
         purchases,
-        addPurchase: (purchaseData) => {
-            const outletId = resolveOutletDataId(purchaseData.outletId);
-            const newPurchase = {
-                ...purchaseData,
-                id: `pur-${Date.now()}`,
-                date: new Date().toISOString(),
-                outletId: outletId || purchaseData.outletId,
-            };
-            const nextPurchases = [...purchasesRef.current, newPurchase];
+        addPurchase: async (purchaseData) => {
+            const outletId = selectedDataOutletId;
+            const purchaseDate = purchaseData.date || new Date().toISOString();
+            if (!outletId) return { ...purchaseData, id: `purchase-${Date.now()}`, date: purchaseDate };
+            const created = await createPurchaseInApi(outletId, { ...purchaseData, date: purchaseDate });
+            if (created) {
+                const nextPurchases = [...purchasesRef.current, created];
+                purchasesRef.current = nextPurchases;
+                setPurchases(nextPurchases);
+                return created;
+            }
+            const local = { ...purchaseData, id: `purchase-${Date.now()}`, date: purchaseDate };
+            const nextPurchases = [...purchasesRef.current, local];
             purchasesRef.current = nextPurchases;
             setPurchases(nextPurchases);
-            if (outletId) {
-                markOutletAppDataMutated('purchases', outletId);
-                persistOutletCollectionImmediately('purchases', outletId, nextPurchases);
-            }
-            autoIncreaseStockOnPurchase(newPurchase);
-            return newPurchase;
+            return local;
         },
         updatePurchase: (purchase) => {
             const outletId = resolveOutletDataId(purchase.outletId);
@@ -3948,16 +4055,11 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 persistOutletCollectionImmediately('purchases', outletId, nextPurchases);
             }
         },
-        deletePurchase: (purchaseId) => {
-            const existingPurchase = purchasesRef.current.find((purchase) => purchase.id === purchaseId);
-            const outletId = resolveOutletDataId(existingPurchase?.outletId);
-            const nextPurchases = purchasesRef.current.filter(p => p.id !== purchaseId);
-            purchasesRef.current = nextPurchases;
-            setPurchases(nextPurchases);
-            if (outletId) {
-                markOutletAppDataMutated('purchases', outletId);
-                persistOutletCollectionImmediately('purchases', outletId, nextPurchases);
-            }
+        deletePurchase: async (purchaseId) => {
+            await deletePurchaseInApi(purchaseId);
+            const next = purchasesRef.current.filter(p => p.id !== purchaseId);
+            purchasesRef.current = next;
+            setPurchases(next);
         },
         recordSupplierPayment: (purchaseId: string, amountPaid: number, paymentDate: string, paymentMethod: string, reference?: string, notes?: string) => {
             const existingPurchase = purchasesRef.current.find((purchase) => purchase.id === purchaseId);
@@ -4014,18 +4116,23 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         },
 
         expenses,
-        addExpense: (expenseData) => {
+        addExpense: async (expenseData) => {
             const categoryName = expenseCategories.find(c => c.id === expenseData.categoryId)?.name || 'Unknown';
-            const outletId = resolveOutletDataId(expenseData.outletId);
-            const newExpense = { ...expenseData, id: `exp-${Date.now()}`, categoryName, outletId: outletId || 'unknown' };
-            const nextExpenses = [...expensesRef.current, newExpense];
+            const outletId = resolveOutletDataId(expenseData.outletId) || selectedDataOutletId;
+            if (outletId) {
+                const created = await createExpenseInApi(outletId, { ...expenseData, categoryName });
+                if (created) {
+                    const nextExpenses = [...expensesRef.current, created];
+                    expensesRef.current = nextExpenses;
+                    setExpenses(nextExpenses);
+                    return created;
+                }
+            }
+            const local = { ...expenseData, id: `exp-${Date.now()}`, categoryName, outletId: outletId || 'unknown' };
+            const nextExpenses = [...expensesRef.current, local];
             expensesRef.current = nextExpenses;
             setExpenses(nextExpenses);
-            if (outletId) {
-                markOutletAppDataMutated('expenses', outletId);
-                persistOutletCollectionImmediately('expenses', outletId, nextExpenses);
-            }
-            return newExpense;
+            return local;
         },
         updateExpense: (expense) => {
             const outletId = resolveOutletDataId(expense.outletId);
@@ -4037,16 +4144,11 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 persistOutletCollectionImmediately('expenses', outletId, nextExpenses);
             }
         },
-        deleteExpense: (expenseId) => {
-            const existingExpense = expensesRef.current.find((expense) => expense.id === expenseId);
-            const outletId = resolveOutletDataId(existingExpense?.outletId);
-            const nextExpenses = expensesRef.current.filter(e => e.id !== expenseId);
-            expensesRef.current = nextExpenses;
-            setExpenses(nextExpenses);
-            if (outletId) {
-                markOutletAppDataMutated('expenses', outletId);
-                persistOutletCollectionImmediately('expenses', outletId, nextExpenses);
-            }
+        deleteExpense: async (expenseId) => {
+            await deleteExpenseInApi(expenseId);
+            const next = expensesRef.current.filter(e => e.id !== expenseId);
+            expensesRef.current = next;
+            setExpenses(next);
         },
         
         wasteRecords,

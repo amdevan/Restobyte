@@ -10,10 +10,10 @@ import Button from '@/components/common/Button';
 import Modal from '@/components/common/Modal';
 import ViewPurchaseDetailsModal from '@/components/purchase/ViewPurchaseDetailsModal';
 import Money from '@/components/common/Money';
-import { FiSearch, FiCalendar, FiXCircle, FiEye, FiPlusCircle, FiArchive, FiShoppingCart } from 'react-icons/fi';
+import { FiSearch, FiCalendar, FiXCircle, FiEye, FiPlusCircle, FiArchive, FiShoppingCart, FiTrash2 } from 'react-icons/fi';
 
 const PurchasePage: React.FC = () => {
-  const { purchases, suppliers } = useRestaurantData();
+  const { purchases, suppliers, deletePurchase } = useRestaurantData();
   const navigate = ReactRouterDom.useNavigate();
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -22,6 +22,7 @@ const PurchasePage: React.FC = () => {
   
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [selectedPurchase, setSelectedPurchase] = useState<Purchase | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const enrichedPurchases = useMemo(() => {
     return purchases.map(purchase => ({
@@ -163,9 +164,14 @@ const PurchasePage: React.FC = () => {
                     <td className="py-3 px-4 text-sm text-gray-800 font-semibold text-right"><Money amount={p.grandTotalAmount} /></td>
                     <td className="py-3 px-4 text-sm text-gray-600 text-center">{p.items.length}</td>
                     <td className="py-3 px-4 text-center">
-                      <Button onClick={() => handleViewDetails(p)} variant="outline" size="sm" leftIcon={<FiEye />}>
-                        Details
-                      </Button>
+                      <div className="flex space-x-1 justify-center">
+                        <Button onClick={() => handleViewDetails(p)} variant="outline" size="sm" leftIcon={<FiEye />}>
+                          Details
+                        </Button>
+                        <Button onClick={() => setDeletingId(p.id)} variant="danger" size="sm" className="p-1.5" aria-label="Delete Purchase">
+                          <FiTrash2 size={14}/>
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -181,6 +187,19 @@ const PurchasePage: React.FC = () => {
           onClose={() => setIsDetailsModalOpen(false)}
         />
       </Modal>
+
+      {deletingId && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl p-6 max-w-md w-full">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Delete Purchase</h3>
+                <p className="text-gray-600 mb-6">Are you sure you want to delete this purchase? This action cannot be undone.</p>
+                <div className="flex justify-end gap-3">
+                    <button onClick={() => setDeletingId(null)} className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">Cancel</button>
+                    <button onClick={async () => { await deletePurchase(deletingId); setDeletingId(null); }} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">Delete</button>
+                </div>
+            </div>
+        </div>
+      )}
     </div>
   );
 };

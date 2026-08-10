@@ -32,6 +32,8 @@ import printAgentRoutes from './routes/printAgentRoutes.js';
 import backupRoutes from './routes/backupRoutes.js';
 import googleDriveRoutes from './routes/googleDriveRoutes.js';
 import stockRoutes from './routes/stockRoutes.js';
+import purchaseRoutes from './routes/purchaseRoutes.js';
+import expenseRoutes from './routes/expenseRoutes.js';
 import { DEFAULT_PLAN_DEFINITIONS } from './utils/planConfig.js';
 import { ensureSystemRoles } from './utils/roleUtils.js';
 import { startScheduler } from './services/autoBackupService.js';
@@ -111,6 +113,8 @@ app.use('/api/print-agent', printAgentRoutes);
 app.use('/api/backups', backupRoutes);
 app.use('/api/google-drive', googleDriveRoutes);
 app.use('/api/stock', stockRoutes);
+app.use('/api/purchases', purchaseRoutes);
+app.use('/api/expenses', expenseRoutes);
 
 // Global error handler — catches any unhandled errors from route handlers
 app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

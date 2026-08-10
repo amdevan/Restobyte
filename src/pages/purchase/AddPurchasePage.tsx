@@ -97,7 +97,7 @@ const AddPurchasePage: React.FC = () => {
     return false;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!outlet) {
@@ -152,7 +152,8 @@ const AddPurchasePage: React.FC = () => {
     
     const selectedSupplierDetails = suppliers.find(s => s.id === selectedSupplierId);
 
-    addPurchase({
+    await addPurchase({
+      date: purchaseDate || new Date().toISOString().split('T')[0],
       purchaseNumber,
       supplierId: selectedSupplierId || undefined,
       supplierName: selectedSupplierDetails?.name || undefined,

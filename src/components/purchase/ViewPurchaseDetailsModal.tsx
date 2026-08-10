@@ -50,6 +50,42 @@ const ViewPurchaseDetailsModal: React.FC<ViewPurchaseDetailsModalProps> = ({ pur
         </div>
       )}
 
+      {/* Payment Info */}
+      {(purchase.paymentMethod || purchase.paymentStatus) && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {purchase.paymentMethod && (
+            <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
+              <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Payment Method</span>
+              <p className="text-sm font-medium text-gray-800 mt-1">
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-sky-100 text-sky-800">
+                  {purchase.paymentMethod}
+                </span>
+              </p>
+            </div>
+          )}
+          {purchase.paymentStatus && (
+            <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
+              <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Status</span>
+              <p className="text-sm font-medium mt-1">
+                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                  purchase.paymentStatus === 'Paid' ? 'bg-green-100 text-green-700' :
+                  purchase.paymentStatus === 'Partial' ? 'bg-blue-100 text-blue-700' :
+                  'bg-amber-100 text-amber-700'
+                }`}>
+                  {purchase.paymentStatus}
+                </span>
+              </p>
+            </div>
+          )}
+          {purchase.paidAmount !== undefined && purchase.paidAmount > 0 && (
+            <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
+              <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Paid Amount</span>
+              <p className="text-sm font-medium text-gray-800 mt-1"><Money amount={purchase.paidAmount} /></p>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Items Table */}
       <div>
         <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2">

@@ -536,6 +536,8 @@ model Purchase {
   discountAmount        Float    @default(0)
   grandTotalAmount      Float    @default(0)
   paidAmount            Float    @default(0)
+  paymentMethod         String?
+  paymentStatus         String   @default("DUE")
   notes                 String?
   stockEntryId          String?
   createdAt             DateTime @default(now())

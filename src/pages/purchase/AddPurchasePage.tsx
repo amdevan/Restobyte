@@ -34,15 +34,20 @@ const blankLine = (): PurchaseLine => ({
 });
 
 const AddPurchasePage: React.FC = () => {
-  const { stockItems, suppliers, addPurchase, addSupplier: contextAddSupplier, getSingleActiveOutlet } = useRestaurantData();
+  const { stockItems, suppliers, paymentMethods, addPurchase, addSupplier: contextAddSupplier, getSingleActiveOutlet } = useRestaurantData();
   const navigate = ReactRouterDom.useNavigate();
   const outlet = getSingleActiveOutlet();
+
+  const paymentMethodOptions = useMemo(() => paymentMethods.filter(pm => pm.isEnabled).map(pm => pm.name), [paymentMethods]);
 
   const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().split('T')[0]);
   const [purchaseNumber, setPurchaseNumber] = useState(`PO-${Date.now().toString().slice(-6)}`);
   const [selectedSupplierId, setSelectedSupplierId] = useState('');
   const [supplierInvoiceNumber, setSupplierInvoiceNumber] = useState('');
   const [notes, setNotes] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState(paymentMethodOptions[0] || 'Cash');
+  const [paymentStatus, setPaymentStatus] = useState<'Paid' | 'Pending' | 'Partial'>('Pending');
+  const [paidAmount, setPaidAmount] = useState<string>('');
 
   const [purchaseLines, setPurchaseLines] = useState<PurchaseLine[]>([blankLine()]);
 
@@ -244,6 +249,9 @@ const AddPurchasePage: React.FC = () => {
         taxAmount: taxAmount || undefined,
         discountAmount: parseFloat(discountAmount) || undefined,
         grandTotalAmount: grandTotal,
+        paidAmount: paymentStatus === 'Paid' ? grandTotal : (paymentStatus === 'Partial' ? (parseFloat(paidAmount) || 0) : 0),
+        paymentMethod,
+        paymentStatus,
         notes: notes.trim() || undefined,
         outletId: outlet.id,
       });
@@ -443,6 +451,66 @@ const AddPurchasePage: React.FC = () => {
                   className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition-all bg-white"
                 />
               </div>
+
+              {/* Payment Method */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Payment Method</label>
+                <select
+                  value={paymentMethod}
+                  onChange={(e) => setPaymentMethod(e.target.value)}
+                  className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition-all bg-white appearance-none"
+                >
+                  {paymentMethodOptions.map(method => (
+                    <option key={method} value={method}>{method}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Payment Status */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Payment Status</label>
+                <div className="flex gap-1.5">
+                  {(['Paid', 'Pending', 'Partial'] as const).map(status => (
+                    <button
+                      key={status}
+                      type="button"
+                      onClick={() => {
+                        setPaymentStatus(status);
+                        if (status === 'Paid') setPaidAmount(grandTotal.toFixed(2));
+                        else if (status === 'Pending') setPaidAmount('');
+                      }}
+                      className={`flex-1 px-3 py-2.5 text-sm font-medium rounded-xl border transition-all ${
+                        paymentStatus === status
+                          ? status === 'Paid'
+                            ? 'bg-green-50 border-green-300 text-green-700'
+                            : status === 'Pending'
+                            ? 'bg-amber-50 border-amber-300 text-amber-700'
+                            : 'bg-blue-50 border-blue-300 text-blue-700'
+                          : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'
+                      }`}
+                    >
+                      {status}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Paid Amount (show when Partial) */}
+              {paymentStatus === 'Partial' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Amount Paid</label>
+                  <input
+                    type="number"
+                    value={paidAmount}
+                    onChange={(e) => setPaidAmount(e.target.value)}
+                    placeholder="0.00"
+                    min="0"
+                    max={grandTotal}
+                    step="0.01"
+                    className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition-all bg-white"
+                  />
+                </div>
+              )}
             </div>
           </div>
         </div>

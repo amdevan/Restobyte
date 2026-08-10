@@ -53,7 +53,7 @@ export const createPurchase = async (req: Request, res: Response) => {
   const user = (req as AuthRequest).user;
   if (!user) { res.status(403).json({ message: 'Unauthorized' }); return; }
 
-  const { outletId, date, supplierId, supplierName, supplierInvoiceNumber, items, subTotalAmount, taxAmount, discountAmount, grandTotalAmount, paidAmount, notes } = req.body;
+  const { outletId, date, supplierId, supplierName, supplierInvoiceNumber, items, subTotalAmount, taxAmount, discountAmount, grandTotalAmount, paidAmount, paymentMethod, paymentStatus, notes } = req.body;
   if (!outletId) { res.status(400).json({ message: 'outletId is required' }); return; }
   if (!Array.isArray(items) || items.length === 0) { res.status(400).json({ message: 'items array is required' }); return; }
   if (!await validateOutletAccess(user, String(outletId))) { res.status(403).json({ message: 'Unauthorized' }); return; }
@@ -74,6 +74,8 @@ export const createPurchase = async (req: Request, res: Response) => {
         discountAmount: Number(discountAmount) || 0,
         grandTotalAmount: Number(grandTotalAmount) || 0,
         paidAmount: Number(paidAmount) || 0,
+        paymentMethod: paymentMethod || null,
+        paymentStatus: paymentStatus || 'DUE',
         notes: notes || null,
         items: {
           create: items.map((item: any) => ({

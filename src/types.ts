@@ -337,6 +337,8 @@ export interface Purchase {
   discountAmount?: number; // Optional
   grandTotalAmount: number;
   paidAmount?: number; // Amount paid for this purchase, defaults to 0
+  paymentMethod?: string;
+  paymentStatus?: string;
   payments?: SupplierPayment[]; // Payment history
   notes?: string;
   stockEntryId?: string; // ID of the StockEntry created from this purchase

@@ -19,6 +19,7 @@ const PurchasePage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All');
   const [sortField, setSortField] = useState<SortField>('date');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [page, setPage] = useState(1);
@@ -55,6 +56,11 @@ const PurchasePage: React.FC = () => {
         (purchase.supplierInvoiceNumber && purchase.supplierInvoiceNumber.toLowerCase().includes(searchTermLower));
     });
 
+    // Status filter
+    if (statusFilter !== 'All') {
+      items = items.filter(p => (p.paymentStatus || 'DUE') === statusFilter);
+    }
+
     items.sort((a, b) => {
       let cmp = 0;
       if (sortField === 'date') cmp = new Date(a.date).getTime() - new Date(b.date).getTime();
@@ -77,7 +83,7 @@ const PurchasePage: React.FC = () => {
     setPage(1);
   };
 
-  const hasFilters = searchTerm || startDate || endDate;
+  const hasFilters = searchTerm || startDate || endDate || statusFilter !== 'All';
 
   const totalPurchaseValue = useMemo(() => {
     return filteredPurchases.reduce((sum, p) => sum + p.grandTotalAmount, 0);
@@ -137,9 +143,20 @@ const PurchasePage: React.FC = () => {
           onChange={(e) => { setEndDate(e.target.value); setPage(1); }}
           className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-sky-500 focus:border-sky-500"
         />
+        <select
+          value={statusFilter}
+          onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
+          className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-sky-500 focus:border-sky-500"
+        >
+          <option value="All">All Status</option>
+          <option value="Paid">Paid</option>
+          <option value="Pending">Pending</option>
+          <option value="Partial">Partial</option>
+          <option value="DUE">DUE</option>
+        </select>
         {hasFilters && (
           <button
-            onClick={() => { setSearchTerm(''); setStartDate(''); setEndDate(''); setPage(1); }}
+            onClick={() => { setSearchTerm(''); setStartDate(''); setEndDate(''); setStatusFilter('All'); setPage(1); }}
             className="inline-flex items-center gap-1 px-3 py-2 text-xs font-medium text-gray-600 bg-gray-100 border border-gray-200 rounded-lg hover:bg-gray-200 transition-colors"
           >
             <FiX size={12} /> Clear
@@ -178,6 +195,7 @@ const PurchasePage: React.FC = () => {
                     <SortHeader field="supplier" label="Supplier" />
                     <th className="py-3 px-4 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Invoice #</th>
                     <SortHeader field="totalAmount" label="Total" align="right" />
+                    <th className="py-3 px-4 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Payment</th>
                     <SortHeader field="items" label="Items" align="center" />
                     <th className="py-3 px-4 text-center text-xs font-medium text-gray-600 uppercase tracking-wider">Actions</th>
                   </tr>
@@ -190,6 +208,24 @@ const PurchasePage: React.FC = () => {
                       <td className="py-3 px-4 text-sm text-gray-700 font-medium">{p.supplierNameDisplay}</td>
                       <td className="py-3 px-4 text-sm text-gray-500">{p.supplierInvoiceNumber || '-'}</td>
                       <td className="py-3 px-4 text-sm font-semibold text-gray-800 text-right"><Money amount={p.grandTotalAmount} /></td>
+                      <td className="py-3 px-4 text-sm">
+                        <div className="flex flex-col gap-0.5">
+                          {p.paymentMethod && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700 w-fit">
+                              {p.paymentMethod}
+                            </span>
+                          )}
+                          {p.paymentStatus && (
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium w-fit ${
+                              p.paymentStatus === 'Paid' ? 'bg-green-100 text-green-700' :
+                              p.paymentStatus === 'Partial' ? 'bg-blue-100 text-blue-700' :
+                              'bg-amber-100 text-amber-700'
+                            }`}>
+                              {p.paymentStatus}
+                            </span>
+                          )}
+                        </div>
+                      </td>
                       <td className="py-3 px-4 text-sm text-gray-600 text-center">
                         <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-sky-100 text-sky-700 text-xs font-bold">
                           {p.items.length}

@@ -1,14 +1,17 @@
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useRestaurantData } from '@/hooks/useRestaurantData';
+import { Purchase } from '@/types';
 import Money from '@/components/common/Money';
-import { FiArrowLeft, FiUser, FiPhone, FiMail, FiMapPin, FiFileText, FiShoppingCart, FiCreditCard, FiDollarSign, FiArchive } from 'react-icons/fi';
+import { FiArrowLeft, FiUser, FiPhone, FiMail, FiMapPin, FiFileText, FiShoppingCart, FiCreditCard, FiDollarSign, FiArchive, FiX, FiCalendar, FiCheckCircle } from 'react-icons/fi';
 
 const SupplierProfilePage: React.FC = () => {
   const { supplierId } = useParams<{ supplierId: string }>();
   const navigate = useNavigate();
-  const { suppliers, purchases } = useRestaurantData();
+  const { suppliers, purchases, recordSupplierPayment, paymentMethods } = useRestaurantData();
+
+  const paymentMethodOptions = useMemo(() => paymentMethods.filter(pm => pm.isEnabled).map(pm => pm.name), [paymentMethods]);
 
   const supplier = useMemo(() => suppliers.find(s => s.id === supplierId), [suppliers, supplierId]);
 
@@ -17,7 +20,7 @@ const SupplierProfilePage: React.FC = () => {
     [purchases, supplierId]
   );
 
-  // Due = grandTotal - paidAmount (paidAmount is the source of truth, kept in sync by backend)
+  // Due = grandTotal - paidAmount
   const summary = useMemo(() => {
     const totalValue = supplierPurchases.reduce((sum, p) => sum + (p.grandTotalAmount || 0), 0);
     const totalPaid = supplierPurchases.reduce((sum, p) => sum + (p.paidAmount || 0), 0);
@@ -35,7 +38,7 @@ const SupplierProfilePage: React.FC = () => {
     });
   }, [supplierPurchases]);
 
-  // Payment History — from payments[] array (SupplierPayment records created by backend)
+  // Payment History
   const allPayments = useMemo(() => {
     const txns: Array<{
       id: string;
@@ -64,6 +67,53 @@ const SupplierProfilePage: React.FC = () => {
     return txns.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [supplierPurchases]);
 
+  // Payment Modal State
+  const [payingPurchase, setPayingPurchase] = useState<Purchase | null>(null);
+  const [payAmount, setPayAmount] = useState('');
+  const [payDate, setPayDate] = useState(new Date().toISOString().split('T')[0]);
+  const [payMethod, setPayMethod] = useState(paymentMethodOptions[0] || 'Cash');
+  const [payReference, setPayReference] = useState('');
+  const [payNotes, setPayNotes] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+
+  const handleOpenPayModal = (purchase: Purchase) => {
+    const due = purchase.grandTotalAmount - (purchase.paidAmount || 0);
+    setPayingPurchase(purchase);
+    setPayAmount(due > 0 ? due.toFixed(2) : '');
+    setPayDate(new Date().toISOString().split('T')[0]);
+    setPayMethod(paymentMethodOptions[0] || 'Cash');
+    setPayReference('');
+    setPayNotes('');
+  };
+
+  const handleClosePayModal = () => {
+    setPayingPurchase(null);
+  };
+
+  const handleSubmitPayment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!payingPurchase) return;
+    const amount = parseFloat(payAmount);
+    if (isNaN(amount) || amount <= 0) {
+      alert('Please enter a valid amount.');
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      await recordSupplierPayment(payingPurchase.id, amount, payDate, payMethod, payReference || undefined, payNotes || undefined);
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 2000);
+      handleClosePayModal();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const payingDue = payingPurchase ? payingPurchase.grandTotalAmount - (payingPurchase.paidAmount || 0) : 0;
+
   if (!supplier) {
     return (
       <div className="p-6 text-center">
@@ -87,17 +137,40 @@ const SupplierProfilePage: React.FC = () => {
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
+      {/* Success Toast */}
+      {showSuccess && (
+        <div className="fixed top-4 right-4 z-50 bg-green-50 border border-green-200 rounded-xl px-4 py-3 shadow-lg flex items-center gap-2">
+          <FiCheckCircle className="text-green-600 w-5 h-5" />
+          <span className="text-green-800 font-medium">Payment recorded successfully!</span>
+        </div>
+      )}
+
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <button
-          onClick={() => navigate('/app/stock/suppliers')}
-          className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-colors"
-        >
-          <FiArrowLeft size={20} />
-        </button>
-        <h1 className="text-2xl sm:text-3xl font-semibold text-gray-800 flex items-center">
-          <FiUser className="mr-3 text-sky-600" /> {supplier.name}
-        </h1>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => navigate('/app/stock/suppliers')}
+            className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-colors"
+          >
+            <FiArrowLeft size={20} />
+          </button>
+          <h1 className="text-2xl sm:text-3xl font-semibold text-gray-800 flex items-center">
+            <FiUser className="mr-3 text-sky-600" /> {supplier.name}
+          </h1>
+        </div>
+        {summary.totalDue > 0 && (
+          <button
+            onClick={() => {
+              // Find first purchase with dues
+              const duePurchase = purchaseHistory.find(p => p.due > 0);
+              if (duePurchase) handleOpenPayModal(duePurchase as Purchase);
+            }}
+            className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-green-600 rounded-xl hover:bg-green-700 transition-colors shadow-lg shadow-green-200"
+          >
+            <FiDollarSign className="w-4 h-4" />
+            Pay Due (<Money amount={summary.totalDue} />)
+          </button>
+        )}
       </div>
 
       {/* Supplier Info + Summary Cards */}
@@ -193,21 +266,18 @@ const SupplierProfilePage: React.FC = () => {
                 <tr>
                   <th className="py-3 px-4 text-left text-xs font-medium text-gray-600 uppercase">Purchase #</th>
                   <th className="py-3 px-4 text-left text-xs font-medium text-gray-600 uppercase">Date</th>
-                  <th className="py-3 px-4 text-left text-xs font-medium text-gray-600 uppercase">Invoice #</th>
                   <th className="py-3 px-4 text-right text-xs font-medium text-gray-600 uppercase">Total</th>
                   <th className="py-3 px-4 text-right text-xs font-medium text-gray-600 uppercase">Paid</th>
                   <th className="py-3 px-4 text-right text-xs font-medium text-gray-600 uppercase">Due</th>
                   <th className="py-3 px-4 text-left text-xs font-medium text-gray-600 uppercase">Status</th>
+                  <th className="py-3 px-4 text-center text-xs font-medium text-gray-600 uppercase">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {purchaseHistory.map(p => (
                   <tr key={p.id} className="hover:bg-sky-50 transition-colors">
-                    <td className="py-3 px-4 text-sm font-medium text-sky-600 hover:underline cursor-pointer" onClick={() => navigate(`/app/purchase?highlight=${p.id}`)}>
-                      {p.purchaseNumber}
-                    </td>
+                    <td className="py-3 px-4 text-sm font-medium text-sky-600">{p.purchaseNumber}</td>
                     <td className="py-3 px-4 text-sm text-gray-600">{new Date(p.date).toLocaleDateString()}</td>
-                    <td className="py-3 px-4 text-sm text-gray-600">{p.supplierInvoiceNumber || '-'}</td>
                     <td className="py-3 px-4 text-sm text-gray-800 text-right font-medium"><Money amount={p.grandTotalAmount} /></td>
                     <td className="py-3 px-4 text-sm text-green-600 text-right font-medium"><Money amount={p.paid} /></td>
                     <td className="py-3 px-4 text-sm text-right font-medium">
@@ -215,6 +285,16 @@ const SupplierProfilePage: React.FC = () => {
                     </td>
                     <td className="py-3 px-4 text-sm">
                       <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${statusColor(p.status)}`}>{p.status}</span>
+                    </td>
+                    <td className="py-3 px-4 text-center">
+                      {p.due > 0 && (
+                        <button
+                          onClick={() => handleOpenPayModal(p as Purchase)}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors"
+                        >
+                          <FiDollarSign size={12} /> Pay Due
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -267,6 +347,136 @@ const SupplierProfilePage: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Pay Due Modal */}
+      {payingPurchase && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={handleClosePayModal}>
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+              <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                <FiDollarSign size={18} className="text-green-600" />
+                Pay Supplier Due
+              </h2>
+              <button onClick={handleClosePayModal} className="p-1 hover:bg-gray-100 rounded-lg">
+                <FiX size={18} />
+              </button>
+            </div>
+
+            <div className="px-6 py-4 bg-gray-50 border-b border-gray-100">
+              <div className="flex justify-between text-sm text-gray-600 mb-1">
+                <span>Purchase</span>
+                <span className="font-medium text-sky-600">{payingPurchase.purchaseNumber}</span>
+              </div>
+              <div className="flex justify-between text-sm text-gray-600 mb-1">
+                <span>Total</span>
+                <span className="font-medium"><Money amount={payingPurchase.grandTotalAmount} /></span>
+              </div>
+              <div className="flex justify-between text-sm text-gray-600 mb-1">
+                <span>Already Paid</span>
+                <span className="font-medium text-green-600"><Money amount={payingPurchase.paidAmount || 0} /></span>
+              </div>
+              <div className="flex justify-between text-sm font-semibold text-red-600 pt-1 border-t border-gray-200">
+                <span>Due Amount</span>
+                <Money amount={payingDue} />
+              </div>
+            </div>
+
+            <form onSubmit={handleSubmitPayment} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Payment Amount <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  value={payAmount}
+                  onChange={(e) => setPayAmount(e.target.value)}
+                  placeholder="0.00"
+                  min="0.01"
+                  max={payingDue}
+                  step="0.01"
+                  className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition-all bg-white"
+                  required
+                  autoFocus
+                />
+                {parseFloat(payAmount) > 0 && parseFloat(payAmount) < payingDue && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Remaining after payment: <Money amount={payingDue - (parseFloat(payAmount) || 0)} />
+                  </p>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    <FiCalendar className="inline w-3.5 h-3.5 mr-1" />
+                    Date
+                  </label>
+                  <input
+                    type="date"
+                    value={payDate}
+                    onChange={(e) => setPayDate(e.target.value)}
+                    className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition-all bg-white"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Method</label>
+                  <select
+                    value={payMethod}
+                    onChange={(e) => setPayMethod(e.target.value)}
+                    className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition-all bg-white"
+                    required
+                  >
+                    {paymentMethodOptions.map(m => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Reference</label>
+                <input
+                  type="text"
+                  value={payReference}
+                  onChange={(e) => setPayReference(e.target.value)}
+                  placeholder="e.g., Transaction ID, Cheque #"
+                  className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition-all bg-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Notes</label>
+                <textarea
+                  value={payNotes}
+                  onChange={(e) => setPayNotes(e.target.value)}
+                  rows={2}
+                  placeholder="Optional payment notes"
+                  className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition-all bg-white resize-none"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={handleClosePayModal}
+                  className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="inline-flex items-center gap-2 px-6 py-2.5 text-sm font-semibold text-white bg-green-600 rounded-xl hover:bg-green-700 disabled:opacity-50 transition-colors shadow-lg shadow-green-200"
+                >
+                  <FiCheckCircle size={14} />
+                  {isSubmitting ? 'Saving...' : 'Record Payment'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

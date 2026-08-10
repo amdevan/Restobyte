@@ -165,7 +165,7 @@ export const updatePurchase = async (req: Request, res: Response) => {
   if (!existing) { res.status(404).json({ message: 'Purchase not found' }); return; }
   if (!await validateOutletAccess(user, existing.outletId)) { res.status(403).json({ message: 'Unauthorized' }); return; }
 
-  const { date, supplierId, supplierName, supplierInvoiceNumber, subTotalAmount, taxAmount, discountAmount, grandTotalAmount, paidAmount, notes } = req.body;
+  const { date, supplierId, supplierName, supplierInvoiceNumber, subTotalAmount, taxAmount, discountAmount, grandTotalAmount, paidAmount, paymentMethod, paymentStatus, notes } = req.body;
   const purchase = await prisma.purchase.update({
     where: { id },
     data: {
@@ -178,6 +178,8 @@ export const updatePurchase = async (req: Request, res: Response) => {
       ...(discountAmount !== undefined ? { discountAmount: Number(discountAmount) } : {}),
       ...(grandTotalAmount !== undefined ? { grandTotalAmount: Number(grandTotalAmount) } : {}),
       ...(paidAmount !== undefined ? { paidAmount: Number(paidAmount) } : {}),
+      ...(paymentMethod !== undefined ? { paymentMethod: paymentMethod || null } : {}),
+      ...(paymentStatus !== undefined ? { paymentStatus: paymentStatus || 'DUE' } : {}),
       ...(notes !== undefined ? { notes: notes || null } : {}),
     },
     include: { items: true, payments: true },

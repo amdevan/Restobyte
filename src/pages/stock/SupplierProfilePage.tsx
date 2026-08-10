@@ -17,15 +17,10 @@ const SupplierProfilePage: React.FC = () => {
     [purchases, supplierId]
   );
 
-  // Calculate total paid for a purchase using ONLY the payments array
-  // (backend creates a SupplierPayment for the initial paidAmount, so payments[] is the source of truth)
-  const getPurchasePaid = (purchase: typeof supplierPurchases[0]) => {
-    return (purchase.payments || []).reduce((sum, p) => sum + (p.amountPaid || 0), 0);
-  };
-
+  // Due = grandTotal - paidAmount (paidAmount is the source of truth, kept in sync by backend)
   const summary = useMemo(() => {
     const totalValue = supplierPurchases.reduce((sum, p) => sum + (p.grandTotalAmount || 0), 0);
-    const totalPaid = supplierPurchases.reduce((sum, p) => sum + getPurchasePaid(p), 0);
+    const totalPaid = supplierPurchases.reduce((sum, p) => sum + (p.paidAmount || 0), 0);
     const totalDue = Math.max(0, totalValue - totalPaid);
     return { totalValue, totalPaid, totalDue };
   }, [supplierPurchases]);
@@ -33,14 +28,14 @@ const SupplierProfilePage: React.FC = () => {
   // Purchase History
   const purchaseHistory = useMemo(() => {
     return supplierPurchases.map(purchase => {
-      const paid = getPurchasePaid(purchase);
+      const paid = purchase.paidAmount || 0;
       const due = Math.max(0, purchase.grandTotalAmount - paid);
       const status = due <= 0 ? 'Paid' : paid > 0 ? 'Partial' : 'Unpaid';
       return { ...purchase, paid, due, status };
     });
   }, [supplierPurchases]);
 
-  // Payment History — only from the payments array (real SupplierPayment records)
+  // Payment History — from payments[] array (SupplierPayment records created by backend)
   const allPayments = useMemo(() => {
     const txns: Array<{
       id: string;

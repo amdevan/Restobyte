@@ -1272,6 +1272,38 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         }
     }, [isAuthenticated, logout]);
 
+    const updatePurchaseInApi = useCallback(async (purchase: Purchase): Promise<Purchase | null> => {
+        if (!isAuthenticated) return null;
+        const token = localStorage.getItem('authToken');
+        if (!token) return null;
+        try {
+            const res = await fetch(`${API_BASE_URL}/purchases/${purchase.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({
+                    date: purchase.date,
+                    supplierId: purchase.supplierId,
+                    supplierName: purchase.supplierName,
+                    supplierInvoiceNumber: purchase.supplierInvoiceNumber,
+                    subTotalAmount: purchase.subTotalAmount,
+                    taxAmount: purchase.taxAmount,
+                    discountAmount: purchase.discountAmount,
+                    grandTotalAmount: purchase.grandTotalAmount,
+                    paidAmount: purchase.paidAmount,
+                    paymentMethod: purchase.paymentMethod,
+                    paymentStatus: purchase.paymentStatus,
+                    notes: purchase.notes,
+                }),
+            });
+            if (res.status === 401) { logout(); return null; }
+            if (!res.ok) return null;
+            return (await res.json()) as Purchase;
+        } catch (err) {
+            console.error("Failed to update purchase:", err);
+            return null;
+        }
+    }, [isAuthenticated, logout]);
+
     // Expense API functions
     const fetchExpensesFromApi = useCallback(async (outletId: string): Promise<Expense[]> => {
         if (!isAuthenticated) return [];
@@ -4045,7 +4077,8 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             setPurchases(nextPurchases);
             return local;
         },
-        updatePurchase: (purchase) => {
+        updatePurchase: async (purchase) => {
+            await updatePurchaseInApi(purchase);
             const outletId = resolveOutletDataId(purchase.outletId);
             const nextPurchases = purchasesRef.current.map(p => p.id === purchase.id ? purchase : p);
             purchasesRef.current = nextPurchases;

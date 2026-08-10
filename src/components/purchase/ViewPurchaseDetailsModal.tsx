@@ -1,93 +1,132 @@
 
 import React from 'react';
-import { Purchase, PurchaseItem } from '../../types';
-import Button from '../common/Button';
+import { Purchase } from '../../types';
 import Money from '../common/Money';
-import { FiXCircle, FiInfo, FiList, FiUser, FiCalendar, FiFileText, FiHash } from 'react-icons/fi';
+import { FiUser, FiCalendar, FiFileText, FiHash, FiPackage, FiX } from 'react-icons/fi';
 
 interface ViewPurchaseDetailsModalProps {
   purchase: Purchase | null;
   onClose: () => void;
 }
 
-const DetailItem: React.FC<{ label: string; value?: React.ReactNode; icon?: React.ReactElement<{ size?: number | string; className?: string }>; className?: string }> = ({ label, value, icon, className = '' }) => (
-  <div className={`py-1.5 ${className}`}>
-    <span className="text-xs font-medium text-gray-500 uppercase tracking-wider flex items-center">
-      {icon && React.cloneElement(icon, { size: 13, className: "mr-1.5 text-sky-600"})}
-      {label}
-    </span>
-    <p className="text-gray-800 text-sm mt-0.5">{value === undefined || value === null ? '-' : value}</p>
-  </div>
-);
-
 const ViewPurchaseDetailsModal: React.FC<ViewPurchaseDetailsModalProps> = ({ purchase, onClose }) => {
   if (!purchase) return null;
 
   return (
-    <div className="text-sm text-gray-700 max-h-[80vh] flex flex-col">
-      <div className="flex-grow overflow-y-auto custom-scrollbar pr-2 space-y-4">
-        <h3 className="text-xl font-semibold text-sky-700 mb-3 flex items-center">
-          <FiInfo size={22} className="mr-2"/> Purchase Order Details
-        </h3>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 p-3 bg-gray-50 rounded-lg border">
-          <DetailItem label="Purchase Order #" value={purchase.purchaseNumber} icon={<FiHash />} />
-          <DetailItem label="Date" value={new Date(purchase.date).toLocaleDateString()} icon={<FiCalendar />} />
-          <DetailItem label="Supplier" value={purchase.supplierName || 'N/A'} icon={<FiUser />} />
-          <DetailItem label="Supplier Invoice #" value={purchase.supplierInvoiceNumber} icon={<FiFileText />} />
+    <div className="space-y-5">
+      {/* Order Info Grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
+          <span className="text-xs font-medium text-gray-500 uppercase tracking-wider flex items-center gap-1">
+            <FiHash size={12} className="text-sky-600" /> PO #
+          </span>
+          <p className="text-sm font-semibold text-sky-700 mt-1">{purchase.purchaseNumber}</p>
         </div>
-        
-        {purchase.notes && (
-          <div className="mt-2">
-            <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wider flex items-center">
-                <FiList size={13} className="mr-1.5 text-sky-600"/> Notes
-            </h4>
-            <p className="text-gray-700 bg-gray-100 p-2 rounded-md mt-1 text-xs whitespace-pre-wrap">{purchase.notes}</p>
-          </div>
-        )}
-
-        <div className="mt-4">
-          <h4 className="text-sm font-semibold text-gray-600 uppercase tracking-wider mb-2 border-b pb-1">Items Purchased ({purchase.items.length})</h4>
-          <div className="space-y-2 max-h-60 overflow-y-auto custom-scrollbar pr-1">
-            {purchase.items.map((item, index) => (
-              <div key={item.id || index} className="p-2.5 border rounded-md hover:bg-gray-50/50">
-                <div className="flex justify-between items-start">
-                  <span className="font-medium text-gray-800">{item.itemName}</span>
-                  <span className="text-xs text-gray-500">Subtotal: <Money amount={item.subTotal} /></span>
-                </div>
-                <div className="text-xs text-gray-500 mt-0.5">
-                  Qty: {item.quantityPurchased} {item.unit} &nbsp;&bull;&nbsp; Cost/Unit: <Money amount={item.costPerUnit} />
-                </div>
-                 <div className="text-xs text-gray-500 mt-0.5">
-                  Category: {item.category} &nbsp;&bull;&nbsp; Low Stock Th.: {item.lowStockThreshold} {item.unit}
-                </div>
-              </div>
-            ))}
-          </div>
+        <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
+          <span className="text-xs font-medium text-gray-500 uppercase tracking-wider flex items-center gap-1">
+            <FiCalendar size={12} className="text-sky-600" /> Date
+          </span>
+          <p className="text-sm font-medium text-gray-800 mt-1">{new Date(purchase.date).toLocaleDateString()}</p>
         </div>
-
-        <div className="mt-4 pt-3 border-t text-right space-y-1">
-          <DetailItem label="Subtotal" value={<Money amount={purchase.subTotalAmount} />} className="flex justify-between items-center" />
-          {purchase.taxAmount !== undefined && (
-            <DetailItem label="Tax" value={<Money amount={purchase.taxAmount} />} className="flex justify-between items-center" />
-          )}
-          {purchase.discountAmount !== undefined && (
-            <DetailItem label="Discount" value={<span>-<Money amount={purchase.discountAmount} /></span>} className="flex justify-between items-center text-green-600" />
-          )}
-          <DetailItem label="Grand Total" value={<Money amount={purchase.grandTotalAmount} />} className="flex justify-between items-center text-lg font-bold text-sky-700" />
+        <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
+          <span className="text-xs font-medium text-gray-500 uppercase tracking-wider flex items-center gap-1">
+            <FiUser size={12} className="text-sky-600" /> Supplier
+          </span>
+          <p className="text-sm font-medium text-gray-800 mt-1">{purchase.supplierName || 'N/A'}</p>
         </div>
-        
-        {purchase.stockEntryId && (
-            <p className="text-xs text-gray-500 mt-3 text-center">
-                Corresponds to Stock Entry ID: <code className="bg-gray-200 px-1 rounded">{purchase.stockEntryId.slice(0,15)}...</code>
-            </p>
-        )}
-
+        <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
+          <span className="text-xs font-medium text-gray-500 uppercase tracking-wider flex items-center gap-1">
+            <FiFileText size={12} className="text-sky-600" /> Invoice #
+          </span>
+          <p className="text-sm font-medium text-gray-800 mt-1">{purchase.supplierInvoiceNumber || '-'}</p>
+        </div>
       </div>
-      <div className="mt-auto pt-4 border-t flex justify-end">
-        <Button onClick={onClose} variant="primary" leftIcon={<FiXCircle />}>
+
+      {/* Notes */}
+      {purchase.notes && (
+        <div className="p-3 bg-amber-50 rounded-xl border border-amber-200">
+          <span className="text-xs font-medium text-amber-700 uppercase tracking-wider">Notes</span>
+          <p className="text-sm text-amber-800 mt-1 whitespace-pre-wrap">{purchase.notes}</p>
+        </div>
+      )}
+
+      {/* Items Table */}
+      <div>
+        <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2">
+          <FiPackage size={13} className="text-sky-600" />
+          Items Purchased
+          <span className="bg-sky-100 text-sky-700 text-xs font-bold px-2 py-0.5 rounded-full">
+            {purchase.items.length}
+          </span>
+        </h4>
+        <div className="border border-gray-200 rounded-xl overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-100 border-b border-gray-200">
+              <tr>
+                <th className="py-2 px-3 text-left text-xs font-medium text-gray-600 uppercase">#</th>
+                <th className="py-2 px-3 text-left text-xs font-medium text-gray-600 uppercase">Item</th>
+                <th className="py-2 px-3 text-left text-xs font-medium text-gray-600 uppercase hidden sm:table-cell">Category</th>
+                <th className="py-2 px-3 text-center text-xs font-medium text-gray-600 uppercase">Qty</th>
+                <th className="py-2 px-3 text-right text-xs font-medium text-gray-600 uppercase hidden sm:table-cell">Cost/Unit</th>
+                <th className="py-2 px-3 text-right text-xs font-medium text-gray-600 uppercase">Subtotal</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {purchase.items.map((item, index) => (
+                <tr key={item.id || index} className="hover:bg-gray-50 transition-colors">
+                  <td className="py-2.5 px-3 text-gray-400 text-xs">{index + 1}</td>
+                  <td className="py-2.5 px-3">
+                    <span className="font-medium text-gray-800">{item.itemName}</span>
+                    <span className="text-xs text-gray-500 ml-1 hidden sm:inline">({item.unit})</span>
+                  </td>
+                  <td className="py-2.5 px-3 text-gray-600 hidden sm:table-cell">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-sky-100 text-sky-800">
+                      {item.category}
+                    </span>
+                  </td>
+                  <td className="py-2.5 px-3 text-center font-medium text-gray-700">{item.quantityPurchased}</td>
+                  <td className="py-2.5 px-3 text-right text-gray-600 hidden sm:table-cell"><Money amount={item.costPerUnit} /></td>
+                  <td className="py-2.5 px-3 text-right font-semibold text-gray-800"><Money amount={item.subTotal} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Totals Summary */}
+      <div className="bg-gray-50 rounded-xl border border-gray-200 p-4 space-y-2">
+        <div className="flex justify-between text-sm text-gray-600">
+          <span>Subtotal</span>
+          <Money amount={purchase.subTotalAmount} />
+        </div>
+        {purchase.taxAmount !== undefined && purchase.taxAmount > 0 && (
+          <div className="flex justify-between text-sm text-gray-600">
+            <span>Tax</span>
+            <span>+ <Money amount={purchase.taxAmount} /></span>
+          </div>
+        )}
+        {purchase.discountAmount !== undefined && purchase.discountAmount > 0 && (
+          <div className="flex justify-between text-sm text-green-600">
+            <span>Discount</span>
+            <span>- <Money amount={purchase.discountAmount} /></span>
+          </div>
+        )}
+        <div className="flex justify-between text-base font-bold text-sky-700 pt-2 border-t border-gray-200">
+          <span>Grand Total</span>
+          <Money amount={purchase.grandTotalAmount} />
+        </div>
+      </div>
+
+      {/* Close Button */}
+      <div className="flex justify-end pt-2">
+        <button
+          onClick={onClose}
+          className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-sky-600 rounded-xl hover:bg-sky-700 transition-colors shadow-lg shadow-sky-200"
+        >
+          <FiX size={14} />
           Close
-        </Button>
+        </button>
       </div>
     </div>
   );

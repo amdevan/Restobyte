@@ -441,7 +441,7 @@ const AddPurchasePage: React.FC = () => {
               </div>
 
               {/* Notes */}
-              <div className="sm:col-span-2">
+              <div className="sm:col-span-2 lg:col-span-3">
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Notes</label>
                 <input
                   type="text"
@@ -451,66 +451,6 @@ const AddPurchasePage: React.FC = () => {
                   className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition-all bg-white"
                 />
               </div>
-
-              {/* Payment Method */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Payment Method</label>
-                <select
-                  value={paymentMethod}
-                  onChange={(e) => setPaymentMethod(e.target.value)}
-                  className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition-all bg-white appearance-none"
-                >
-                  {paymentMethodOptions.map(method => (
-                    <option key={method} value={method}>{method}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Payment Status */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Payment Status</label>
-                <div className="flex gap-1.5">
-                  {(['Paid', 'Pending', 'Partial'] as const).map(status => (
-                    <button
-                      key={status}
-                      type="button"
-                      onClick={() => {
-                        setPaymentStatus(status);
-                        if (status === 'Paid') setPaidAmount(grandTotal.toFixed(2));
-                        else if (status === 'Pending') setPaidAmount('');
-                      }}
-                      className={`flex-1 px-3 py-2.5 text-sm font-medium rounded-xl border transition-all ${
-                        paymentStatus === status
-                          ? status === 'Paid'
-                            ? 'bg-green-50 border-green-300 text-green-700'
-                            : status === 'Pending'
-                            ? 'bg-amber-50 border-amber-300 text-amber-700'
-                            : 'bg-blue-50 border-blue-300 text-blue-700'
-                          : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'
-                      }`}
-                    >
-                      {status}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Paid Amount (show when Partial) */}
-              {paymentStatus === 'Partial' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Amount Paid</label>
-                  <input
-                    type="number"
-                    value={paidAmount}
-                    onChange={(e) => setPaidAmount(e.target.value)}
-                    placeholder="0.00"
-                    min="0"
-                    max={grandTotal}
-                    step="0.01"
-                    className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition-all bg-white"
-                  />
-                </div>
-              )}
             </div>
           </div>
         </div>
@@ -886,6 +826,96 @@ const AddPurchasePage: React.FC = () => {
                   <Money amount={grandTotal} />
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Payment Section */}
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50">
+            <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-2">
+              <FiFileText className="w-3.5 h-3.5" />
+              Payment Details
+            </h2>
+          </div>
+          <div className="p-6">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {/* Payment Method */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Payment Method</label>
+                <select
+                  value={paymentMethod}
+                  onChange={(e) => setPaymentMethod(e.target.value)}
+                  className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition-all bg-white appearance-none"
+                >
+                  {paymentMethodOptions.map(method => (
+                    <option key={method} value={method}>{method}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Payment Status */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Payment Status</label>
+                <div className="flex gap-1.5">
+                  {(['Paid', 'Pending', 'Partial'] as const).map(status => (
+                    <button
+                      key={status}
+                      type="button"
+                      onClick={() => {
+                        setPaymentStatus(status);
+                        if (status === 'Paid') setPaidAmount(grandTotal.toFixed(2));
+                        else if (status === 'Pending') setPaidAmount('');
+                      }}
+                      className={`flex-1 px-3 py-2.5 text-sm font-medium rounded-xl border transition-all ${
+                        paymentStatus === status
+                          ? status === 'Paid'
+                            ? 'bg-green-50 border-green-300 text-green-700'
+                            : status === 'Pending'
+                            ? 'bg-amber-50 border-amber-300 text-amber-700'
+                            : 'bg-blue-50 border-blue-300 text-blue-700'
+                          : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'
+                      }`}
+                    >
+                      {status}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Paid Amount (show when Partial) */}
+              {paymentStatus === 'Partial' ? (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Amount Paid</label>
+                  <input
+                    type="number"
+                    value={paidAmount}
+                    onChange={(e) => setPaidAmount(e.target.value)}
+                    placeholder="0.00"
+                    min="0"
+                    max={grandTotal}
+                    step="0.01"
+                    className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition-all bg-white"
+                  />
+                  {parseFloat(paidAmount) > 0 && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      Balance due: <Money amount={grandTotal - (parseFloat(paidAmount) || 0)} />
+                    </p>
+                  )}
+                </div>
+              ) : paymentStatus === 'Paid' ? (
+                <div className="p-3 bg-green-50 rounded-xl border border-green-200 flex items-center justify-center">
+                  <span className="text-sm font-medium text-green-700">
+                    Fully paid: <Money amount={grandTotal} />
+                  </span>
+                </div>
+              ) : (
+                <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 flex items-center justify-center">
+                  <span className="text-sm font-medium text-amber-700">
+                    Amount due: <Money amount={grandTotal} />
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -193,6 +193,7 @@ const AddPurchasePage: React.FC = () => {
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
     if (!purchaseNumber.trim()) newErrors.purchaseNumber = 'PO Number is required';
+    if (!selectedSupplierId) newErrors.supplier = 'Supplier is required';
 
     purchaseLines.forEach((line) => {
       if (!line.itemName.trim()) newErrors[`itemName_${line.id}`] = 'Item name required';
@@ -241,8 +242,8 @@ const AddPurchasePage: React.FC = () => {
       await addPurchase({
         date: purchaseDate,
         purchaseNumber: purchaseNumber.trim(),
-        supplierId: selectedSupplierId || undefined,
-        supplierName: selectedSupplierDetails?.name || undefined,
+        supplierId: selectedSupplierId,
+        supplierName: selectedSupplierDetails?.name,
         supplierInvoiceNumber: supplierInvoiceNumber.trim() || undefined,
         items: processedPurchaseItems,
         subTotalAmount: overallSubTotal,
@@ -307,7 +308,7 @@ const AddPurchasePage: React.FC = () => {
               {/* Supplier - Searchable Combobox */}
               <div className="relative" ref={supplierDropdownRef}>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Supplier <span className="text-xs text-gray-400">(Optional)</span>
+                  Supplier <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
                   <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -341,6 +342,7 @@ const AddPurchasePage: React.FC = () => {
                     </button>
                   )}
                 </div>
+                {errors.supplier && <p className="text-red-500 text-xs mt-1">{errors.supplier}</p>}
 
                 {showSupplierDropdown && (
                   <div className="absolute z-30 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-52 overflow-y-auto">

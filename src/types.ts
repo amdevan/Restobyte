@@ -1290,7 +1290,7 @@ export interface RestaurantDataContextType {
     addPurchase: (purchaseData: Omit<Purchase, 'id' | 'stockEntryId'> & { date?: string }) => Promise<Purchase>;
     updatePurchase: (purchase: Purchase) => Promise<void>;
     deletePurchase: (purchaseId: string) => Promise<void>;
-    recordSupplierPayment: (purchaseId: string, amountPaid: number, paymentDate: string, paymentMethod: string, reference?: string, notes?: string) => void;
+    recordSupplierPayment: (purchaseId: string, amountPaid: number, paymentDate: string, paymentMethod: string, reference?: string, notes?: string) => Promise<void>;
 
     expenseCategories: ExpenseCategory[];
     addExpenseCategory: (categoryData: Omit<ExpenseCategory, 'id'>) => ExpenseCategory;

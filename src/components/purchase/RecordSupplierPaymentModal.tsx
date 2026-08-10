@@ -51,14 +51,14 @@ const RecordSupplierPaymentModal: React.FC<RecordSupplierPaymentModalProps> = ({
 
   if (!purchase) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const numericAmount = parseFloat(receivedAmount);
     if (isNaN(numericAmount) || numericAmount <= 0) {
       alert('Please enter a valid positive amount.');
       return;
     }
-    onRecordPayment(purchase.id, numericAmount, paymentDate, paymentMethod, reference, notes);
+    await onRecordPayment(purchase.id, numericAmount, paymentDate, paymentMethod, reference, notes);
     onClose();
   };
 

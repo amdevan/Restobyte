@@ -1304,6 +1304,25 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         }
     }, [isAuthenticated, logout]);
 
+    const recordSupplierPaymentInApi = useCallback(async (purchaseId: string, amountPaid: number, paymentDate: string, paymentMethod: string, reference?: string, notes?: string): Promise<any | null> => {
+        if (!isAuthenticated) return null;
+        const token = localStorage.getItem('authToken');
+        if (!token) return null;
+        try {
+            const res = await fetch(`${API_BASE_URL}/purchases/${purchaseId}/payments`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ purchaseId, amountPaid, paymentDate, paymentMethod, reference, notes }),
+            });
+            if (res.status === 401) { logout(); return null; }
+            if (!res.ok) return null;
+            return await res.json();
+        } catch (err) {
+            console.error("Failed to record supplier payment:", err);
+            return null;
+        }
+    }, [isAuthenticated, logout]);
+
     // Expense API functions
     const fetchExpensesFromApi = useCallback(async (outletId: string): Promise<Expense[]> => {
         if (!isAuthenticated) return [];
@@ -4094,10 +4113,11 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             purchasesRef.current = next;
             setPurchases(next);
         },
-        recordSupplierPayment: (purchaseId: string, amountPaid: number, paymentDate: string, paymentMethod: string, reference?: string, notes?: string) => {
+        recordSupplierPayment: async (purchaseId: string, amountPaid: number, paymentDate: string, paymentMethod: string, reference?: string, notes?: string) => {
+            const savedPayment = await recordSupplierPaymentInApi(purchaseId, amountPaid, paymentDate, paymentMethod, reference, notes);
             const existingPurchase = purchasesRef.current.find((purchase) => purchase.id === purchaseId);
             const outletId = resolveOutletDataId(existingPurchase?.outletId);
-            const newPayment: any = {
+            const newPayment: any = savedPayment || {
                 id: `payment-${Date.now()}`,
                 amountPaid,
                 paymentDate,

@@ -64,9 +64,8 @@ const SupplierDuePaymentPage: React.FC = () => {
     setSelectedPurchase(null);
   };
 
-  const handleRecordPayment = (purchaseId: string, amountPaid: number, paymentDate: string, paymentMethod: string, reference?: string, notes?: string) => {
-    recordSupplierPayment(purchaseId, amountPaid, paymentDate, paymentMethod, reference, notes);
-    // Optionally: show a success message
+  const handleRecordPayment = async (purchaseId: string, amountPaid: number, paymentDate: string, paymentMethod: string, reference?: string, notes?: string) => {
+    await recordSupplierPayment(purchaseId, amountPaid, paymentDate, paymentMethod, reference, notes);
   };
   
   const totalDueAmount = useMemo(() => {

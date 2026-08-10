@@ -103,6 +103,51 @@ export const createPurchase = async (req: Request, res: Response) => {
       });
     }
 
+    // Update stock quantities for items linked to existing stock items
+    for (const item of items) {
+      if (item.stockItemId) {
+        try {
+          await tx.stockItem.update({
+            where: { id: item.stockItemId },
+            data: {
+              quantity: { increment: Number(item.quantityPurchased) },
+              ...(item.costPerUnit ? { costPerUnit: Number(item.costPerUnit) } : {}),
+            },
+          });
+        } catch (err) {
+          // Stock item might not exist anymore, skip silently
+        }
+      } else {
+        // Find or create stock item by name
+        const existingItem = await tx.stockItem.findFirst({
+          where: {
+            name: { equals: item.itemName, mode: 'insensitive' },
+          },
+        });
+        if (existingItem) {
+          await tx.stockItem.update({
+            where: { id: existingItem.id },
+            data: {
+              quantity: { increment: Number(item.quantityPurchased) },
+              ...(item.costPerUnit ? { costPerUnit: Number(item.costPerUnit) } : {}),
+            },
+          });
+        } else {
+          await tx.stockItem.create({
+            data: {
+              outletId: String(outletId),
+              name: item.itemName,
+              category: item.category || 'Uncategorized',
+              unit: item.unit || 'pcs',
+              quantity: Number(item.quantityPurchased),
+              costPerUnit: Number(item.costPerUnit) || 0,
+              lowStockThreshold: Number(item.lowStockThreshold) || 0,
+            },
+          });
+        }
+      }
+    }
+
     return newPurchase;
   });
 

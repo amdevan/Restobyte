@@ -1377,6 +1377,157 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         }
     }, [isAuthenticated, logout]);
 
+    // Employee API functions
+    const fetchEmployeesFromApi = useCallback(async (outletId: string): Promise<Employee[]> => {
+        if (!isAuthenticated) return [];
+        const token = localStorage.getItem('authToken');
+        if (!token) return [];
+        try {
+            const res = await fetch(`${API_BASE_URL}/employees?outletId=${outletId}`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (res.status === 401) { logout(); return []; }
+            if (!res.ok) return [];
+            return (await res.json().catch(() => [])) as Employee[];
+        } catch (err) {
+            console.error("Failed to fetch employees:", err);
+            return [];
+        }
+    }, [isAuthenticated, logout]);
+
+    const createEmployeeInApi = useCallback(async (outletId: string, employee: Omit<Employee, 'id'>): Promise<Employee | null> => {
+        if (!isAuthenticated) return null;
+        const token = localStorage.getItem('authToken');
+        if (!token) return null;
+        try {
+            const res = await fetch(`${API_BASE_URL}/employees`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ ...employee, outletId }),
+            });
+            if (res.status === 401) { logout(); return null; }
+            if (!res.ok) return null;
+            return await res.json().catch(() => null);
+        } catch (err) {
+            console.error("Failed to create employee:", err);
+            return null;
+        }
+    }, [isAuthenticated, logout]);
+
+    const updateEmployeeInApi = useCallback(async (employee: Employee): Promise<Employee | null> => {
+        if (!isAuthenticated) return null;
+        const token = localStorage.getItem('authToken');
+        if (!token) return null;
+        try {
+            const res = await fetch(`${API_BASE_URL}/employees/${employee.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify(employee),
+            });
+            if (res.status === 401) { logout(); return null; }
+            if (!res.ok) return null;
+            return await res.json().catch(() => null);
+        } catch (err) {
+            console.error("Failed to update employee:", err);
+            return null;
+        }
+    }, [isAuthenticated, logout]);
+
+    const deleteEmployeeInApi = useCallback(async (employeeId: string): Promise<boolean> => {
+        if (!isAuthenticated) return false;
+        const token = localStorage.getItem('authToken');
+        if (!token) return false;
+        try {
+            const res = await fetch(`${API_BASE_URL}/employees/${employeeId}`, {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (res.status === 401) { logout(); return false; }
+            return res.ok;
+        } catch (err) {
+            console.error("Failed to delete employee:", err);
+            return false;
+        }
+    }, [isAuthenticated, logout]);
+
+    const markAttendanceInApi = useCallback(async (records: Array<{ employeeId: string; employeeName: string; date: string; status: string; checkInTime?: string; checkOutTime?: string; notes?: string }>): Promise<any[] | null> => {
+        if (!isAuthenticated) return null;
+        const token = localStorage.getItem('authToken');
+        if (!token) return null;
+        try {
+            const res = await fetch(`${API_BASE_URL}/employees/attendance`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ records }),
+            });
+            if (res.status === 401) { logout(); return null; }
+            if (!res.ok) return null;
+            return await res.json().catch(() => null);
+        } catch (err) {
+            console.error("Failed to mark attendance:", err);
+            return null;
+        }
+    }, [isAuthenticated, logout]);
+
+    const fetchAttendanceFromApi = useCallback(async (outletId: string, startDate?: string, endDate?: string): Promise<AttendanceRecord[]> => {
+        if (!isAuthenticated) return [];
+        const token = localStorage.getItem('authToken');
+        if (!token) return [];
+        try {
+            let url = `${API_BASE_URL}/employees/attendance?outletId=${outletId}`;
+            if (startDate) url += `&startDate=${startDate}`;
+            if (endDate) url += `&endDate=${endDate}`;
+            const res = await fetch(url, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (res.status === 401) { logout(); return []; }
+            if (!res.ok) return [];
+            return (await res.json().catch(() => [])) as AttendanceRecord[];
+        } catch (err) {
+            console.error("Failed to fetch attendance:", err);
+            return [];
+        }
+    }, [isAuthenticated, logout]);
+
+    const upsertPayrollInApi = useCallback(async (record: PayrollRecord): Promise<PayrollRecord | null> => {
+        if (!isAuthenticated) return null;
+        const token = localStorage.getItem('authToken');
+        if (!token) return null;
+        try {
+            const res = await fetch(`${API_BASE_URL}/employees/payroll`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify(record),
+            });
+            if (res.status === 401) { logout(); return null; }
+            if (!res.ok) return null;
+            return await res.json().catch(() => null);
+        } catch (err) {
+            console.error("Failed to upsert payroll:", err);
+            return null;
+        }
+    }, [isAuthenticated, logout]);
+
+    const fetchPayrollFromApi = useCallback(async (outletId: string, month?: number, year?: number): Promise<PayrollRecord[]> => {
+        if (!isAuthenticated) return [];
+        const token = localStorage.getItem('authToken');
+        if (!token) return [];
+        try {
+            let url = `${API_BASE_URL}/employees/payroll?outletId=${outletId}`;
+            if (month) url += `&month=${month}`;
+            if (year) url += `&year=${year}`;
+            const res = await fetch(url, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (res.status === 401) { logout(); return []; }
+            if (!res.ok) return [];
+            return (await res.json().catch(() => [])) as PayrollRecord[];
+        } catch (err) {
+            console.error("Failed to fetch payroll:", err);
+            return [];
+        }
+    }, [isAuthenticated, logout]);
+
     const fetchRecipesFromApi = useCallback(async (outletId: string): Promise<Recipe[]> => {
         if (!isAuthenticated) return [];
         const token = localStorage.getItem('authToken');
@@ -1645,7 +1796,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         let cancelled = false;
 
         const loadStock = async () => {
-            const [items, entries, adjustments, suppliersList, recipesList, purchasesList, expensesList] = await Promise.all([
+            const [items, entries, adjustments, suppliersList, recipesList, purchasesList, expensesList, employeesList, attendanceList] = await Promise.all([
                 fetchStockItems(selectedDataOutletId),
                 fetchStockEntries(selectedDataOutletId),
                 fetchStockAdjustments(selectedDataOutletId),
@@ -1653,6 +1804,8 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 fetchRecipesFromApi(selectedDataOutletId),
                 fetchPurchasesFromApi(selectedDataOutletId),
                 fetchExpensesFromApi(selectedDataOutletId),
+                fetchEmployeesFromApi(selectedDataOutletId),
+                fetchAttendanceFromApi(selectedDataOutletId),
             ]);
 
             if (cancelled) return;
@@ -1671,12 +1824,15 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             setPurchases(purchasesList);
             expensesRef.current = expensesList;
             setExpenses(expensesList);
+            employeesRef.current = employeesList;
+            setEmployees(employeesList);
+            setAttendanceRecords(attendanceList);
         };
 
         void loadStock();
 
         return () => { cancelled = true; };
-    }, [isAuthenticated, selectedDataOutletId, fetchStockItems, fetchStockEntries, fetchStockAdjustments, fetchSuppliersFromApi, fetchRecipesFromApi, fetchPurchasesFromApi, fetchExpensesFromApi]);
+    }, [isAuthenticated, selectedDataOutletId, fetchStockItems, fetchStockEntries, fetchStockAdjustments, fetchSuppliersFromApi, fetchRecipesFromApi, fetchPurchasesFromApi, fetchExpensesFromApi, fetchEmployeesFromApi, fetchAttendanceFromApi]);
 
     useEffect(() => {
         if (!isAuthenticated || !selectedDataOutletId) return;
@@ -4229,26 +4385,33 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         },
 
         employees,
-        addEmployee: (employeeData) => {
-            const outletId = resolveOutletDataId(employeeData.outletId);
-            const newEmployee = { ...employeeData, id: `emp-${Date.now()}`, outletId: outletId || 'unknown' };
+        addEmployee: async (employeeData) => {
+            const outletId = resolveOutletDataId(employeeData.outletId) || selectedDataOutletId;
+            if (outletId) {
+                const created = await createEmployeeInApi(outletId, { ...employeeData, outletId } as Omit<Employee, 'id'>);
+                if (created) {
+                    const nextEmployees = [...employeesRef.current, created];
+                    employeesRef.current = nextEmployees;
+                    setEmployees(nextEmployees);
+                    return created;
+                }
+            }
+            const newEmployee = { ...employeeData, id: `emp-${Date.now()}`, outletId: outletId || 'unknown' } as Employee;
             const nextEmployees = [...employeesRef.current, newEmployee];
             employeesRef.current = nextEmployees;
             setEmployees(nextEmployees);
-            if (outletId) {
-                markOutletAppDataMutated('employees', outletId);
-                persistOutletCollectionImmediately('employees', outletId, nextEmployees);
-            }
             return newEmployee;
         },
-        updateEmployee: (employee) => {
-            const outletId = resolveOutletDataId(employee.outletId);
-            const nextEmployees = employeesRef.current.map(e => e.id === employee.id ? employee : e);
-            employeesRef.current = nextEmployees;
-            setEmployees(nextEmployees);
-            if (outletId) {
-                markOutletAppDataMutated('employees', outletId);
-                persistOutletCollectionImmediately('employees', outletId, nextEmployees);
+        updateEmployee: async (employee) => {
+            const updated = await updateEmployeeInApi(employee);
+            if (updated) {
+                const nextEmployees = employeesRef.current.map(e => e.id === updated.id ? updated : e);
+                employeesRef.current = nextEmployees;
+                setEmployees(nextEmployees);
+            } else {
+                const nextEmployees = employeesRef.current.map(e => e.id === employee.id ? employee : e);
+                employeesRef.current = nextEmployees;
+                setEmployees(nextEmployees);
             }
             // Propagate name change to historical orders if this is a waiter
             if (employee.isWaiter && employee.waiterId) {
@@ -4260,20 +4423,20 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 }));
             }
         },
-        deleteEmployee: (employeeId) => {
-            const existingEmployee = employeesRef.current.find((emp) => emp.id === employeeId);
-            const outletId = resolveOutletDataId(existingEmployee?.outletId);
+        deleteEmployee: async (employeeId) => {
+            await deleteEmployeeInApi(employeeId);
             const nextEmployees = employeesRef.current.filter(e => e.id !== employeeId);
             employeesRef.current = nextEmployees;
             setEmployees(nextEmployees);
-            if (outletId) {
-                markOutletAppDataMutated('employees', outletId);
-                persistOutletCollectionImmediately('employees', outletId, nextEmployees);
-            }
         },
         
         attendanceRecords,
-        markOrUpdateAttendance: (records) => {
+        markOrUpdateAttendance: async (records) => {
+            await markAttendanceInApi(records.map(rec => {
+                const empName = employees.find(e => e.id === rec.employeeId)?.name || 'Unknown';
+                return { ...rec, employeeName: empName, status: rec.status as string };
+            }));
+            // Update local state
             setAttendanceRecords(prev => {
                 const updated = [...prev];
                 records.forEach(rec => {
@@ -4291,7 +4454,8 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         getAttendanceForDate: (date) => attendanceRecords.filter(r => r.date === date),
 
         payrollRecords,
-        addOrUpdatePayrollRecord: (record) => {
+        addOrUpdatePayrollRecord: async (record) => {
+            await upsertPayrollInApi(record);
             setPayrollRecords(prev => {
                 const index = prev.findIndex(r => r.id === record.id);
                 if (index > -1) {

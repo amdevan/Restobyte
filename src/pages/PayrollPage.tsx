@@ -74,7 +74,7 @@ const PayrollPage: React.FC = () => {
     setDisplayPayroll(generated);
   };
   
-  const handleProcessPayment = (record: DisplayPayrollRecord) => {
+  const handleProcessPayment = async (record: DisplayPayrollRecord) => {
     if(window.confirm(`Process payment of ${record.netSalary.toFixed(2)} for ${record.employeeName}?`)) {
       const finalRecord: PayrollRecord = {
         ...record,
@@ -82,7 +82,7 @@ const PayrollPage: React.FC = () => {
         status: 'Paid',
         paidDate: new Date().toISOString(),
       };
-      addOrUpdatePayrollRecord(finalRecord);
+      await addOrUpdatePayrollRecord(finalRecord);
       // Refresh the display list to show the new status
       setDisplayPayroll(prev => prev.map(p => p.employeeId === record.employeeId ? finalRecord : p));
     }

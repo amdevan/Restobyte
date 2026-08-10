@@ -64,9 +64,9 @@ const EmployeesPage: React.FC = () => {
     setViewingEmployee(null);
   };
 
-  const handleDelete = (employeeId: string) => {
+  const handleDelete = async (employeeId: string) => {
     if (window.confirm('Are you sure you want to delete this employee record? This action cannot be undone.')) {
-      deleteEmployee(employeeId);
+      await deleteEmployee(employeeId);
     }
   };
 

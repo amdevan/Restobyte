@@ -1306,16 +1306,16 @@ export interface RestaurantDataContextType {
     addWasteRecord: (recordData: Omit<WasteRecord, 'id'>) => WasteRecord;
 
     employees: Employee[];
-    addEmployee: (employeeData: Omit<Employee, 'id'>) => Employee;
-    updateEmployee: (employee: Employee) => void;
-    deleteEmployee: (employeeId: string) => void;
+    addEmployee: (employeeData: Omit<Employee, 'id'>) => Promise<Employee>;
+    updateEmployee: (employee: Employee) => Promise<void>;
+    deleteEmployee: (employeeId: string) => Promise<void>;
 
     attendanceRecords: AttendanceRecord[];
-    markOrUpdateAttendance: (recordsToUpdate: Array<Omit<AttendanceRecord, 'id' | 'employeeName'>>) => void;
+    markOrUpdateAttendance: (recordsToUpdate: Array<Omit<AttendanceRecord, 'id' | 'employeeName'>>) => Promise<void>;
     getAttendanceForDate: (date: string) => AttendanceRecord[];
 
     payrollRecords: PayrollRecord[];
-    addOrUpdatePayrollRecord: (recordData: PayrollRecord) => void;
+    addOrUpdatePayrollRecord: (recordData: PayrollRecord) => Promise<void>;
 
     paymentMethods: PaymentMethod[];
     updatePaymentMethod: (method: PaymentMethod) => void;

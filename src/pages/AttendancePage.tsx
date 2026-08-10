@@ -106,7 +106,7 @@ const AttendancePage: React.FC = () => {
     );
   };
 
-  const handleSaveAttendance = () => {
+  const handleSaveAttendance = async () => {
     const recordsToUpdate: Array<Omit<AttendanceRecord, 'id' | 'employeeName'>> = dailyAttendance.map(entry => ({
       employeeId: entry.employeeId,
       date: selectedDate,
@@ -115,7 +115,7 @@ const AttendancePage: React.FC = () => {
       checkOutTime: entry.checkOutTime || undefined,
       notes: entry.notes || undefined,
     }));
-    markOrUpdateAttendance(recordsToUpdate);
+    await markOrUpdateAttendance(recordsToUpdate);
     alert(`Attendance for ${new Date(selectedDate + 'T00:00:00Z').toLocaleDateString()} saved successfully!`);
   };
   

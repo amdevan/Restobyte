@@ -34,6 +34,7 @@ import googleDriveRoutes from './routes/googleDriveRoutes.js';
 import stockRoutes from './routes/stockRoutes.js';
 import purchaseRoutes from './routes/purchaseRoutes.js';
 import expenseRoutes from './routes/expenseRoutes.js';
+import employeeRoutes from './routes/employeeRoutes.js';
 import { DEFAULT_PLAN_DEFINITIONS } from './utils/planConfig.js';
 import { ensureSystemRoles } from './utils/roleUtils.js';
 import { startScheduler } from './services/autoBackupService.js';
@@ -115,6 +116,7 @@ app.use('/api/google-drive', googleDriveRoutes);
 app.use('/api/stock', stockRoutes);
 app.use('/api/purchases', purchaseRoutes);
 app.use('/api/expenses', expenseRoutes);
+app.use('/api/employees', employeeRoutes);
 
 // Global error handler — catches any unhandled errors from route handlers
 app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

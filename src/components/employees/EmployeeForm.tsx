@@ -8,8 +8,8 @@ import { FiSave, FiXCircle, FiUser, FiPhone, FiMail, FiMapPin, FiCalendar, FiDol
 
 interface EmployeeFormProps {
   initialData?: Employee | null;
-  onSubmit: (data: Omit<Employee, 'id' | 'waiterId'>) => void; // waiterId handled by hook
-  onUpdate: (data: Employee) => void;
+  onSubmit: (data: Omit<Employee, 'id' | 'waiterId'>) => Promise<Employee>; // waiterId handled by hook
+  onUpdate: (data: Employee) => Promise<void>;
   onClose: () => void;
 }
 
@@ -90,7 +90,7 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ initialData, onSubmit, onUp
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !employeeId.trim() || !phone.trim() || !joiningDate || !designation || !outletId) {
       alert('Name, Employee ID, Phone, Joining Date, Designation, and Outlet are required.');
@@ -112,9 +112,9 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ initialData, onSubmit, onUp
 
     if (initialData) {
       // waiterId is managed by the hook based on isWaiter flag change
-      onUpdate({ ...initialData, ...employeeData });
+      await onUpdate({ ...initialData, ...employeeData });
     } else {
-      onSubmit(employeeData);
+      await onSubmit(employeeData);
     }
     onClose(); 
   };

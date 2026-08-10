@@ -639,3 +639,74 @@ model RecipeIngredient {
   @@index([recipeId])
   @@index([stockItemId])
 }
+
+model Employee {
+  id                   String   @id @default(uuid())
+  outletId             String
+  name                 String
+  employeeId           String   // Unique Employee ID (e.g., EMP-001)
+  phone                String
+  email                String?
+  address              String?
+  dob                  String?  // Date of Birth YYYY-MM-DD
+  joiningDate          String   // Date of Joining YYYY-MM-DD
+  designation          String
+  salary               Float?
+  emergencyContactName String?
+  emergencyContactPhone String?
+  isActive             Boolean  @default(true)
+  isWaiter             Boolean  @default(false)
+  waiterId             String?
+  photoUrl             String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  attendances          Attendance[]
+  payrolls             Payroll[]
+
+  @@index([outletId])
+  @@index([employeeId])
+}
+
+model Attendance {
+  id            String   @id @default(uuid())
+  employeeId    String
+  employeeName  String
+  date          String   // YYYY-MM-DD
+  status        String   // Present, Absent, Late, Half-Day, On Leave
+  checkInTime   String?  // HH:MM
+  checkOutTime  String?  // HH:MM
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeId, date])
+  @@index([employeeId])
+  @@index([date])
+}
+
+model Payroll {
+  id            String   @id @default(uuid())
+  employeeId    String
+  employeeName  String
+  month         Int      // 1-12
+  year          Int
+  baseSalary    Float
+  presentDays   Int      @default(0)
+  absentDays    Int      @default(0)
+  lateDays      Int      @default(0)
+  halfDays      Int      @default(0)
+  deductions    Float    @default(0)
+  netSalary     Float    @default(0)
+  status        String   @default("Pending") // Pending, Paid
+  paidDate      DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeId, month, year])
+  @@index([employeeId])
+}

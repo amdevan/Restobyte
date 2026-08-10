@@ -29,11 +29,16 @@ const ManageTenantsPage: React.FC = () => {
   const [dateTo, setDateTo] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
+  const authHeaders = (): Record<string, string> => {
+    const token = localStorage.getItem('authToken');
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  };
+
   const fetchTenants = async () => {
     setLoading(true);
     setError('');
     try {
-      const res = await fetch(`${API_BASE_URL}/tenants`);
+      const res = await fetch(`${API_BASE_URL}/tenants`, { headers: authHeaders() });
       const data = await res.json();
       setTenants(data.tenants || []);
     } catch {
@@ -53,7 +58,8 @@ const ManageTenantsPage: React.FC = () => {
       setActionLoading(true);
       try {
           const res = await fetch(`${API_BASE_URL}/tenants/${id}`, {
-              method: 'DELETE'
+              method: 'DELETE',
+              headers: authHeaders()
           });
           if (res.ok) {
               setTenants(prev => prev.filter(t => t.id !== id));
@@ -100,7 +106,7 @@ const ManageTenantsPage: React.FC = () => {
       try {
           const res = await fetch(`${API_BASE_URL}/tenants/${selectedTenant.id}`, {
               method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
+              headers: { 'Content-Type': 'application/json', ...authHeaders() },
               body: JSON.stringify(updatedData)
           });
           
@@ -197,20 +203,20 @@ const ManageTenantsPage: React.FC = () => {
         <div className="flex flex-wrap items-center gap-2">
           <Button size="sm" leftIcon={<FiCheckCircle />} onClick={async () => {
             for (const id of selectedIds) {
-              await fetch(`${API_BASE_URL}/tenants/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subscriptionStatus: 'active' }) });
+              await fetch(`${API_BASE_URL}/tenants/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', ...authHeaders() }, body: JSON.stringify({ subscriptionStatus: 'active' }) });
             }
             fetchTenants();
           }} disabled={selectedIds.length === 0}>Activate Selected</Button>
           <Button size="sm" variant="secondary" leftIcon={<FiPauseCircle />} onClick={async () => {
             for (const id of selectedIds) {
-              await fetch(`${API_BASE_URL}/tenants/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subscriptionStatus: 'inactive' }) });
+              await fetch(`${API_BASE_URL}/tenants/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', ...authHeaders() }, body: JSON.stringify({ subscriptionStatus: 'inactive' }) });
             }
             fetchTenants();
           }} disabled={selectedIds.length === 0}>Deactivate Selected</Button>
           <Button size="sm" variant="danger" leftIcon={<FiTrash2 />} onClick={async () => {
             if (!window.confirm('Delete selected tenants?')) return;
             for (const id of selectedIds) {
-              await fetch(`${API_BASE_URL}/tenants/${id}`, { method: 'DELETE' });
+              await fetch(`${API_BASE_URL}/tenants/${id}`, { method: 'DELETE', headers: authHeaders() });
             }
             setSelectedIds([]);
             setSelectAll(false);

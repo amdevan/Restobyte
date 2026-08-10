@@ -33,28 +33,95 @@ const blankLine = (): PurchaseLine => ({
   costPerUnit: '',
 });
 
-const AddPurchasePage: React.FC = () => {
-  const { stockItems, suppliers, paymentMethods, addPurchase, addSupplier: contextAddSupplier, getSingleActiveOutlet } = useRestaurantData();
+const EditPurchasePage: React.FC = () => {
+  const { stockItems, suppliers, purchases, paymentMethods, updatePurchase, addSupplier: contextAddSupplier, getSingleActiveOutlet } = useRestaurantData();
   const navigate = ReactRouterDom.useNavigate();
+  const { id: purchaseId } = ReactRouterDom.useParams<{ id: string }>();
   const outlet = getSingleActiveOutlet();
+
+  const existingPurchase = useMemo(() => {
+    if (!purchaseId) return null;
+    return purchases.find(p => p.id === purchaseId) || null;
+  }, [purchases, purchaseId]);
 
   const paymentMethodOptions = useMemo(() => paymentMethods.filter(pm => pm.isEnabled).map(pm => pm.name), [paymentMethods]);
 
-  const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().split('T')[0]);
-  const [purchaseNumber, setPurchaseNumber] = useState(`PO-${Date.now().toString().slice(-4)}`);
-  const [selectedSupplierId, setSelectedSupplierId] = useState('');
-  const [supplierInvoiceNumber, setSupplierInvoiceNumber] = useState('');
-  const [notes, setNotes] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState(paymentMethodOptions[0] || 'Cash');
-  const [paymentStatus, setPaymentStatus] = useState<'Paid' | 'Pending' | 'Partial'>('Pending');
-  const [paidAmount, setPaidAmount] = useState<string>('');
+  // Determine tax type from existing purchase data
+  const detectTaxType = (): 'percent' | 'flat' => {
+    if (!existingPurchase) return 'flat';
+    const taxAmt = existingPurchase.taxAmount || 0;
+    const sub = existingPurchase.subTotalAmount || 0;
+    if (taxAmt > 0 && sub > 0) {
+      const ratio = taxAmt / sub;
+      // If the ratio is between 0 and 1 (exclusive of 0, exclusive of 1 for safety), it's likely a percentage
+      // Common tax percentages: 0.05, 0.1, 0.13, 0.15, 0.18, 0.20, etc.
+      // But flat tax could also be a small number. We check if taxAmount * 100 / subTotal yields a clean-ish number.
+      const pctCandidate = (taxAmt / sub) * 100;
+      if (pctCandidate > 0 && pctCandidate < 100 && Math.round(pctCandidate * 100) / 100 === Math.round(pctCandidate)) {
+        return 'percent';
+      }
+    }
+    return 'flat';
+  };
 
-  const [purchaseLines, setPurchaseLines] = useState<PurchaseLine[]>([blankLine()]);
+  const getInitialTaxValue = (): string => {
+    if (!existingPurchase) return '';
+    const taxAmt = existingPurchase.taxAmount || 0;
+    if (taxAmt === 0) return '';
+    if (detectTaxType() === 'percent') {
+      const sub = existingPurchase.subTotalAmount || 0;
+      if (sub > 0) return ((taxAmt / sub) * 100).toString();
+    }
+    return taxAmt.toString();
+  };
+
+  const getPaymentStatus = (): 'Paid' | 'Pending' | 'Partial' => {
+    if (!existingPurchase) return 'Pending';
+    const status = existingPurchase.paymentStatus;
+    if (status === 'Paid' || status === 'Pending' || status === 'Partial') return status;
+    return 'Pending';
+  };
+
+  const getPaidAmount = (): string => {
+    if (!existingPurchase) return '';
+    if (getPaymentStatus() === 'Paid') return (existingPurchase.grandTotalAmount || 0).toFixed(2);
+    if (getPaymentStatus() === 'Partial') return (existingPurchase.paidAmount || 0).toString();
+    return '';
+  };
+
+  const [purchaseDate, setPurchaseDate] = useState(existingPurchase?.date || new Date().toISOString().split('T')[0]);
+  const [purchaseNumber, setPurchaseNumber] = useState(existingPurchase?.purchaseNumber || '');
+  const [selectedSupplierId, setSelectedSupplierId] = useState(existingPurchase?.supplierId || '');
+  const [supplierInvoiceNumber, setSupplierInvoiceNumber] = useState(existingPurchase?.supplierInvoiceNumber || '');
+  const [notes, setNotes] = useState(existingPurchase?.notes || '');
+  const [paymentMethod, setPaymentMethod] = useState(existingPurchase?.paymentMethod || paymentMethodOptions[0] || 'Cash');
+  const [paymentStatus, setPaymentStatus] = useState<'Paid' | 'Pending' | 'Partial'>(getPaymentStatus());
+  const [paidAmount, setPaidAmount] = useState<string>(getPaidAmount());
+
+  const getInitialLines = (): PurchaseLine[] => {
+    if (!existingPurchase || existingPurchase.items.length === 0) return [blankLine()];
+    return existingPurchase.items.map(item => ({
+      id: item.id,
+      itemName: item.itemName,
+      showDropdown: '',
+      showCatDropdown: '',
+      stockItemId: item.stockItemId,
+      itemCategory: item.category || '',
+      itemUnit: item.unit || UNITS[0],
+      itemLowStockThreshold: (item.lowStockThreshold || 0).toString(),
+      quantityPurchased: item.quantityPurchased.toString(),
+      costPerUnit: item.costPerUnit.toString(),
+    }));
+  };
+
+  const [purchaseLines, setPurchaseLines] = useState<PurchaseLine[]>(getInitialLines);
 
   // Tax: percent or flat
-  const [taxType, setTaxType] = useState<'percent' | 'flat'>('flat');
-  const [taxValue, setTaxValue] = useState<string>('');
-  const [discountAmount, setDiscountAmount] = useState<string>('');
+  const [taxType, setTaxType] = useState<'percent' | 'flat'>(detectTaxType());
+  const [taxValue, setTaxValue] = useState<string>(getInitialTaxValue());
+  const [discountAmount, setDiscountAmount] = useState<string>(
+    existingPurchase?.discountAmount ? existingPurchase.discountAmount.toString() : ''
+  );
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -208,7 +275,12 @@ const AddPurchasePage: React.FC = () => {
     e.preventDefault();
 
     if (!outlet) {
-      alert('An active outlet must be selected to add a purchase.');
+      alert('An active outlet must be selected to update a purchase.');
+      return;
+    }
+
+    if (!existingPurchase) {
+      alert('Purchase not found.');
       return;
     }
 
@@ -238,7 +310,8 @@ const AddPurchasePage: React.FC = () => {
 
       const selectedSupplierDetails = suppliers.find(s => s.id === selectedSupplierId);
 
-      await addPurchase({
+      updatePurchase({
+        ...existingPurchase,
         date: purchaseDate,
         purchaseNumber: purchaseNumber.trim(),
         supplierId: selectedSupplierId || undefined,
@@ -262,11 +335,42 @@ const AddPurchasePage: React.FC = () => {
         navigate('/app/purchase');
       }, 1500);
     } catch (error) {
-      console.error('Error submitting purchase:', error);
+      console.error('Error updating purchase:', error);
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  if (!existingPurchase) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="bg-white border-b border-gray-200 px-4 sm:px-6 py-4">
+          <div className="max-w-5xl mx-auto flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center shadow-lg shadow-sky-200">
+              <FiShoppingCart className="text-white text-xl" />
+            </div>
+            <div>
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Edit Purchase Order</h1>
+              <p className="text-sm text-gray-500">Purchase not found</p>
+            </div>
+          </div>
+        </div>
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-12 text-center">
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
+            <FiShoppingCart className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+            <p className="text-gray-600 text-lg font-medium mb-2">Purchase order not found</p>
+            <p className="text-gray-400 text-sm mb-6">The purchase order you're looking for doesn't exist or has been removed.</p>
+            <button
+              onClick={() => navigate('/app/purchase')}
+              className="inline-flex items-center gap-2 px-6 py-3 text-sm font-medium text-white bg-gradient-to-r from-sky-600 to-blue-600 rounded-xl hover:from-sky-700 hover:to-blue-700 shadow-lg shadow-sky-200 transition-all"
+            >
+              <FiArrowLeft className="w-4 h-4" /> Back to Purchases
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -278,8 +382,8 @@ const AddPurchasePage: React.FC = () => {
               <FiShoppingCart className="text-white text-xl" />
             </div>
             <div>
-              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Add Purchase Order</h1>
-              <p className="text-sm text-gray-500">Record new stock purchases and deliveries</p>
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Edit Purchase Order</h1>
+              <p className="text-sm text-gray-500">Update stock purchase and delivery details</p>
             </div>
           </div>
         </div>
@@ -290,7 +394,7 @@ const AddPurchasePage: React.FC = () => {
         {showSuccess && (
           <div className="fixed top-4 right-4 z-50 bg-green-50 border border-green-200 rounded-xl px-4 py-3 shadow-lg flex items-center gap-2 animate-slide-in">
             <FiCheckCircle className="text-green-600 w-5 h-5" />
-            <span className="text-green-800 font-medium">Purchase order saved successfully!</span>
+            <span className="text-green-800 font-medium">Purchase order updated successfully!</span>
           </div>
         )}
 
@@ -904,7 +1008,7 @@ const AddPurchasePage: React.FC = () => {
             className="flex items-center justify-center gap-2 px-8 py-3 text-sm font-semibold text-white bg-gradient-to-r from-sky-600 to-blue-600 rounded-xl hover:from-sky-700 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-sky-200 transition-all"
           >
             <FiCheckCircle className="w-4 h-4" />
-            {isSubmitting ? 'Saving...' : `Save Purchase (${purchaseLines.length} item${purchaseLines.length !== 1 ? 's' : ''})`}
+            {isSubmitting ? 'Updating...' : `Update Purchase (${purchaseLines.length} item${purchaseLines.length !== 1 ? 's' : ''})`}
           </button>
         </div>
       </div>
@@ -912,4 +1016,4 @@ const AddPurchasePage: React.FC = () => {
   );
 };
 
-export default AddPurchasePage;
+export default EditPurchasePage;

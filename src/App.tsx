@@ -95,6 +95,7 @@ const CustomerDetailPage = React.lazy(() => import('./pages/CustomerDetailPage')
 const CustomerDueReceivePageActual = React.lazy(() => import('./pages/CustomerDueReceivePage'));
 const ActualPurchasePage = React.lazy(() => import('./pages/PurchasePage'));
 const AddPurchaseActualPage = React.lazy(() => import('./pages/purchase/AddPurchasePage'));
+const EditPurchasePage = React.lazy(() => import('./pages/purchase/EditPurchasePage'));
 const ActualSupplierDuePaymentPage = React.lazy(() => import('./pages/SupplierDuePaymentPage'));
 const FunctionalExpensePage = React.lazy(() => import('./pages/ExpensePage'));
 const ManageExpenseCategoriesPage = React.lazy(() => import('./pages/settings/ManageExpenseCategoriesPage'));
@@ -328,6 +329,7 @@ const RestaurantPanelRoutes = () => {
             <Route path="customer-due-receive" element={<OperationalPage page={<CustomerDueReceivePageActual />} featureName="Customer Due Receive" requiredFeatureKey="customers" />} />
             <Route path="purchase" element={<OperationalPage page={<ActualPurchasePage />} featureName="Purchases" requiredFeatureKey="purchase" />} />
             <Route path="purchase/add" element={<OperationalPage page={<AddPurchaseActualPage />} featureName="Add Purchase" requiredFeatureKey="purchase" />} />
+            <Route path="purchase/edit/:id" element={<OperationalPage page={<EditPurchasePage />} featureName="Edit Purchase" requiredFeatureKey="purchase" />} />
             <Route path="supplier-due-payment" element={<OperationalPage page={<ActualSupplierDuePaymentPage />} featureName="Supplier Due Payment" requiredFeatureKey="purchase" />} />
             <Route path="expense" element={<OperationalPage page={<FunctionalExpensePage />} featureName="Expense Management" requiredFeatureKey="purchase" />} />
             <Route path="waste" element={<FunctionalWastePage />} />

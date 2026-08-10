@@ -6,7 +6,7 @@ import { Purchase } from '../types';
 import Input from '@/components/common/Input';
 import ViewPurchaseDetailsModal from '@/components/purchase/ViewPurchaseDetailsModal';
 import Money from '@/components/common/Money';
-import { FiSearch, FiArchive, FiPlusCircle, FiShoppingCart, FiTrash2, FiEye, FiX, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
+import { FiSearch, FiArchive, FiPlusCircle, FiShoppingCart, FiTrash2, FiEye, FiEdit2, FiX, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 
 type SortField = 'date' | 'purchaseNumber' | 'supplier' | 'totalAmount' | 'items';
 type SortDir = 'asc' | 'desc';
@@ -84,6 +84,13 @@ const PurchasePage: React.FC = () => {
   };
 
   const hasFilters = searchTerm || startDate || endDate || statusFilter !== 'All';
+
+  const shortPO = (po: string) => {
+    // Show last 4 chars: e.g. "PO-123456" → "#3456"
+    const parts = po.split('-');
+    const last = parts[parts.length - 1];
+    return `#${last.slice(-4)}`;
+  };
 
   const totalPurchaseValue = useMemo(() => {
     return filteredPurchases.reduce((sum, p) => sum + p.grandTotalAmount, 0);
@@ -204,8 +211,19 @@ const PurchasePage: React.FC = () => {
                   {pagedItems.map(p => (
                     <tr key={p.id} className="hover:bg-sky-50 transition-all duration-200">
                       <td className="py-3 px-4 text-sm text-gray-600">{new Date(p.date).toLocaleDateString()}</td>
-                      <td className="py-3 px-4 text-sm font-medium text-sky-600">{p.purchaseNumber}</td>
-                      <td className="py-3 px-4 text-sm text-gray-700 font-medium">{p.supplierNameDisplay}</td>
+                      <td className="py-3 px-4 text-sm font-medium text-sky-600 hover:underline cursor-pointer" title={p.purchaseNumber}>{shortPO(p.purchaseNumber)}</td>
+                      <td className="py-3 px-4 text-sm text-gray-700 font-medium">
+                        {p.supplierId ? (
+                          <button
+                            onClick={() => navigate(`/app/suppliers?highlight=${p.supplierId}`)}
+                            className="text-sky-600 hover:text-sky-800 hover:underline font-medium"
+                          >
+                            {p.supplierNameDisplay}
+                          </button>
+                        ) : (
+                          p.supplierNameDisplay
+                        )}
+                      </td>
                       <td className="py-3 px-4 text-sm text-gray-500">{p.supplierInvoiceNumber || '-'}</td>
                       <td className="py-3 px-4 text-sm font-semibold text-gray-800 text-right"><Money amount={p.grandTotalAmount} /></td>
                       <td className="py-3 px-4 text-sm">
@@ -233,6 +251,12 @@ const PurchasePage: React.FC = () => {
                       </td>
                       <td className="py-3 px-4 text-center">
                         <div className="flex items-center justify-center gap-1">
+                          <button
+                            onClick={() => navigate(`/app/purchase/edit/${p.id}`)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-gray-700 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors"
+                          >
+                            <FiEdit2 size={12} /> Edit
+                          </button>
                           <button
                             onClick={() => setSelectedPurchase(p)}
                             className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-sky-700 bg-sky-50 border border-sky-200 rounded-lg hover:bg-sky-100 transition-colors"

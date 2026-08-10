@@ -63,8 +63,8 @@ export const PERMISSIONS = [
   'settings.view',
   'settings.edit',
   // Accounting
-  'accounting.view_reports',
-  'accounting.manage_payments',
+  'accounting.view',
+  'accounting.manage',
   // Invoice
   'invoice.view',
   'invoice.create',
@@ -75,8 +75,27 @@ export const PERMISSIONS = [
   'orders.view',
   'orders.edit',
   // Kitchen
+  'kitchen.view',
   'kitchen.display',
-  // Legacy permissions for backward compatibility
+  // Resource-level shortcuts (legacy: 'pos' matches 'pos.*')
+  'dashboard',
+  'pos',
+  'sales',
+  'kds',
+  'menu',
+  'tables',
+  'reservations',
+  'customers',
+  'inventory',
+  'purchase',
+  'reports',
+  'users',
+  'settings',
+  'accounting',
+  'invoice',
+  'orders',
+  'kitchen',
+  // Legacy granular permissions for backward compatibility
   'pos.create_order',
   'pos.edit_order',
   'pos.cancel_order',
@@ -84,6 +103,7 @@ export const PERMISSIONS = [
   'customer.view',
   'customer.edit',
   'customer.delete',
+  'customer_portal',
   'inventory.add_product',
   'inventory.edit_product',
   'inventory.stock_adjustment',
@@ -92,18 +112,17 @@ export const PERMISSIONS = [
   'roles.create',
   'roles.edit',
   'roles.delete',
-  'customer_portal',
 ] as const;
 
 export type Permission = typeof PERMISSIONS[number];
 
 export const SYSTEM_ROLES = [
   { id: 'role-admin', name: 'Admin', permissions: ['*'] },
-  { id: 'role-cashier', name: 'Cashier', permissions: ['dashboard.view', 'pos.create_order', 'pos.edit_order', 'pos.cancel_order', 'pos.discount', 'invoice.view', 'invoice.print', 'customer.view', 'orders.view'] },
-  { id: 'role-waiter', name: 'Waiter', permissions: ['dashboard.view', 'pos.create_order', 'orders.view'] },
-  { id: 'role-kitchen', name: 'Kitchen Staff', permissions: ['kitchen.display', 'orders.view'] },
-  { id: 'role-accountant', name: 'Accountant', permissions: ['dashboard.view', 'accounting.view_reports', 'accounting.manage_payments', 'invoice.view', 'invoice.print', 'customer.view'] },
-  { id: 'role-inventory-manager', name: 'Inventory Manager', permissions: ['dashboard.view', 'inventory.add_product', 'inventory.edit_product', 'inventory.stock_adjustment', 'inventory.view_reports'] },
+  { id: 'role-cashier', name: 'Cashier', permissions: ['dashboard.view', 'pos.view', 'pos.create', 'pos.edit', 'pos.discount', 'invoice.view', 'invoice.print', 'customers.view', 'orders.view', 'pos.create_order', 'pos.edit_order', 'pos.cancel_order', 'customer.view'] },
+  { id: 'role-waiter', name: 'Waiter', permissions: ['dashboard.view', 'pos.view', 'pos.create', 'orders.view', 'pos.create_order'] },
+  { id: 'role-kitchen', name: 'Kitchen Staff', permissions: ['kitchen.view', 'kitchen.display', 'orders.view'] },
+  { id: 'role-accountant', name: 'Accountant', permissions: ['dashboard.view', 'accounting.view', 'accounting.manage', 'invoice.view', 'invoice.print', 'customers.view', 'reports.view'] },
+  { id: 'role-inventory-manager', name: 'Inventory Manager', permissions: ['dashboard.view', 'inventory.view', 'inventory.create', 'inventory.edit', 'inventory.delete', 'reports.view', 'inventory.add_product', 'inventory.edit_product', 'inventory.stock_adjustment'] },
   { id: 'role-customer', name: 'Customer', permissions: ['customer_portal'] },
   { id: 'role-superadmin', name: 'Super Admin', permissions: ['*'] },
 ] as const;

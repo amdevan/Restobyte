@@ -110,6 +110,7 @@ const CustomerDisplayPage = React.lazy(() => import('./pages/panel/CustomerDispl
 const OutletSettingPage = React.lazy(() => import('./pages/placeholders/OutletSettingPage'));
 const ProductionPage = React.lazy(() => import('./pages/placeholders/ProductionPage'));
 const AccountAndUserPage = React.lazy(() => import('./pages/placeholders/AccountAndUserPage'));
+const ManageRolesPage = React.lazy(() => import('./pages/ManageRolesPage'));
 const SendSmsPage = React.lazy(() => import('./pages/placeholders/SendSmsPage'));
 const AppSettingsPage = React.lazy(() => import('./pages/settings/AppSettingsPage'));
 const WhiteLabelPage = React.lazy(() => import('./pages/placeholders/WhiteLabelPage'));
@@ -335,6 +336,7 @@ const RestaurantPanelRoutes = () => {
             <Route path="waste" element={<FunctionalWastePage />} />
             <Route path="backup" element={<BackupDashboardPage />} />
             <Route path="account-user" element={<ProtectedRoute requiredPermissions={['users.view']}><AccountAndUserPage /></ProtectedRoute>} />
+            <Route path="roles" element={<ProtectedRoute requiredPermissions={['users.view']}><ManageRolesPage /></ProtectedRoute>} />
             <Route path="employees" element={<ProtectedRoute requiredPermissions={['users.view']}><FunctionalEmployeesPage /></ProtectedRoute>} />
             <Route path="attendance" element={<FunctionalAttendancePage />} />
             <Route path="payroll" element={<FunctionalPayrollPage />} />

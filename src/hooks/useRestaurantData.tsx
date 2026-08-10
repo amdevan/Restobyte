@@ -5182,13 +5182,17 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             if (user?.isSuperAdmin) return true;
             const userRole = roles.find(r => r.id === user?.roleId);
             if (!userRole) return false;
-            // Check granular permissions first, fall back to legacy permissions
-            if (userRole.granularPermissions && userRole.granularPermissions.length > 0) {
-                return userRole.granularPermissions.includes(permission);
-            }
-            // Legacy: check if the resource part of the permission is in the role's permissions
-            const resource = permission.split('.')[0] as PlanFeatureKey;
-            return userRole.permissions.includes(resource);
+            const perms = userRole.permissions || [];
+            // Check for wildcard
+            if (perms.includes('*')) return true;
+            // Check exact permission match
+            if (perms.includes(permission)) return true;
+            // Check resource-level shortcut (e.g. 'pos' matches 'pos.view')
+            const resource = permission.split('.')[0];
+            if (perms.includes(resource)) return true;
+            // Check granular permissions if stored separately
+            if (userRole.granularPermissions && userRole.granularPermissions.includes(permission)) return true;
+            return false;
         },
         saasSettings,
         updateSaaSSettings: async (settings) => {

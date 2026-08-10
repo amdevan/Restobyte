@@ -979,7 +979,7 @@ export type PlanFeatureKey =
   | 'subscription';
 
 // Granular permission keys for role-based access control
-export type PermissionAction = 'view' | 'create' | 'edit' | 'delete' | 'discount' | 'return' | 'export';
+export type PermissionAction = 'view' | 'create' | 'edit' | 'delete' | 'discount' | 'return' | 'export' | 'print' | 'display' | 'manage' | 'assign';
 export type PermissionResource =
   | 'pos'
   | 'kds'
@@ -992,23 +992,79 @@ export type PermissionResource =
   | 'reports'
   | 'users'
   | 'settings'
-  | 'sales';
+  | 'sales'
+  | 'dashboard'
+  | 'accounting'
+  | 'invoice'
+  | 'orders'
+  | 'kitchen';
 export type PermissionKey = `${PermissionResource}.${PermissionAction}`;
+
+// All possible permission keys (matches backend PERMISSIONS array)
+export const ALL_PERMISSION_KEYS: PermissionKey[] = [
+  // Dashboard
+  'dashboard.view',
+  // POS
+  'pos.view', 'pos.create', 'pos.edit', 'pos.delete', 'pos.discount', 'pos.return',
+  // Sales
+  'sales.view', 'sales.edit', 'sales.delete', 'sales.return', 'sales.export',
+  // KDS
+  'kds.view', 'kds.edit',
+  // Menu
+  'menu.view', 'menu.create', 'menu.edit', 'menu.delete',
+  // Tables
+  'tables.view', 'tables.create', 'tables.edit', 'tables.delete',
+  // Reservations
+  'reservations.view', 'reservations.create', 'reservations.edit', 'reservations.delete',
+  // Customers
+  'customers.view', 'customers.create', 'customers.edit', 'customers.delete',
+  // Inventory
+  'inventory.view', 'inventory.create', 'inventory.edit', 'inventory.delete',
+  // Purchase
+  'purchase.view', 'purchase.create', 'purchase.edit', 'purchase.delete',
+  // Reports
+  'reports.view', 'reports.export',
+  // Users
+  'users.view', 'users.create', 'users.edit', 'users.delete',
+  // Settings
+  'settings.view', 'settings.edit',
+  // Accounting
+  'accounting.view', 'accounting.manage',
+  // Invoice
+  'invoice.view', 'invoice.create', 'invoice.edit', 'invoice.delete', 'invoice.print',
+  // Orders
+  'orders.view', 'orders.edit',
+  // Kitchen
+  'kitchen.view', 'kitchen.display',
+] as PermissionKey[];
 
 // Permission groups for UI organization
 export interface PermissionGroup {
   resource: PermissionResource;
   label: string;
   description: string;
+  icon?: string;
   permissions: PermissionKey[];
 }
 
 export const PERMISSION_GROUPS: PermissionGroup[] = [
   {
+    resource: 'dashboard',
+    label: 'Dashboard',
+    description: 'View dashboard and analytics overview',
+    permissions: ['dashboard.view'],
+  },
+  {
     resource: 'pos',
     label: 'POS',
     description: 'Point of Sale operations',
     permissions: ['pos.view', 'pos.create', 'pos.edit', 'pos.delete', 'pos.discount', 'pos.return'],
+  },
+  {
+    resource: 'orders',
+    label: 'Orders',
+    description: 'View and manage orders',
+    permissions: ['orders.view', 'orders.edit'],
   },
   {
     resource: 'sales',
@@ -1023,9 +1079,15 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
     permissions: ['kds.view', 'kds.edit'],
   },
   {
+    resource: 'kitchen',
+    label: 'Kitchen',
+    description: 'Kitchen display and operations',
+    permissions: ['kitchen.view', 'kitchen.display'],
+  },
+  {
     resource: 'menu',
     label: 'Menu',
-    description: 'Food menu items',
+    description: 'Food menu items and categories',
     permissions: ['menu.view', 'menu.create', 'menu.edit', 'menu.delete'],
   },
   {
@@ -1043,13 +1105,13 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
   {
     resource: 'customers',
     label: 'Customers',
-    description: 'Customer management',
+    description: 'Customer management and CRM',
     permissions: ['customers.view', 'customers.create', 'customers.edit', 'customers.delete'],
   },
   {
     resource: 'inventory',
     label: 'Inventory',
-    description: 'Stock and inventory',
+    description: 'Stock and inventory management',
     permissions: ['inventory.view', 'inventory.create', 'inventory.edit', 'inventory.delete'],
   },
   {
@@ -1057,6 +1119,18 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
     label: 'Purchase',
     description: 'Purchase orders and suppliers',
     permissions: ['purchase.view', 'purchase.create', 'purchase.edit', 'purchase.delete'],
+  },
+  {
+    resource: 'accounting',
+    label: 'Accounting',
+    description: 'Financial reports and payments',
+    permissions: ['accounting.view', 'accounting.manage'],
+  },
+  {
+    resource: 'invoice',
+    label: 'Invoice',
+    description: 'Invoice generation and management',
+    permissions: ['invoice.view', 'invoice.create', 'invoice.edit', 'invoice.delete', 'invoice.print'],
   },
   {
     resource: 'reports',
@@ -1073,7 +1147,7 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
   {
     resource: 'settings',
     label: 'Settings',
-    description: 'Application settings',
+    description: 'Application settings and configuration',
     permissions: ['settings.view', 'settings.edit'],
   },
 ];

@@ -118,13 +118,39 @@ export type Permission = typeof PERMISSIONS[number];
 
 export const SYSTEM_ROLES = [
   { id: 'role-admin', name: 'Admin', permissions: ['*'] },
-  { id: 'role-cashier', name: 'Cashier', permissions: ['dashboard.view', 'pos.view', 'pos.create', 'pos.edit', 'pos.discount', 'invoice.view', 'invoice.print', 'customers.view', 'orders.view', 'pos.create_order', 'pos.edit_order', 'pos.cancel_order', 'customer.view'] },
-  { id: 'role-waiter', name: 'Waiter', permissions: ['dashboard.view', 'pos.view', 'pos.create', 'orders.view', 'pos.create_order'] },
-  { id: 'role-kitchen', name: 'Kitchen Staff', permissions: ['kitchen.view', 'kitchen.display', 'orders.view'] },
-  { id: 'role-accountant', name: 'Accountant', permissions: ['dashboard.view', 'accounting.view', 'accounting.manage', 'invoice.view', 'invoice.print', 'customers.view', 'reports.view'] },
-  { id: 'role-inventory-manager', name: 'Inventory Manager', permissions: ['dashboard.view', 'inventory.view', 'inventory.create', 'inventory.edit', 'inventory.delete', 'reports.view', 'inventory.add_product', 'inventory.edit_product', 'inventory.stock_adjustment'] },
-  { id: 'role-customer', name: 'Customer', permissions: ['customer_portal'] },
   { id: 'role-superadmin', name: 'Super Admin', permissions: ['*'] },
+  { id: 'role-cashier', name: 'Cashier', permissions: [
+    'dashboard.view', 'pos', 'orders.view', 'customers.view', 'customers.create',
+    'invoice.view', 'invoice.print', 'reports.view', 'sales.view',
+    // Legacy compat
+    'pos.create_order', 'pos.edit_order', 'pos.cancel_order', 'pos.discount',
+    'customer.view', 'inventory.view_reports',
+  ]},
+  { id: 'role-waiter', name: 'Waiter', permissions: [
+    'dashboard.view', 'pos', 'orders.view', 'tables.view', 'reservations.view', 'customers.view',
+    'sales.view', 'menu.view',
+    // Legacy compat
+    'pos.create_order',
+  ]},
+  { id: 'role-kitchen', name: 'Kitchen Staff', permissions: [
+    'dashboard.view', 'kitchen', 'orders.view', 'menu.view', 'inventory.view',
+    // Legacy compat
+    'kitchen.display',
+  ]},
+  { id: 'role-accountant', name: 'Accountant', permissions: [
+    'dashboard.view', 'accounting', 'invoice.view', 'invoice.print', 'invoice.create', 'invoice.edit',
+    'customers.view', 'customers.create', 'reports.view', 'reports.export',
+    'purchase.view', 'purchase.edit',
+    // Legacy compat
+    'accounting.view_reports', 'accounting.manage_payments', 'customer.view',
+  ]},
+  { id: 'role-inventory-manager', name: 'Inventory Manager', permissions: [
+    'dashboard.view', 'inventory', 'purchase.view', 'purchase.create', 'purchase.edit',
+    'reports.view', 'reports.export',
+    // Legacy compat
+    'inventory.add_product', 'inventory.edit_product', 'inventory.stock_adjustment', 'inventory.view_reports',
+  ]},
+  { id: 'role-customer', name: 'Customer', permissions: ['customer_portal'] },
 ] as const;
 
 export const isAdminLike = (user: AuthRequest['user'] | undefined) => {

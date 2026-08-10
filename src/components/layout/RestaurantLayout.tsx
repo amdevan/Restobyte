@@ -187,7 +187,31 @@ const RestaurantLayout: React.FC<{ children: React.ReactNode }> = ({ children })
     if (!requiredPermissions || requiredPermissions.length === 0) return true;
     const userPermissions = user.permissions || [];
     if (userPermissions.includes('*')) return true;
-    return requiredPermissions.some(perm => userPermissions.includes(perm));
+    return requiredPermissions.some(perm => {
+      // Exact match
+      if (userPermissions.includes(perm)) return true;
+      // Resource-level shortcut (e.g., 'inventory' matches 'inventory.view')
+      const resource = perm.split('.')[0];
+      if (userPermissions.includes(resource)) return true;
+      // Check legacy permission mappings
+      const legacyMap: Record<string, string[]> = {
+        'inventory.view': ['inventory.view_reports'],
+        'inventory.create': ['inventory.add_product'],
+        'inventory.edit': ['inventory.edit_product', 'inventory.stock_adjustment'],
+        'purchase.view': ['invoice.view'],
+        'customers.view': ['customer.view'],
+        'sales.view': ['invoice.view'],
+        'users.view': ['roles.view'],
+        'menu.view': ['inventory.add_product', 'inventory.edit_product'],
+        'tables.view': ['tables.view'],
+        'pos.view': ['pos.create_order'],
+        'kitchen.view': ['kitchen.display'],
+        'accounting.view': ['accounting.view_reports'],
+        'accounting.manage': ['accounting.manage_payments'],
+      };
+      const legacyPerms = legacyMap[perm] || [];
+      return legacyPerms.some(lp => userPermissions.includes(lp));
+    });
   }, [user]);
 
   const sidebarSections: SidebarSection[] = useMemo(() => {

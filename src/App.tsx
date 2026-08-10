@@ -220,7 +220,23 @@ const ProtectedRoute: React.FC<{ children: React.ReactElement; requiredPermissio
             // Resource-level shortcut (e.g., 'inventory' matches 'inventory.view')
             const resource = perm.split('.')[0];
             if (userPermissions.includes(resource)) return true;
-            return false;
+            // Legacy permission mappings
+            const legacyMap: Record<string, string[]> = {
+                'inventory.view': ['inventory.view_reports'],
+                'inventory.create': ['inventory.add_product'],
+                'inventory.edit': ['inventory.edit_product', 'inventory.stock_adjustment'],
+                'purchase.view': ['invoice.view'],
+                'customers.view': ['customer.view'],
+                'sales.view': ['invoice.view'],
+                'users.view': ['roles.view'],
+                'menu.view': ['inventory.add_product', 'inventory.edit_product'],
+                'pos.view': ['pos.create_order'],
+                'kitchen.view': ['kitchen.display'],
+                'accounting.view': ['accounting.view_reports'],
+                'accounting.manage': ['accounting.manage_payments'],
+            };
+            const legacyPerms = legacyMap[perm] || [];
+            return legacyPerms.some(lp => userPermissions.includes(lp));
         });
     }, [user, requiredPermissions]);
 

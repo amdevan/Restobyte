@@ -1697,19 +1697,14 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         if (!isAuthenticated || !selectedDataOutletId) return;
 
         let cancelled = false;
+        // NOTE: Keys with dedicated API endpoints (stockItems, stockEntries, stockAdjustments,
+        // suppliers, recipes, purchases, expenses, employees, attendanceRecords) are loaded
+        // from the dedicated API below, NOT from OutletAppData. This prevents the race condition
+        // where stale OutletAppData overwrites fresh database data.
         const configs: Array<{ key: string; fallback: unknown; getValue: () => unknown; setValue: (value: any) => void }> = [
             { key: 'reservations', fallback: [] as Reservation[], getValue: () => reservations, setValue: (value) => setReservations(value) },
             { key: 'customerPayments', fallback: [] as CustomerPayment[], getValue: () => customerPayments, setValue: (value) => setCustomerPayments(value) },
             { key: 'preMadeFoodItems', fallback: [] as PreMadeFoodItem[], getValue: () => preMadeFoodItems, setValue: (value) => setPreMadeFoodItems(value) },
-            { key: 'stockItems', fallback: initialStockItems, getValue: () => stockItemsRef.current, setValue: (value) => {
-                const arr = Array.isArray(value) ? value : [];
-                const seen = new Set<string>();
-                const deduped = arr.filter((item: any) => { if (seen.has(item.id)) return false; seen.add(item.id); return true; });
-                stockItemsRef.current = deduped;
-                setStockItems(deduped);
-            } },
-            { key: 'stockEntries', fallback: [] as StockEntry[], getValue: () => stockEntries, setValue: (value) => setStockEntries(value) },
-            { key: 'stockAdjustments', fallback: [] as StockAdjustment[], getValue: () => stockAdjustments, setValue: (value) => setStockAdjustments(value) },
             { key: 'areasFloors', fallback: initialAreasFloors, getValue: () => areasFloors, setValue: (value) => setAreasFloors(value) },
             { key: 'kitchens', fallback: initialKitchens, getValue: () => kitchens, setValue: (value) => setKitchens(value) },
             { 
@@ -1717,7 +1712,6 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 fallback: initialPrinters, 
                 getValue: () => printers, 
                 setValue: (value) => { 
-                    // Migrate printers to ensure all new fields exist
                     const migrated = Array.isArray(value) ? value.map(p => ({
                         isActive: true,
                         paperSize: undefined,
@@ -1737,9 +1731,6 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             { key: 'waiters', fallback: initialWaiters, getValue: () => waiters, setValue: (value) => setWaiters(value) },
             { key: 'denominations', fallback: initialDenominations, getValue: () => denominations, setValue: (value) => setDenominations(value) },
             { key: 'wasteRecords', fallback: initialWasteRecords, getValue: () => wasteRecordsRef.current, setValue: (value) => setWasteRecords(value) },
-            { key: 'employees', fallback: [] as Employee[], getValue: () => employeesRef.current, setValue: (value) => { employeesRef.current = value; setEmployees(value); } },
-            { key: 'attendanceRecords', fallback: initialAttendanceRecords, getValue: () => attendanceRecords, setValue: (value) => setAttendanceRecords(value) },
-            { key: 'payrollRecords', fallback: initialPayrollRecords, getValue: () => payrollRecords, setValue: (value) => setPayrollRecords(value) },
             { key: 'paymentMethods', fallback: initialPaymentMethods, getValue: () => paymentMethods, setValue: (value) => setPaymentMethods(value) },
             { key: 'deliveryPartners', fallback: initialDeliveryPartners, getValue: () => deliveryPartnersRef.current, setValue: (value) => { deliveryPartnersRef.current = value; setDeliveryPartners(value); } },
             { key: 'isSelfOrderEnabled', fallback: false, getValue: () => isSelfOrderEnabled, setValue: (value) => setSelfOrderStatus(Boolean(value)) },
@@ -1755,7 +1746,6 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             },
             { key: 'soundSettings', fallback: { soundsEnabled: true } as SoundSettings, getValue: () => soundSettings, setValue: (value) => setSoundSettings(value) },
             { key: 'addonGroups', fallback: initialAddonGroups, getValue: () => addonGroups, setValue: (value) => setAddonGroups(value) },
-            { key: 'recipes', fallback: initialRecipes, getValue: () => recipes, setValue: (value) => setRecipes(value) },
         ];
 
         void Promise.all(configs.map(async ({ key, fallback, getValue, setValue }) => {
@@ -1837,13 +1827,13 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
     useEffect(() => {
         if (!isAuthenticated || !selectedDataOutletId) return;
 
+        // Only persist data that lives in OutletAppData (no dedicated API).
+        // Data with dedicated APIs (stock, suppliers, purchases, expenses, employees, etc.)
+        // is persisted by the hook functions directly to the database.
         const configs = [
             { key: 'reservations', value: reservations },
             { key: 'customerPayments', value: customerPayments },
             { key: 'preMadeFoodItems', value: preMadeFoodItems },
-            { key: 'stockItems', value: stockItems },
-            { key: 'stockEntries', value: stockEntries },
-            { key: 'stockAdjustments', value: stockAdjustments },
             { key: 'areasFloors', value: areasFloors },
             { key: 'kitchens', value: kitchens },
             { key: 'printers', value: printers },
@@ -1851,9 +1841,6 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             { key: 'waiters', value: waiters },
             { key: 'denominations', value: denominations },
             { key: 'wasteRecords', value: wasteRecords },
-            { key: 'employees', value: employees },
-            { key: 'attendanceRecords', value: attendanceRecords },
-            { key: 'payrollRecords', value: payrollRecords },
             { key: 'paymentMethods', value: paymentMethods },
             { key: 'deliveryPartners', value: deliveryPartners },
             { key: 'isSelfOrderEnabled', value: isSelfOrderEnabled },
@@ -1864,7 +1851,6 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             { key: 'applicationSettings', value: applicationSettings },
             { key: 'soundSettings', value: soundSettings },
             { key: 'addonGroups', value: addonGroups },
-            { key: 'recipes', value: recipes },
         ];
 
         configs.forEach(({ key, value }) => {
@@ -1883,23 +1869,13 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         reservations,
         customerPayments,
         preMadeFoodItems,
-        stockItems,
-        stockEntries,
-        stockAdjustments,
-        suppliers,
         areasFloors,
         kitchens,
         printers,
         counters,
         waiters,
         denominations,
-        purchases,
-        expenseCategories,
-        expenses,
         wasteRecords,
-        employees,
-        attendanceRecords,
-        payrollRecords,
         paymentMethods,
         deliveryPartners,
         isSelfOrderEnabled,
@@ -1910,7 +1886,6 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         applicationSettings,
         soundSettings,
         addonGroups,
-        recipes,
         persistOutletAppData,
     ]);
 
@@ -4483,7 +4458,13 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             return newMethod;
         },
         removePaymentMethod: (id: string) => {
-            setPaymentMethods(prev => prev.filter(p => p.id !== id));
+            const outletId = resolveOutletDataId(selectedDataOutletId);
+            const next = paymentMethods.filter(p => p.id !== id);
+            setPaymentMethods(next);
+            if (outletId) {
+                markOutletAppDataMutated('paymentMethods', outletId);
+                persistOutletCollectionImmediately('paymentMethods', outletId, next);
+            }
         },
 
         deliveryPartners,

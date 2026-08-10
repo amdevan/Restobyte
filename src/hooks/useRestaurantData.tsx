@@ -1598,6 +1598,42 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         }
     }, [isAuthenticated, logout]);
 
+    const upsertRecipeInApi = useCallback(async (outletId: string, recipe: Recipe): Promise<Recipe | null> => {
+        if (!isAuthenticated) return null;
+        const token = localStorage.getItem('authToken');
+        if (!token) return null;
+        try {
+            const res = await fetch(`${API_BASE_URL}/stock/recipes`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ outletId, menuItemId: recipe.menuItemId, variationName: recipe.variationName, yieldQuantity: recipe.yieldQuantity, ingredients: recipe.ingredients }),
+            });
+            if (res.status === 401) { logout(); return null; }
+            if (!res.ok) return null;
+            return await res.json().catch(() => null);
+        } catch (err) {
+            console.error("Failed to upsert recipe:", err);
+            return null;
+        }
+    }, [isAuthenticated, logout]);
+
+    const deleteRecipeInApi = useCallback(async (recipeId: string): Promise<boolean> => {
+        if (!isAuthenticated) return false;
+        const token = localStorage.getItem('authToken');
+        if (!token) return false;
+        try {
+            const res = await fetch(`${API_BASE_URL}/stock/recipes/${recipeId}`, {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (res.status === 401) { logout(); return false; }
+            return res.ok;
+        } catch (err) {
+            console.error("Failed to delete recipe:", err);
+            return false;
+        }
+    }, [isAuthenticated, logout]);
+
     const fetchUserAppData = useCallback(async (key: string) => {
         if (!isAuthenticated) return null;
         const token = localStorage.getItem('authToken');
@@ -5267,23 +5303,35 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
 
         // Recipes & Ingredient Mapping
         recipes,
-        addRecipe: (recipeData) => {
+        addRecipe: async (recipeData) => {
             const outletId = resolveOutletDataId(recipeData.outletId) || selectedDataOutletId;
             const newRecipe: Recipe = {
                 ...recipeData,
                 id: `recipe-${Date.now()}`,
                 outletId: outletId || recipeData.outletId,
             };
+            if (outletId) {
+                const saved = await upsertRecipeInApi(outletId, newRecipe);
+                if (saved) {
+                    const nextRecipes = [...recipes, saved];
+                    setRecipes(nextRecipes);
+                    return saved;
+                }
+            }
             const nextRecipes = [...recipes, newRecipe];
             setRecipes(nextRecipes);
             return newRecipe;
         },
-        updateRecipe: (recipe) => {
+        updateRecipe: async (recipe) => {
             const outletId = resolveOutletDataId(recipe.outletId) || selectedDataOutletId;
+            if (outletId) {
+                await upsertRecipeInApi(outletId, recipe);
+            }
             const nextRecipes = recipes.map(r => r.id === recipe.id ? { ...recipe, outletId: outletId || recipe.outletId } : r);
             setRecipes(nextRecipes);
         },
-        deleteRecipe: (recipeId) => {
+        deleteRecipe: async (recipeId) => {
+            await deleteRecipeInApi(recipeId);
             const nextRecipes = recipes.filter(r => r.id !== recipeId);
             setRecipes(nextRecipes);
         },

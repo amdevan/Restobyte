@@ -214,7 +214,14 @@ const ProtectedRoute: React.FC<{ children: React.ReactElement; requiredPermissio
         if (!requiredPermissions || requiredPermissions.length === 0) return true;
         const userPermissions = user.permissions || [];
         if (userPermissions.includes('*')) return true;
-        return requiredPermissions.some(perm => userPermissions.includes(perm));
+        return requiredPermissions.some(perm => {
+            // Exact match
+            if (userPermissions.includes(perm)) return true;
+            // Resource-level shortcut (e.g., 'inventory' matches 'inventory.view')
+            const resource = perm.split('.')[0];
+            if (userPermissions.includes(resource)) return true;
+            return false;
+        });
     }, [user, requiredPermissions]);
 
     React.useEffect(() => {

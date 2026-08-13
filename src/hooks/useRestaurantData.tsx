@@ -1430,6 +1430,152 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         }
     }, [isAuthenticated, logout]);
 
+    const updateExpenseInApi = useCallback(async (expense: Expense): Promise<Expense | null> => {
+        if (!isAuthenticated) return null;
+        const token = localStorage.getItem('authToken');
+        if (!token) return null;
+        try {
+            const res = await fetch(`${API_BASE_URL}/expenses/${expense.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({
+                    date: expense.date,
+                    categoryId: expense.categoryId,
+                    categoryName: expense.categoryName,
+                    amount: expense.amount,
+                    payee: expense.payee,
+                    description: expense.description,
+                    paymentMethod: expense.paymentMethod,
+                    referenceNumber: expense.referenceNumber,
+                }),
+            });
+            if (res.status === 401) { logout(); return null; }
+            if (!res.ok) return null;
+            return await res.json().catch(() => null);
+        } catch (err) {
+            console.error("Failed to update expense:", err);
+            return null;
+        }
+    }, [isAuthenticated, logout]);
+
+    const createStockEntryInApi = useCallback(async (outletId: string, entry: { supplierId?: string; notes?: string; items: Array<{ stockItemId: string; quantityAdded: number; costPerUnit?: number }> }): Promise<StockEntry | null> => {
+        if (!isAuthenticated) return null;
+        const token = localStorage.getItem('authToken');
+        if (!token) return null;
+        try {
+            const res = await fetch(`${API_BASE_URL}/stock/entries`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ outletId, supplierId: entry.supplierId, notes: entry.notes, items: entry.items }),
+            });
+            if (res.status === 401) { logout(); return null; }
+            if (!res.ok) return null;
+            return await res.json().catch(() => null);
+        } catch (err) {
+            console.error("Failed to create stock entry:", err);
+            return null;
+        }
+    }, [isAuthenticated, logout]);
+
+    const createStockAdjustmentInApi = useCallback(async (outletId: string, adjustment: { reason?: string; items: Array<{ stockItemId: string; quantity: number; adjustmentType: string }> }): Promise<StockAdjustment | null> => {
+        if (!isAuthenticated) return null;
+        const token = localStorage.getItem('authToken');
+        if (!token) return null;
+        try {
+            const res = await fetch(`${API_BASE_URL}/stock/adjustments`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ outletId, reason: adjustment.reason, items: adjustment.items }),
+            });
+            if (res.status === 401) { logout(); return null; }
+            if (!res.ok) return null;
+            return await res.json().catch(() => null);
+        } catch (err) {
+            console.error("Failed to create stock adjustment:", err);
+            return null;
+        }
+    }, [isAuthenticated, logout]);
+
+    const fetchReservationsFromApi = useCallback(async (outletId: string): Promise<Reservation[]> => {
+        if (!isAuthenticated) return [];
+        const token = localStorage.getItem('authToken');
+        if (!token) return [];
+        try {
+            const res = await fetch(`${API_BASE_URL}/reservations?outletId=${outletId}`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (res.status === 401) { logout(); return []; }
+            if (!res.ok) return [];
+            return (await res.json().catch(() => [])) as Reservation[];
+        } catch (err) {
+            console.error("Failed to fetch reservations:", err);
+            return [];
+        }
+    }, [isAuthenticated, logout]);
+
+    const createReservationInApi = useCallback(async (reservation: Omit<Reservation, 'id' | 'createdAt' | 'updatedAt'>): Promise<Reservation | null> => {
+        if (!isAuthenticated) return null;
+        const token = localStorage.getItem('authToken');
+        if (!token) return null;
+        try {
+            const res = await fetch(`${API_BASE_URL}/reservations`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify(reservation),
+            });
+            if (res.status === 401) { logout(); return null; }
+            if (!res.ok) return null;
+            return await res.json().catch(() => null);
+        } catch (err) {
+            console.error("Failed to create reservation:", err);
+            return null;
+        }
+    }, [isAuthenticated, logout]);
+
+    const updateReservationInApi = useCallback(async (reservation: Reservation): Promise<Reservation | null> => {
+        if (!isAuthenticated) return null;
+        const token = localStorage.getItem('authToken');
+        if (!token) return null;
+        try {
+            const res = await fetch(`${API_BASE_URL}/reservations/${reservation.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({
+                    customerName: reservation.customerName,
+                    phone: reservation.phone,
+                    dateTime: reservation.dateTime,
+                    partySize: reservation.partySize,
+                    tableId: reservation.tableId,
+                    notes: reservation.notes,
+                    status: reservation.status,
+                }),
+            });
+            if (res.status === 401) { logout(); return null; }
+            if (!res.ok) return null;
+            return await res.json().catch(() => null);
+        } catch (err) {
+            console.error("Failed to update reservation:", err);
+            return null;
+        }
+    }, [isAuthenticated, logout]);
+
+    const deleteReservationInApi = useCallback(async (reservationId: string): Promise<boolean> => {
+        if (!isAuthenticated) return false;
+        const token = localStorage.getItem('authToken');
+        if (!token) return false;
+        try {
+            const res = await fetch(`${API_BASE_URL}/reservations/${reservationId}`, {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (res.status === 401) { logout(); return false; }
+            return res.ok;
+        } catch (err) {
+            console.error("Failed to delete reservation:", err);
+            return false;
+        }
+    }, [isAuthenticated, logout]);
+
     // Employee API functions
     const fetchEmployeesFromApi = useCallback(async (outletId: string): Promise<Employee[]> => {
         if (!isAuthenticated) return [];
@@ -1791,7 +1937,6 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         // from the dedicated API below, NOT from OutletAppData. This prevents the race condition
         // where stale OutletAppData overwrites fresh database data.
         const configs: Array<{ key: string; fallback: unknown; getValue: () => unknown; setValue: (value: any) => void }> = [
-            { key: 'reservations', fallback: [] as Reservation[], getValue: () => reservations, setValue: (value) => setReservations(value) },
             { key: 'customerPayments', fallback: [] as CustomerPayment[], getValue: () => customerPayments, setValue: (value) => setCustomerPayments(value) },
             { key: 'preMadeFoodItems', fallback: [] as PreMadeFoodItem[], getValue: () => preMadeFoodItems, setValue: (value) => setPreMadeFoodItems(value) },
             { key: 'areasFloors', fallback: initialAreasFloors, getValue: () => areasFloors, setValue: (value) => setAreasFloors(value) },
@@ -1878,7 +2023,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         let cancelled = false;
 
         const loadStock = async () => {
-            const [items, entries, adjustments, suppliersList, recipesList, purchasesList, expensesList, expenseCategoriesList, employeesList, attendanceList, payrollList] = await Promise.all([
+            const [items, entries, adjustments, suppliersList, recipesList, purchasesList, expensesList, expenseCategoriesList, employeesList, attendanceList, payrollList, reservationsList] = await Promise.all([
                 fetchStockItems(selectedDataOutletId),
                 fetchStockEntries(selectedDataOutletId),
                 fetchStockAdjustments(selectedDataOutletId),
@@ -1890,6 +2035,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 fetchEmployeesFromApi(selectedDataOutletId),
                 fetchAttendanceFromApi(selectedDataOutletId),
                 fetchPayrollFromApi(selectedDataOutletId),
+                fetchReservationsFromApi(selectedDataOutletId),
             ]);
 
             if (cancelled) return;
@@ -1917,12 +2063,13 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             setEmployees(employeesList);
             setAttendanceRecords(attendanceList);
             setPayrollRecords(payrollList);
+            setReservations(reservationsList);
         };
 
         void loadStock();
 
         return () => { cancelled = true; };
-    }, [isAuthenticated, selectedDataOutletId, fetchStockItems, fetchStockEntries, fetchStockAdjustments, fetchSuppliersFromApi, fetchRecipesFromApi, fetchPurchasesFromApi, fetchExpensesFromApi, fetchExpenseCategoriesFromApi, fetchEmployeesFromApi, fetchAttendanceFromApi, fetchPayrollFromApi]);
+    }, [isAuthenticated, selectedDataOutletId, fetchStockItems, fetchStockEntries, fetchStockAdjustments, fetchSuppliersFromApi, fetchRecipesFromApi, fetchPurchasesFromApi, fetchExpensesFromApi, fetchExpenseCategoriesFromApi, fetchEmployeesFromApi, fetchAttendanceFromApi, fetchPayrollFromApi, fetchReservationsFromApi]);
 
     useEffect(() => {
         if (!isAuthenticated || !selectedDataOutletId) return;
@@ -1931,7 +2078,6 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         // Data with dedicated APIs (stock, suppliers, purchases, expenses, employees, etc.)
         // is persisted by the hook functions directly to the database.
         const configs = [
-            { key: 'reservations', value: reservations },
             { key: 'customerPayments', value: customerPayments },
             { key: 'preMadeFoodItems', value: preMadeFoodItems },
             { key: 'areasFloors', value: areasFloors },
@@ -3291,7 +3437,8 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         },
         
         reservations,
-        addReservation: (reservation) => {
+        addReservation: async (reservation) => {
+            const outletId = resolveOutletDataId(reservation.outletId) || selectedDataOutletId;
             const created = { ...reservation, id: `res-${Date.now()}` };
             setReservations(prev => [...prev, created]);
 
@@ -3301,8 +3448,15 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                     void setAndPersistTableStatus(created.tableId, TableStatus.Reserved);
                 }
             }
+
+            if (outletId) {
+                const saved = await createReservationInApi({ ...created, outletId, id: undefined } as any);
+                if (saved) {
+                    setReservations(prev => prev.map(r => r.id === created.id ? saved : r));
+                }
+            }
         },
-        updateReservation: (reservation) => {
+        updateReservation: async (reservation) => {
             const previous = reservations.find(r => r.id === reservation.id);
 
             setReservations(prev => prev.map(r => r.id === reservation.id ? reservation : r));
@@ -3324,8 +3478,10 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                     void setAndPersistTableStatus(nextTableId, TableStatus.Reserved);
                 }
             }
+
+            await updateReservationInApi(reservation);
         },
-        deleteReservation: (reservationId) => {
+        deleteReservation: async (reservationId) => {
             const existing = reservations.find(r => r.id === reservationId);
             setReservations(prev => prev.filter(r => r.id !== reservationId));
 
@@ -3336,28 +3492,34 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                     void setAndPersistTableStatus(existing.tableId, TableStatus.Free);
                 }
             }
+
+            await deleteReservationInApi(reservationId);
         },
-        completeReservation: (reservationId: string) => {
+        completeReservation: async (reservationId: string) => {
             const existing = reservations.find(r => r.id === reservationId);
             if (!existing) return;
-            setReservations(prev => prev.map(r => r.id === reservationId ? { ...r, status: 'completed', updatedAt: new Date().toISOString() } : r));
+            const updated = { ...existing, status: 'completed' as const, updatedAt: new Date().toISOString() };
+            setReservations(prev => prev.map(r => r.id === reservationId ? updated : r));
             if (existing.tableId) {
                 const stillReferenced = reservations.some(r => r.id !== reservationId && r.tableId === existing.tableId && r.status !== 'completed');
                 if (!stillReferenced) {
                     void setAndPersistTableStatus(existing.tableId, TableStatus.Free);
                 }
             }
+            await updateReservationInApi(updated);
         },
-        cancelReservation: (reservationId: string) => {
+        cancelReservation: async (reservationId: string) => {
             const existing = reservations.find(r => r.id === reservationId);
             if (!existing) return;
-            setReservations(prev => prev.map(r => r.id === reservationId ? { ...r, status: 'cancelled', updatedAt: new Date().toISOString() } : r));
+            const updated = { ...existing, status: 'cancelled' as const, updatedAt: new Date().toISOString() };
+            setReservations(prev => prev.map(r => r.id === reservationId ? updated : r));
             if (existing.tableId) {
                 const stillReferenced = reservations.some(r => r.id !== reservationId && r.tableId === existing.tableId && r.status !== 'cancelled');
                 if (!stillReferenced) {
                     void setAndPersistTableStatus(existing.tableId, TableStatus.Free);
                 }
             }
+            await updateReservationInApi(updated);
         },
         getAvailableTables: (dateTime, partySize) => {
             // This is a simplified logic
@@ -3684,7 +3846,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         },
 
         stockEntries,
-        addStockEntry: (entryData) => {
+        addStockEntry: async (entryData) => {
             const outletId = selectedDataOutletId;
             const newEntry = { ...entryData, id: `se-${Date.now()}`, date: new Date().toISOString() };
             const nextEntries = [...stockEntries, newEntry];
@@ -3701,12 +3863,13 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             setStockItems(updatedStock);
             if (outletId) {
                 void persistStockItems(outletId, updatedStock);
+                await createStockEntryInApi(outletId, { supplierId: entryData.supplierId, notes: entryData.notes, items: entryData.items });
             }
             return newEntry;
         },
 
         stockAdjustments,
-        addStockAdjustment: (adjustmentData) => {
+        addStockAdjustment: async (adjustmentData) => {
             const outletId = selectedDataOutletId;
             const newAdjustment = { ...adjustmentData, id: `sa-${Date.now()}`, date: new Date().toISOString() };
             const nextAdjustments = [...stockAdjustments, newAdjustment];
@@ -3728,6 +3891,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             setStockItems(updatedStock);
             if (outletId) {
                 void persistStockItems(outletId, updatedStock);
+                await createStockAdjustmentInApi(outletId, { reason: adjustmentData.reason, items: adjustmentData.items });
             }
         },
 
@@ -4408,11 +4572,14 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             setExpenses(nextExpenses);
             return local;
         },
-        updateExpense: (expense) => {
+        updateExpense: async (expense) => {
             const outletId = resolveOutletDataId(expense.outletId);
             const nextExpenses = expensesRef.current.map(e => e.id === expense.id ? expense : e);
             expensesRef.current = nextExpenses;
             setExpenses(nextExpenses);
+            if (outletId) {
+                await updateExpenseInApi(expense);
+            }
         },
         deleteExpense: async (expenseId) => {
             await deleteExpenseInApi(expenseId);

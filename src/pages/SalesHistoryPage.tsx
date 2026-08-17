@@ -36,6 +36,14 @@ const KDS_STATUS_COLORS: Record<string, string> = {
 
 const ITEMS_PER_PAGE_OPTIONS = [10, 25, 50, 100];
 
+/** Format a Date to local YYYY-MM-DD (avoids toISOString UTC shift) */
+const toLocalDateStr = (d: Date): string => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+
 type SortField = 'saleDate' | 'customerName' | 'totalAmount' | 'orderType';
 type SortDirection = 'asc' | 'desc';
 
@@ -47,7 +55,7 @@ const SalesHistoryPage: React.FC = () => {
   // --- Filter state (default to "Today") ---
   const todayStr = useMemo(() => {
     const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString().slice(0, 10);
+    return toLocalDateStr(new Date(now.getFullYear(), now.getMonth(), now.getDate()));
   }, []);
   const [searchTerm, setSearchTerm] = useState('');
   const [startDate, setStartDate] = useState(todayStr);
@@ -89,10 +97,10 @@ const SalesHistoryPage: React.FC = () => {
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
     return {
-      'Today': { start: todayStart.toISOString().slice(0, 10), end: todayStart.toISOString().slice(0, 10) },
-      'Yesterday': { start: yesterdayStart.toISOString().slice(0, 10), end: yesterdayStart.toISOString().slice(0, 10) },
-      'This Week': { start: weekStart.toISOString().slice(0, 10), end: todayStart.toISOString().slice(0, 10) },
-      'This Month': { start: monthStart.toISOString().slice(0, 10), end: todayStart.toISOString().slice(0, 10) },
+      'Today': { start: toLocalDateStr(todayStart), end: toLocalDateStr(todayStart) },
+      'Yesterday': { start: toLocalDateStr(yesterdayStart), end: toLocalDateStr(yesterdayStart) },
+      'This Week': { start: toLocalDateStr(weekStart), end: toLocalDateStr(todayStart) },
+      'This Month': { start: toLocalDateStr(monthStart), end: toLocalDateStr(todayStart) },
     };
   }, []);
 

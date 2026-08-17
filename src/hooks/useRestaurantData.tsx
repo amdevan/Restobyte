@@ -1038,6 +1038,9 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 let url = `${API_BASE_URL}/orders?outletId=${encodeURIComponent(outletId)}`;
                 if (dateParams?.from) url += `&from=${dateParams.from}`;
                 if (dateParams?.to) url += `&to=${dateParams.to}`;
+                // Pass client timezone offset so backend converts local dates to UTC correctly
+                const tzOffset = new Date().getTimezoneOffset();
+                url += `&tzOffset=${tzOffset}`;
                 return fetch(url, {
                     headers: { Authorization: `Bearer ${token}` }
                 }).then(async (res) => {

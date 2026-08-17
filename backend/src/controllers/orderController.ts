@@ -162,18 +162,30 @@ export const getOrders = async (req: Request, res: Response) => {
       return;
     }
 
-    // Optional date filtering
+    // Optional date filtering (dates are in local YYYY-MM-DD format)
     const fromDate = typeof (req.query as any)?.from === 'string' ? (req.query as any).from : undefined;
     const toDate = typeof (req.query as any)?.to === 'string' ? (req.query as any).to : undefined;
+    // tzOffset: client's UTC offset in minutes (e.g., Nepal = +345)
+    const tzOffsetMin = typeof (req.query as any)?.tzOffset === 'string'
+      ? parseInt((req.query as any).tzOffset, 10)
+      : new Date().getTimezoneOffset(); // fallback: server's own offset
 
     const whereClause: any = { outletId: requestedOutletId };
     if (fromDate || toDate) {
       whereClause.createdAt = {};
       if (fromDate) {
-        whereClause.createdAt.gte = new Date(fromDate + 'T00:00:00.000Z');
+        // Convert local date start to UTC: local midnight = UTC midnight + tzOffset
+        const d = new Date(fromDate + 'T00:00:00.000Z');
+        d.setMinutes(d.getMinutes() - tzOffsetMin);
+        whereClause.createdAt.gte = d;
       }
       if (toDate) {
-        whereClause.createdAt.lte = new Date(toDate + 'T23:59:59.999Z');
+        // End of local day = next day local midnight - 1ms, converted to UTC
+        const d = new Date(toDate + 'T00:00:00.000Z');
+        d.setDate(d.getDate() + 1);
+        d.setMinutes(d.getMinutes() - tzOffsetMin);
+        d.setMilliseconds(d.getMilliseconds() - 1);
+        whereClause.createdAt.lte = d;
       }
     }
 

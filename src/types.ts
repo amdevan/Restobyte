@@ -747,6 +747,8 @@ export interface ApplicationSettings {
   showPrintButton?: boolean;
   showDownloadButton?: boolean;
   showKotPrintButton?: boolean;
+  showKotPreview?: boolean;
+  showInvoicePreview?: boolean;
 }
 
 export interface Tax {

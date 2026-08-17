@@ -282,6 +282,28 @@ const AppSettingsPage: React.FC = () => {
                         <div className="flex items-center gap-2">
                             <input
                                 type="checkbox"
+                                id="showInvoicePreview"
+                                name="showInvoicePreview"
+                                checked={localSettings.showInvoicePreview ?? true}
+                                onChange={handleInputChange}
+                                className="w-4 h-4 text-sky-600 rounded border-gray-300 focus:ring-sky-500"
+                            />
+                            <label htmlFor="showInvoicePreview" className="text-sm font-medium text-gray-700">Show Invoice Preview Popup</label>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <input
+                                type="checkbox"
+                                id="showKotPreview"
+                                name="showKotPreview"
+                                checked={localSettings.showKotPreview ?? true}
+                                onChange={handleInputChange}
+                                className="w-4 h-4 text-sky-600 rounded border-gray-300 focus:ring-sky-500"
+                            />
+                            <label htmlFor="showKotPreview" className="text-sm font-medium text-gray-700">Show KOT Preview Popup</label>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <input
+                                type="checkbox"
                                 id="showPrintButton"
                                 name="showPrintButton"
                                 checked={localSettings.showPrintButton ?? true}

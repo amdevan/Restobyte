@@ -1519,8 +1519,8 @@ const handleSendKot = useCallback(async () => {
         <CustomerSelectionModal isOpen={isCustomerModalOpen} onClose={() => setIsCustomerModalOpen(false)} onSelectCustomer={(c) => {setSelectedCustomer(c); setIsCustomerModalOpen(false);}} customers={customers} addCustomer={addCustomer} />
       </Modal>
       {editingNoteItem && <ItemNoteModal isOpen={isNoteModalOpen} onClose={() => setIsNoteModalOpen(false)} item={editingNoteItem} onSave={(lineId, note) => handleSaveItemNote(lineId, note)} />}
-      {lastCompletedSale && <Modal isOpen={isReceiptModalOpen} onClose={() => setIsReceiptModalOpen(false)} title="Sale Completed" size="sm"><ReceiptModal sale={lastCompletedSale} onClose={() => setIsReceiptModalOpen(false)} /></Modal>}
-      {kotData && <KotModal isOpen={isKotModalOpen} kotData={kotData} onClose={() => setIsKotModalOpen(false)} /> }
+      {lastCompletedSale && applicationSettings.showInvoicePreview !== false && <Modal isOpen={isReceiptModalOpen} onClose={() => setIsReceiptModalOpen(false)} title="Sale Completed" size="sm"><ReceiptModal sale={lastCompletedSale} onClose={() => setIsReceiptModalOpen(false)} /></Modal>}
+      {kotData && applicationSettings.showKotPreview !== false && <KotModal isOpen={isKotModalOpen} kotData={kotData} onClose={() => setIsKotModalOpen(false)} /> }
       {isCustomizationModalOpen && itemToCustomize && (
         <ItemCustomizationModal
           isOpen={isCustomizationModalOpen}

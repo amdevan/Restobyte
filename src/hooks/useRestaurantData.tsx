@@ -473,6 +473,8 @@ const initialApplicationSettings: ApplicationSettings = {
     showPrintButton: true,
     showDownloadButton: true,
     showKotPrintButton: true,
+    showKotPreview: true,
+    showInvoicePreview: true,
 };
 
 const initialOutlets: Outlet[] = [

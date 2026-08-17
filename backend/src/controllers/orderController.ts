@@ -657,6 +657,13 @@ export const deleteOrder = async (req: Request, res: Response) => {
     await prisma.$transaction(async (tx) => {
       await deductStockForOrderItems(tx, outletId, itemsForRestore, 'restore');
 
+      // Delete related records in correct order (foreign key dependencies)
+      const invoices = await tx.invoice.findMany({ where: { orderId: id }, select: { id: true } });
+      const invoiceIds = invoices.map((inv) => inv.id);
+      if (invoiceIds.length > 0) {
+        await tx.paymentHistory.deleteMany({ where: { invoiceId: { in: invoiceIds } } });
+        await tx.invoice.deleteMany({ where: { orderId: id } });
+      }
       await tx.orderItem.deleteMany({ where: { orderId: id } });
       await tx.order.delete({ where: { id } });
     });

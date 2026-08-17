@@ -152,7 +152,7 @@ model Order {
   outlet      Outlet?     @relation(fields: [outletId], references: [id])
   items       OrderItem[]
 
-  @@index([outletId, createdAt(sort: desc)])
+  @@index([outletId, createdAt(sort: Desc)])
 }
 
 model OutletAppData {

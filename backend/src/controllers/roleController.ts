@@ -14,7 +14,6 @@ const validatePermissions = (permissions: string[]) => {
 
 export const getRoles = async (req: Request, res: Response) => {
   const actor = (req as AuthRequest).user;
-  console.warn(`[roles] getRoles called: user=${actor?.username}, isSuperAdmin=${actor?.isSuperAdmin}, roleId=${actor?.roleId}, isAdminLike=${isAdminLike(actor)}`);
   if (!isAdminLike(actor)) {
     res.status(403).json({ message: 'Forbidden' });
     return;

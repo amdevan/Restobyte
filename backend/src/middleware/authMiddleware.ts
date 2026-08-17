@@ -59,7 +59,6 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
       ...(user as any),
       outletIds: Array.isArray((user as any)?.outletIds) ? (user as any).outletIds : [],
     };
-    console.warn(`[auth] User authenticated: ${user.username} (role=${user.roleId}, superAdmin=${user.isSuperAdmin}, tenant=${user.tenantId})`);
     next();
   } catch (err) {
     res.status(401).json({ message: 'Token is not valid' });

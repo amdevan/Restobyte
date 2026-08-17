@@ -233,12 +233,10 @@ export const requirePermission = (permission: Permission) => {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const user = (req as AuthRequest).user;
     if (!user) {
-      console.warn(`[auth] requirePermission(${permission}): No user on request`);
       res.status(401).json({ message: 'Unauthorized' });
       return;
     }
     const allowed = await hasPermission(user, permission);
-    console.warn(`[auth] requirePermission(${permission}): user=${user.username}, isSuperAdmin=${user.isSuperAdmin}, roleId=${user.roleId}, allowed=${allowed}`);
     if (!allowed) {
       res.status(403).json({ message: 'Insufficient permissions', required: permission });
       return;

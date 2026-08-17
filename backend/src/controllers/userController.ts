@@ -18,13 +18,11 @@ export const getUsers = async (req: Request, res: Response) => {
   try {
   const auth = req as AuthRequest;
   const user = auth.user;
-  console.warn(`[users] getUsers called: user=${user?.username}, isSuperAdmin=${user?.isSuperAdmin}, roleId=${user?.roleId}, tenantId=${user?.tenantId}`);
   if (!user) {
     res.status(403).json({ message: 'Unauthorized' });
     return;
   }
   if (!isAdmin(user)) {
-    console.warn(`[users] isAdmin check FAILED for user=${user.username}, roleId=${user.roleId}, isSuperAdmin=${user.isSuperAdmin}`);
     res.status(403).json({ message: 'Forbidden' });
     return;
   }

@@ -1479,4 +1479,5 @@ export interface RestaurantDataContextType {
     // Live data refresh — re-pull order/table sources for real-time views.
     lastUpdated: Date | null;
     refreshData: () => Promise<void>;
+    fetchSales: (dateParams?: { from?: string; to?: string }) => Promise<void>;
 }

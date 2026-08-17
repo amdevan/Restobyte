@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useRestaurantData } from '../hooks/useRestaurantData';
 import { Sale, SaleReturnItem } from '../types';
 import Card from '@/components/common/Card';
@@ -40,7 +40,7 @@ type SortField = 'saleDate' | 'customerName' | 'totalAmount' | 'orderType';
 type SortDirection = 'asc' | 'desc';
 
 const SalesHistoryPage: React.FC = () => {
-  const { sales, customers, tables, waiters, paymentMethods, deleteSale, returnSale, updateSale, hasPermission } = useRestaurantData();
+  const { sales, customers, tables, waiters, paymentMethods, deleteSale, returnSale, updateSale, hasPermission, fetchSales } = useRestaurantData();
 
   const paymentMethodOptions = useMemo(() => ["All", ...paymentMethods.map(pm => pm.name)], [paymentMethods]);
 
@@ -87,15 +87,12 @@ const SalesHistoryPage: React.FC = () => {
     const weekStart = new Date(todayStart);
     weekStart.setDate(weekStart.getDate() - weekStart.getDay());
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
 
     return {
       'Today': { start: todayStart.toISOString().slice(0, 10), end: todayStart.toISOString().slice(0, 10) },
       'Yesterday': { start: yesterdayStart.toISOString().slice(0, 10), end: yesterdayStart.toISOString().slice(0, 10) },
       'This Week': { start: weekStart.toISOString().slice(0, 10), end: todayStart.toISOString().slice(0, 10) },
       'This Month': { start: monthStart.toISOString().slice(0, 10), end: todayStart.toISOString().slice(0, 10) },
-      'Last Month': { start: lastMonthStart.toISOString().slice(0, 10), end: lastMonthEnd.toISOString().slice(0, 10) },
     };
   }, []);
 
@@ -113,6 +110,11 @@ const SalesHistoryPage: React.FC = () => {
       setQuickFilter(label);
     }
   }, [quickDateFilters]);
+
+  // Re-fetch sales from server when date filters change
+  useEffect(() => {
+    fetchSales({ from: startDate || undefined, to: endDate || undefined });
+  }, [startDate, endDate, fetchSales]);
 
   // --- Enriched & sorted sales ---
   const enrichedSales = useMemo(() => {
@@ -407,7 +409,7 @@ const SalesHistoryPage: React.FC = () => {
             <span className="text-sm font-medium text-gray-600 flex items-center gap-1 mr-1">
               <FiClock size={14} /> Quick Filters:
             </span>
-            {['All', 'Today', 'Yesterday', 'This Week', 'This Month', 'Last Month'].map(label => (
+            {['All', 'Today', 'Yesterday', 'This Week', 'This Month'].map(label => (
               <button
                 key={label}
                 onClick={() => handleQuickFilter(label)}

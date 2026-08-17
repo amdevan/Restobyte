@@ -161,10 +161,27 @@ export const getOrders = async (req: Request, res: Response) => {
       res.status(403).json({ message: 'Unauthorized' });
       return;
     }
+
+    // Optional date filtering
+    const fromDate = typeof (req.query as any)?.from === 'string' ? (req.query as any).from : undefined;
+    const toDate = typeof (req.query as any)?.to === 'string' ? (req.query as any).to : undefined;
+
+    const whereClause: any = { outletId: requestedOutletId };
+    if (fromDate || toDate) {
+      whereClause.createdAt = {};
+      if (fromDate) {
+        whereClause.createdAt.gte = new Date(fromDate + 'T00:00:00.000Z');
+      }
+      if (toDate) {
+        whereClause.createdAt.lte = new Date(toDate + 'T23:59:59.999Z');
+      }
+    }
+
     const orders = await prisma.order.findMany({
-      where: { outletId: requestedOutletId },
+      where: whereClause,
       include: { customer: true, items: { include: { menuItem: true } } },
       orderBy: { createdAt: 'desc' },
+      take: 500, // Limit to prevent loading too many orders at once
     });
     res.json(orders);
   } catch (error: any) {

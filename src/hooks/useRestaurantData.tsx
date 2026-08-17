@@ -1023,7 +1023,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         }
     }, [isAuthenticated, activeOutletIds, logout]);
 
-    const fetchSales = useCallback(async () => {
+    const fetchSales = useCallback(async (dateParams?: { from?: string; to?: string }) => {
         if (!isAuthenticated) {
             setSales(prev => (Array.isArray(prev) && prev.length === 0) ? prev : []);
             return;
@@ -1034,8 +1034,11 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             return;
         }
         try {
-            const results = await Promise.all(activeOutletIds.map((outletId) =>
-                fetch(`${API_BASE_URL}/orders?outletId=${encodeURIComponent(outletId)}`, {
+            const results = await Promise.all(activeOutletIds.map((outletId) => {
+                let url = `${API_BASE_URL}/orders?outletId=${encodeURIComponent(outletId)}`;
+                if (dateParams?.from) url += `&from=${dateParams.from}`;
+                if (dateParams?.to) url += `&to=${dateParams.to}`;
+                return fetch(url, {
                     headers: { Authorization: `Bearer ${token}` }
                 }).then(async (res) => {
                     if (res.status === 401) {
@@ -1044,8 +1047,8 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                     }
                     if (!res.ok) return [];
                     return res.json().catch(() => []);
-                })
-            ));
+                });
+            }));
             const flat = results.flat().filter(Boolean);
             const mapped = flat.map(mapBackendOrderToSale);
             const deduped = Array.from(new Map(mapped.map((sale) => [String(sale.id), sale])).values())
@@ -5882,6 +5885,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         // can poll in the background and stay in sync with the server.
         lastUpdated: lastUpdatedRef.current,
         refreshData,
+        fetchSales,
     }), [
         // Only include state that changes during polling or user interaction.
         // This prevents unnecessary context value recreation when unrelated

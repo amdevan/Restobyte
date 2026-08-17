@@ -534,8 +534,12 @@ const SaleDetailsModal: React.FC<SaleDetailsModalProps> = ({ isOpen, onClose, sa
       </div>
 
       <div className="mt-6 flex justify-end space-x-3">
-        <Button onClick={handleDownloadReceipt} variant="secondary" leftIcon={<FiDownload />}>Download</Button>
-        <Button onClick={handlePrintReceipt} variant="secondary" leftIcon={<FiPrinter />}>Print Receipt</Button>
+        {applicationSettings?.showDownloadButton !== false && (
+          <Button onClick={handleDownloadReceipt} variant="secondary" leftIcon={<FiDownload />}>Download</Button>
+        )}
+        {applicationSettings?.showPrintButton !== false && (
+          <Button onClick={handlePrintReceipt} variant="secondary" leftIcon={<FiPrinter />}>Print Receipt</Button>
+        )}
         <Button onClick={onClose} variant="primary" leftIcon={<FiXCircle />}>Close</Button>
       </div>
     </div>

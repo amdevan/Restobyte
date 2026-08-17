@@ -470,6 +470,9 @@ const initialApplicationSettings: ApplicationSettings = {
     invoiceShowReturnAmount: true,
     invoiceShowReturnInformation: true,
     invoiceReturnPolicyText: 'Items can be returned within 7 days with receipt.',
+    showPrintButton: true,
+    showDownloadButton: true,
+    showKotPrintButton: true,
 };
 
 const initialOutlets: Outlet[] = [

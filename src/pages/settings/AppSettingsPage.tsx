@@ -275,6 +275,45 @@ const AppSettingsPage: React.FC = () => {
                     KOT width now follows the selected paper size. Recommended characters per line for {localSettings.kotPaperSize}: {kotPaperSizeConfig.recommendedCharsPerLine}
                     {' '}({kotPaperSizeConfig.minCharsPerLine}-{kotPaperSizeConfig.maxCharsPerLine} supported).
                 </p>
+
+                <div className="px-4 pb-4">
+                    <h4 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">Popup Button Visibility</h4>
+                    <div className="space-y-3">
+                        <div className="flex items-center gap-2">
+                            <input
+                                type="checkbox"
+                                id="showPrintButton"
+                                name="showPrintButton"
+                                checked={localSettings.showPrintButton ?? true}
+                                onChange={handleInputChange}
+                                className="w-4 h-4 text-sky-600 rounded border-gray-300 focus:ring-sky-500"
+                            />
+                            <label htmlFor="showPrintButton" className="text-sm font-medium text-gray-700">Show Print Button on Invoice Popup</label>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <input
+                                type="checkbox"
+                                id="showDownloadButton"
+                                name="showDownloadButton"
+                                checked={localSettings.showDownloadButton ?? true}
+                                onChange={handleInputChange}
+                                className="w-4 h-4 text-sky-600 rounded border-gray-300 focus:ring-sky-500"
+                            />
+                            <label htmlFor="showDownloadButton" className="text-sm font-medium text-gray-700">Show Download Button on Invoice Popup</label>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <input
+                                type="checkbox"
+                                id="showKotPrintButton"
+                                name="showKotPrintButton"
+                                checked={localSettings.showKotPrintButton ?? true}
+                                onChange={handleInputChange}
+                                className="w-4 h-4 text-sky-600 rounded border-gray-300 focus:ring-sky-500"
+                            />
+                            <label htmlFor="showKotPrintButton" className="text-sm font-medium text-gray-700">Show Print Button on KOT Popup</label>
+                        </div>
+                    </div>
+                </div>
             </Card>
             )}
 

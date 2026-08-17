@@ -234,7 +234,9 @@ const KotModal: React.FC<KotModalProps> = ({ isOpen, onClose, kotData }) => {
         </div>
         <div className="mt-6 flex justify-end space-x-3">
             <Button onClick={onClose} variant="secondary" leftIcon={<FiXCircle/>}>Close</Button>
-            <Button onClick={handlePrint} variant="primary" leftIcon={<FiPrinter/>}>Print KOT</Button>
+            {applicationSettings?.showKotPrintButton !== false && (
+              <Button onClick={handlePrint} variant="primary" leftIcon={<FiPrinter/>}>Print KOT</Button>
+            )}
         </div>
       </div>
     </Modal>

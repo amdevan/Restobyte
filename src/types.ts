@@ -744,6 +744,9 @@ export interface ApplicationSettings {
   invoiceShowReturnAmount?: boolean;
   invoiceShowReturnInformation?: boolean;
   invoiceReturnPolicyText?: string;
+  showPrintButton?: boolean;
+  showDownloadButton?: boolean;
+  showKotPrintButton?: boolean;
 }
 
 export interface Tax {

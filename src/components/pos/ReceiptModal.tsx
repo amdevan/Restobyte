@@ -483,8 +483,12 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ onClose, sale }) => {
       </div>
 
       <div className="mt-6 flex justify-end space-x-3">
-        <Button onClick={handleDownload} variant="secondary" leftIcon={<FiDownload />}>Download</Button>
-        <Button onClick={handlePrint} variant="secondary" leftIcon={<FiPrinter />}>Print</Button>
+        {applicationSettings.showDownloadButton !== false && (
+          <Button onClick={handleDownload} variant="secondary" leftIcon={<FiDownload />}>Download</Button>
+        )}
+        {applicationSettings.showPrintButton !== false && (
+          <Button onClick={handlePrint} variant="secondary" leftIcon={<FiPrinter />}>Print</Button>
+        )}
         <Button onClick={onClose} variant="primary" leftIcon={<FiXCircle />}>Close & New Order</Button>
       </div>
     </div>

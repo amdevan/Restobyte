@@ -1,6 +1,8 @@
 import express, { Request, Response, NextFunction } from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import bcrypt from 'bcryptjs';
 import prisma from './db/prisma.js';
 
@@ -99,7 +101,25 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Range', 'Accept'],
   exposedHeaders: ['Content-Disposition', 'Content-Length', 'X-Total-Count'],
 }));
-app.use(express.json({ limit: '25mb' }));
+app.use(helmet({ contentSecurityPolicy: false })); // CSP disabled for flexibility
+app.use(express.json({ limit: '10mb' }));
+
+// Rate limiting for auth endpoints (brute-force protection)
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20, // 20 attempts per window
+  message: { message: 'Too many login attempts, please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// General API rate limiting
+const apiLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 200, // 200 requests per minute
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 app.get('/', (_req, res) => {
   res.send('RestoByte Backend is running!');
@@ -115,7 +135,7 @@ app.use('/api/menu-items', menuItemRoutes);
 app.use('/api/customers', customerRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/fonepay', fonepayRoutes);
-app.use('/api/auth', authRoutes);
+app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/currencies', currencyRoutes);
 app.use('/api/tenants', tenantRoutes);
 app.use('/api/tables', tableRoutes);
@@ -165,22 +185,6 @@ async function start() {
   } catch (error) {
     console.error('[database]: Failed to connect to database', error);
     process.exit(1);
-  }
-
-  // Auto-migrate: ensure missing columns exist in production database
-  try {
-    console.log('[bootstrap]: Running auto-migrations...');
-    const migrations = [
-      "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'Order' AND column_name = 'tableNumber') THEN ALTER TABLE \"Order\" ADD COLUMN \"tableNumber\" TEXT; END IF; END $$;",
-      "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'User' AND column_name = 'employeeId') THEN ALTER TABLE \"User\" ADD COLUMN \"employeeId\" TEXT; END IF; END $$;",
-      "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'User' AND column_name = 'outletIds') THEN ALTER TABLE \"User\" ADD COLUMN \"outletIds\" JSONB; END IF; END $$;",
-    ];
-    for (const sql of migrations) {
-      await prisma.$executeRawUnsafe(sql);
-    }
-    console.log('[bootstrap]: Auto-migrations complete');
-  } catch (error: any) {
-    console.error('[bootstrap]: Auto-migration failed:', error?.message);
   }
 
   if (typeof process.env.RESET_SUPERADMIN_PASSWORD === 'string' && process.env.RESET_SUPERADMIN_PASSWORD.trim()) {

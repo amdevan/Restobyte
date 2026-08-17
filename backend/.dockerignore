@@ -1,5 +1,10 @@
 node_modules
 dist
 .env
-*.log
-.DS_Store
+.env.local
+.env.*.local
+.git
+.gitignore
+*.md
+.vscode
+.idea

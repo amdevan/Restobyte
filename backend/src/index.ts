@@ -51,6 +51,10 @@ const app = express();
 const port = Number(process.env.PORT || 3000);
 const host = process.env.HOST || '0.0.0.0';
 
+// Trust proxy (required when behind nginx/Docker reverse proxy)
+// Needed for correct client IP detection and rate limiting
+app.set('trust proxy', 1);
+
 // Request logging middleware
 app.use((req: Request, _res: Response, next: NextFunction) => {
   if (req.method !== 'OPTIONS') {
@@ -111,6 +115,7 @@ const authLimiter = rateLimit({
   message: { message: 'Too many login attempts, please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
+  validate: { xForwardedForHeader: false },
 });
 
 // General API rate limiting
@@ -119,6 +124,7 @@ const apiLimiter = rateLimit({
   max: 200, // 200 requests per minute
   standardHeaders: true,
   legacyHeaders: false,
+  validate: { xForwardedForHeader: false },
 });
 
 app.get('/', (_req, res) => {

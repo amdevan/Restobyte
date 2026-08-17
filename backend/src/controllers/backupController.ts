@@ -140,6 +140,12 @@ async function validateBackupFile(filePath: string): Promise<{ ok: boolean; form
 }
 
 async function runPgDump(dbUrl: string, outputPath: string, tables?: string[]): Promise<void> {
+  // Check if pg_dump is available
+  try {
+    await execAsync('which pg_dump', { timeout: 5000 });
+  } catch {
+    throw new Error('pg_dump is not installed on this server. Backup feature requires postgresql-client. Please install it or use the Dockerfile deployment instead of nixpacks.');
+  }
   ensureBackupDir();
   const db = parseDbUrl(dbUrl);
   let cmd = `pg_dump -h ${db.host} -p ${db.port} -U ${db.user} -d ${db.database} --no-owner --no-acl -F c`;

@@ -104,6 +104,13 @@ function parseDbUrl(url: string) {
 
 // ── Run Backup ──
 async function runAutoBackup(schedule: BackupSchedule): Promise<void> {
+  // Check if pg_dump is available
+  try {
+    await execAsync('which pg_dump', { timeout: 5000 });
+  } catch {
+    throw new Error('pg_dump is not installed. Backup requires postgresql-client. Please add "postgresql" to nixPkgs in nixpacks.toml or use the Dockerfile.');
+  }
+
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
   const filename = `auto-backup-${schedule.type}-${timestamp}.sql`;
   ensureBackupDir();

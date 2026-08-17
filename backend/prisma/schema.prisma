@@ -151,6 +151,8 @@ model Order {
   customer    Customer?   @relation(fields: [customerId], references: [id])
   outlet      Outlet?     @relation(fields: [outletId], references: [id])
   items       OrderItem[]
+
+  @@index([outletId, createdAt(sort: desc)])
 }
 
 model OutletAppData {

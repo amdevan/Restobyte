@@ -189,11 +189,22 @@ export const getOrders = async (req: Request, res: Response) => {
       }
     }
 
+    // Only select fields needed by mapBackendOrderToSale to avoid heavy JOINs
     const orders = await prisma.order.findMany({
       where: whereClause,
-      include: { customer: true, items: { include: { menuItem: true } } },
+      select: {
+        id: true,
+        createdAt: true,
+        customerId: true,
+        total: true,
+        status: true,
+        outletId: true,
+        saleData: true,
+        tableNumber: true,
+        customer: { select: { name: true, id: true } },
+      },
       orderBy: { createdAt: 'desc' },
-      take: 500, // Limit to prevent loading too many orders at once
+      take: 500,
     });
     res.json(orders);
   } catch (error: any) {

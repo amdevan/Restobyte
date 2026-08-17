@@ -1239,7 +1239,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 }
                 try {
                     const results = await Promise.all(activeOutletIds.map((outletId) =>
-                        fetch(`${API_BASE_URL}/orders?outletId=${encodeURIComponent(outletId)}`, { headers: { Authorization: `Bearer ${token}` } }).then(async (res) => {
+                        fetch(`${API_BASE_URL}/orders?outletId=${encodeURIComponent(outletId)}&tzOffset=${new Date().getTimezoneOffset()}`, { headers: { Authorization: `Bearer ${token}` } }).then(async (res) => {
                             if (res.status === 401) { logout(); return []; }
                             if (!res.ok) return [];
                             return res.json().catch(() => []);
@@ -1322,14 +1322,8 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         }
         fetchPrinters();
     }, [fetchPrinters]);
-    useEffect(() => {
-        if (!initialFetchBatchDoneRef.current) return;
-        if (initialBatchPostOutletSettleSkipRef.current.sales) {
-            initialBatchPostOutletSettleSkipRef.current.sales = false;
-            return;
-        }
-        fetchSales();
-    }, [fetchSales]);
+    // Sales are loaded in the initial batch fetch and refreshed via refreshData().
+    // No separate useEffect needed — avoids duplicate API calls.
 
     // Update activeOutletIds when outlets or user changes
     useEffect(() => {

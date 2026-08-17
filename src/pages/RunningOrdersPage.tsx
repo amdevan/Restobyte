@@ -1,11 +1,9 @@
-import React, { useMemo, useEffect, useState, useCallback, useRef, memo } from 'react';
+import React, { useMemo, useEffect, useState, useCallback, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useRestaurantDataFields } from '../hooks/useRestaurantData';
 import { isNative, vibrate } from '../utils/capacitorService';
 import { FiUser, FiClock, FiGrid, FiShoppingCart, FiBell, FiRefreshCw } from 'react-icons/fi';
 import Money from '../components/common/Money';
-import { API_BASE_URL } from '../config';
-import { useAuth } from '../hooks/useAuth';
 
 interface RunningOrdersPageProps {}
 
@@ -149,87 +147,17 @@ ReservationCard.displayName = 'ReservationCard';
 
 const RunningOrdersPage: React.FC<RunningOrdersPageProps> = () => {
   const navigate = useNavigate();
-  const { isAuthenticated, logout } = useAuth();
-  const { sales: contextSales, tables: contextTables, reservations: contextReservations, activeOutletIds } = useRestaurantDataFields([
-    'sales', 'tables', 'reservations', 'activeOutletIds'
+  const { sales: contextSales, tables: contextTables, reservations: contextReservations, lastUpdated, refreshData } = useRestaurantDataFields([
+    'sales', 'tables', 'reservations', 'lastUpdated', 'refreshData'
   ] as const) as any;
-
-  const [localSales, setLocalSalesState] = useState(contextSales);
-  const [localTables, setLocalTablesState] = useState(contextTables);
-  const [localReservations] = useState(contextReservations);
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   const [now, setNow] = useState(Date.now());
   const [refreshing, setRefreshing] = useState(false);
-  const pollingRef = useRef<boolean>(false);
 
-  const setLocalSales = useCallback((next: any) => {
-    setLocalSalesState((prev: any) => deepEq(prev, next) ? prev : next);
+  useEffect(() => {
+    const clock = setInterval(() => setNow(Date.now()), 15000);
+    return () => clearInterval(clock);
   }, []);
-  const setLocalTables = useCallback((next: any) => {
-    setLocalTablesState((prev: any) => deepEq(prev, next) ? prev : next);
-  }, []);
-
-  const fetchSalesLocal = useCallback(async () => {
-    if (!isAuthenticated) { setLocalSales([]); return; }
-    const token = localStorage.getItem('authToken');
-    if (!token || activeOutletIds.length === 0) { setLocalSales([]); return; }
-    try {
-      const results = await Promise.all(activeOutletIds.map((outletId: string) =>
-        fetch(`${API_BASE_URL}/orders?outletId=${encodeURIComponent(outletId)}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        }).then(async (res) => {
-          if (res.status === 401) { logout(); return []; }
-          if (!res.ok) return [];
-          return res.json().catch(() => []);
-        })
-      ));
-      const flat = results.flat().filter(Boolean);
-      setLocalSales(flat);
-    } catch (err) {
-      console.error("Failed to fetch sales:", err);
-      setLocalSales([]);
-    }
-  }, [isAuthenticated, activeOutletIds, logout, setLocalSales]);
-
-  const fetchTablesLocal = useCallback(async () => {
-    if (!isAuthenticated) { setLocalTables([]); return; }
-    const token = localStorage.getItem('authToken');
-    if (!token || activeOutletIds.length === 0) { setLocalTables([]); return; }
-    try {
-      const results = await Promise.all(activeOutletIds.map((outletId: string) =>
-        fetch(`${API_BASE_URL}/tables?outletId=${encodeURIComponent(outletId)}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        }).then(async res => {
-          if (res.status === 401) { logout(); return []; }
-          if (!res.ok) return [];
-          return res.json().catch(() => []);
-        })
-      ));
-      const flat = results.flat().filter(Boolean);
-      const deduped = Array.from(new Map(flat.map((it: any) => [String(it?.id || ''), it])).values()).filter((it: any) => it && it.id);
-      setLocalTables(deduped);
-    } catch (err) {
-      console.error("Failed to fetch tables:", err);
-      setLocalTables([]);
-    }
-  }, [isAuthenticated, activeOutletIds, logout, setLocalTables]);
-
-  const refreshData = useCallback(async () => {
-    if (pollingRef.current) return;
-    pollingRef.current = true;
-    try {
-      await Promise.all([fetchSalesLocal(), fetchTablesLocal()]);
-      setLastUpdated(prev => {
-        const n = new Date();
-        return prev && Math.abs(n.getTime() - prev.getTime()) < 1000 ? prev : n;
-      });
-    } catch (err) {
-      console.error('refreshData failed:', err);
-    } finally {
-      pollingRef.current = false;
-    }
-  }, [fetchSalesLocal, fetchTablesLocal]);
 
   const doRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -237,42 +165,26 @@ const RunningOrdersPage: React.FC<RunningOrdersPageProps> = () => {
     setRefreshing(false);
   }, [refreshData]);
 
-  useEffect(() => {
-    let active = true;
-    const tick = setInterval(() => {
-      if (!active) return;
-      refreshData();
-      const nowN = Date.now();
-      setNow(prev => (Math.floor(prev / 60000) !== Math.floor(nowN / 60000) ? nowN : prev));
-    }, 15000);
-    const clock = setInterval(() => {
-      const nowN = Date.now();
-      setNow(prev => (Math.floor(prev / 60000) !== Math.floor(nowN / 60000) ? nowN : prev));
-    }, 15000);
-    refreshData();
-    return () => { active = false; clearInterval(tick); clearInterval(clock); };
-  }, [refreshData]);
-
   const runningOrders = useMemo(
     () =>
-      (localSales || [])
+      (contextSales || [])
         .filter((s: any) => s.assignedTableId && !(s.isClosed ?? s.isSettled))
         .sort((a: any, b: any) => new Date(b.saleDate).getTime() - new Date(a.saleDate).getTime()),
-    [localSales]
+    [contextSales]
   );
 
   const assistanceRequests = useMemo(
-    () => (localTables || []).filter((t: any) => t.assistanceRequested),
-    [localTables]
+    () => (contextTables || []).filter((t: any) => t.assistanceRequested),
+    [contextTables]
   );
 
   const todaysReservations = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    return (localReservations || [])
+    return (contextReservations || [])
       .filter((r: any) => new Date(r.dateTime) >= today)
       .sort((a: any, b: any) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime());
-  }, [localReservations]);
+  }, [contextReservations]);
 
   const openOrder = useCallback((tableId?: string) => {
     vibrate();

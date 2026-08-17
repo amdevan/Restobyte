@@ -139,32 +139,79 @@ async function validateBackupFile(filePath: string): Promise<{ ok: boolean; form
   }
 }
 
-async function runPgDump(dbUrl: string, outputPath: string, tables?: string[]): Promise<void> {
-  // Check if pg_dump is available
-  try {
-    await execAsync('which pg_dump', { timeout: 5000 });
-  } catch {
-    throw new Error('pg_dump is not installed on this server. Backup feature requires postgresql-client. Please install it or use the Dockerfile deployment instead of nixpacks.');
-  }
+// ── Prisma-based JSON export (no pg_dump required) ──
+const ALL_TABLES = ['Order', 'OrderItem', 'Customer', 'Invoice', 'PaymentHistory', 'Outlet', 'MenuItem', 'Category', 'Variation', 'Table', 'User', 'Role', 'Printer', 'Reservation', 'Tenant', 'Currency', 'PlanDefinition', 'Payment', 'SubscriptionInvoice', 'TenantLoginHistory', 'OutletAppData', 'UserAppData', 'GlobalAppData'];
+
+async function runPrismaExport(outputPath: string, tables?: string[]): Promise<void> {
   ensureBackupDir();
-  const db = parseDbUrl(dbUrl);
-  let cmd = `pg_dump -h ${db.host} -p ${db.port} -U ${db.user} -d ${db.database} --no-owner --no-acl -F c`;
-  if (tables && tables.length > 0) {
-    for (const t of tables) cmd += ` -t ${t}`;
+  const targetTables = tables && tables.length > 0 ? tables : ALL_TABLES;
+  const exportData: Record<string, any[]> = {};
+
+  for (const tableName of targetTables) {
+    try {
+      const model = (prisma as any)[tableName.charAt(0).toLowerCase() + tableName.slice(1)];
+      if (model && typeof model.findMany === 'function') {
+        exportData[tableName] = await model.findMany();
+      }
+    } catch (err: any) {
+      console.warn(`[backup] Skipping table ${tableName}: ${err?.message}`);
+    }
   }
-  cmd += ` -f "${outputPath}"`;
-  await execAsync(cmd, { env: { ...process.env, PGPASSWORD: db.password }, maxBuffer: 50 * 1024 * 1024 });
+
+  fs.writeFileSync(outputPath, JSON.stringify(exportData, null, 2));
   setFilePermissions(outputPath, 0o644);
 }
 
-async function runPgRestore(dbUrl: string, backupPath: string, tables?: string[]): Promise<void> {
-  const db = parseDbUrl(dbUrl);
-  let cmd = `pg_restore -h ${db.host} -p ${db.port} -U ${db.user} -d ${db.database} --no-owner --no-acl --clean --if-exists`;
-  if (tables && tables.length > 0) {
-    for (const t of tables) cmd += ` -t ${t}`;
+// Delete order for safe restore (child → parent)
+const DELETE_ORDER = ['PaymentHistory', 'Invoice', 'OrderItem', 'Order', 'SubscriptionInvoice', 'TenantLoginHistory', 'Reservation', 'Printer', 'Table', 'Variation', 'MenuItem', 'Category', 'OutletAppData', 'UserAppData', 'GlobalAppData', 'Outlet', 'User', 'Role', 'Customer', 'Currency', 'PlanDefinition', 'Payment', 'Tenant'];
+
+// Insert order for restore (parent → child)
+const INSERT_ORDER = ['Tenant', 'PlanDefinition', 'Currency', 'Role', 'Outlet', 'User', 'Customer', 'Category', 'MenuItem', 'Variation', 'Table', 'Printer', 'Reservation', 'OutletAppData', 'UserAppData', 'GlobalAppData', 'Order', 'OrderItem', 'Invoice', 'PaymentHistory', 'Payment', 'SubscriptionInvoice', 'TenantLoginHistory'];
+
+async function runPrismaImport(backupPath: string, tables?: string[]): Promise<void> {
+  const raw = fs.readFileSync(backupPath, 'utf8');
+  const exportData: Record<string, any[]> = JSON.parse(raw);
+  const targetTables = tables && tables.length > 0 ? tables : Object.keys(exportData);
+
+  // Delete in child → parent order
+  for (const tableName of DELETE_ORDER) {
+    if (!targetTables.includes(tableName)) continue;
+    try {
+      const model = (prisma as any)[tableName.charAt(0).toLowerCase() + tableName.slice(1)];
+      if (model && typeof model.deleteMany === 'function') {
+        await model.deleteMany();
+      }
+    } catch (err: any) {
+      console.warn(`[restore] Skipping delete for ${tableName}: ${err?.message}`);
+    }
   }
-  cmd += ` "${backupPath}"`;
-  await execAsync(cmd, { env: { ...process.env, PGPASSWORD: db.password }, maxBuffer: 50 * 1024 * 1024 });
+
+  // Insert in parent → child order
+  for (const tableName of INSERT_ORDER) {
+    if (!targetTables.includes(tableName) || !exportData[tableName]?.length) continue;
+    try {
+      const model = (prisma as any)[tableName.charAt(0).toLowerCase() + tableName.slice(1)];
+      if (model && typeof model.create === 'function') {
+        for (const record of exportData[tableName]) {
+          // Skip user password hashes to avoid auth issues
+          if (tableName === 'User' && record.password) delete record.password;
+          try {
+            await model.create({ data: record });
+          } catch (err: any) {
+            if (err?.code === 'P2002') {
+              // Unique constraint — skip duplicate
+            } else {
+              console.warn(`[restore] Skipping record in ${tableName}: ${err?.message}`);
+            }
+          }
+        }
+      }
+    } catch (err: any) {
+      console.warn(`[restore] Skipping insert for ${tableName}: ${err?.message}`);
+    }
+  }
+
+  try { fs.unlinkSync(backupPath); } catch {}
 }
 
 const TABLE_MAP: Record<string, string[]> = {
@@ -188,10 +235,9 @@ export const createBackup = async (req: Request, res: Response) => {
 
     const { type = 'full', password, label } = req.body;
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const filename = `backup-${timestamp}.sql`;
+    const filename = `backup-${timestamp}.json`;
     ensureBackupDir();
     const filePath = path.join(BACKUP_DIR, filename);
-    const dbUrl = getDbUrl();
     const tables = type === 'full' ? undefined : TABLE_MAP[type];
 
     if (type !== 'full' && !tables) {
@@ -201,8 +247,8 @@ export const createBackup = async (req: Request, res: Response) => {
 
     logActivity('BACKUP_START', { userId: user.id, type, label, filename });
 
-    // Run pg_dump
-    await runPgDump(dbUrl, filePath, tables);
+    // Export via Prisma (no pg_dump required)
+    await runPrismaExport(filePath, tables);
 
     const stats = fs.statSync(filePath);
     let finalPath = filePath;
@@ -363,8 +409,8 @@ export const restoreBackup = async (req: Request, res: Response) => {
       };
     });
 
-    // Perform the pg_restore (external process that modifies DB directly)
-    await runPgRestore(getDbUrl(), restorePath, tables);
+    // Perform the restore via Prisma (no pg_restore required)
+    await runPrismaImport(restorePath, tables);
 
     // Cleanup decrypted temp file
     if (restorePath !== filePath) {

@@ -102,27 +102,45 @@ function parseDbUrl(url: string) {
   return { user: match[1], password: match[2], host: match[3], port: match[4], database: (match[5] || '').split('?')[0] };
 }
 
+// ── Prisma-based JSON export ──
+const ALL_TABLES = ['Order', 'OrderItem', 'Customer', 'Invoice', 'PaymentHistory', 'Outlet', 'MenuItem', 'Category', 'Variation', 'Table', 'User', 'Role', 'Printer', 'Reservation', 'Tenant', 'Currency', 'PlanDefinition', 'Payment', 'SubscriptionInvoice', 'TenantLoginHistory', 'OutletAppData', 'UserAppData', 'GlobalAppData'];
+
+async function runPrismaExport(outputPath: string, tables?: string[]): Promise<void> {
+  ensureBackupDir();
+  const targetTables = tables && tables.length > 0 ? tables : ALL_TABLES;
+  const exportData: Record<string, any[]> = {};
+  for (const tableName of targetTables) {
+    try {
+      const model = (prisma as any)[tableName.charAt(0).toLowerCase() + tableName.slice(1)];
+      if (model && typeof model.findMany === 'function') {
+        exportData[tableName] = await model.findMany();
+      }
+    } catch (err: any) {
+      console.warn(`[autoBackup] Skipping table ${tableName}: ${err?.message}`);
+    }
+  }
+  fs.writeFileSync(outputPath, JSON.stringify(exportData, null, 2));
+  setFilePermissions(outputPath, 0o644);
+}
+
+const TABLE_MAP: Record<string, string[]> = {
+  full: ALL_TABLES,
+  products: ['MenuItem', 'Category', 'Variation'],
+  customers: ['Customer'],
+  sales: ['Order', 'OrderItem', 'Invoice', 'PaymentHistory'],
+};
+
 // ── Run Backup ──
 async function runAutoBackup(schedule: BackupSchedule): Promise<void> {
-  // Check if pg_dump is available
-  try {
-    await execAsync('which pg_dump', { timeout: 5000 });
-  } catch {
-    throw new Error('pg_dump is not installed. Backup requires postgresql-client. Please add "postgresql" to nixPkgs in nixpacks.toml or use the Dockerfile.');
-  }
-
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const filename = `auto-backup-${schedule.type}-${timestamp}.sql`;
+  const filename = `auto-backup-${schedule.type}-${timestamp}.json`;
   ensureBackupDir();
   const filePath = path.join(BACKUP_DIR, filename);
 
-  const dbUrl = process.env.DATABASE_URL || '';
-  const db = parseDbUrl(dbUrl);
+  const tables = schedule.type === 'full' ? undefined : TABLE_MAP[schedule.type];
 
-  // Run pg_dump
-  const cmd = `pg_dump -h ${db.host} -p ${db.port} -U ${db.user} -d ${db.database} --no-owner --no-acl -F c -f "${filePath}"`;
-  await execAsync(cmd, { env: { ...process.env, PGPASSWORD: db.password }, maxBuffer: 50 * 1024 * 1024 });
-  setFilePermissions(filePath, 0o644);
+  // Export via Prisma
+  await runPrismaExport(filePath, tables);
 
   const stats = fs.statSync(filePath);
   const checksum = crypto.createHash('sha256').update(fs.readFileSync(filePath)).digest('hex');

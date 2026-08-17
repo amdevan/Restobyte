@@ -1,5 +1,5 @@
 [phases.setup]
-nixPkgs = ["nodejs_22", "openssl", "postgresql"]
+nixPkgs = ["nodejs_22", "openssl"]
 
 [phases.build]
 cmds = ["npx prisma generate", "npm run build"]

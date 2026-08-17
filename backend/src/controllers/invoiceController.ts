@@ -21,14 +21,18 @@ const generateInvoiceNumber = async (outletId: string) => {
 
 const getAccessibleOutletIds = async (user: NonNullable<AuthRequest['user']>) => {
   if (user.isSuperAdmin) return null;
+  if (Array.isArray((user as any).outletIds) && (user as any).outletIds.length > 0) {
+    return (user as any).outletIds.map(String);
+  }
+  if (user.outletId) {
+    return [String(user.outletId)];
+  }
   if (user.roleId === 'role-admin') {
-    if (!user.tenantId) return [];
+    if (!user.tenantId) return null;
     const outlets = await prisma.outlet.findMany({ where: { tenantId: user.tenantId }, select: { id: true } });
     return outlets.map((outlet) => outlet.id);
   }
-  return Array.isArray((user as any).outletIds) && (user as any).outletIds.length > 0
-    ? (user as any).outletIds.map(String)
-    : (user.outletId ? [String(user.outletId)] : []);
+  return [];
 };
 
 const canAccessOutlet = async (user: NonNullable<AuthRequest['user']>, outletId?: string | null) => {

@@ -86,11 +86,13 @@ const CartDrawer: React.FC<CartDrawerProps> = ({
                     cart.map(item => (
                         <div key={item.id} className="flex gap-4 p-3 bg-white border border-gray-100 rounded-2xl hover:shadow-sm transition-shadow">
                             <div className="w-20 h-20 rounded-xl overflow-hidden bg-gray-50 flex-shrink-0 border border-gray-100 relative group">
-                                <img 
-                                    src={item.imageUrl || `https://picsum.photos/seed/${item.id}/200/200`} 
-                                    alt={item.name} 
-                                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                                />
+                                {item.imageUrl ? (
+                                    <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                                ) : (
+                                    <div className="w-full h-full flex items-center justify-center">
+                                        <FiShoppingBag size={20} className="text-gray-300" />
+                                    </div>
+                                )}
                             </div>
                             <div className="flex-1 flex flex-col justify-between py-0.5">
                                 <div>

@@ -175,7 +175,13 @@ const PublicHomePage: React.FC = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                         {popularItems.map((item) => (
                             <div key={item.id} className="bg-gray-800 p-2.5 rounded-lg hover:bg-gray-750 transition-colors flex gap-3 items-center group border border-gray-700/50 hover:border-orange-500/30">
-                                <img src={item.imageUrl || `https://picsum.photos/seed/${item.id}/100/100`} alt={item.name} className="w-14 h-14 rounded-md object-cover group-hover:scale-105 transition-transform" />
+                                {item.imageUrl ? (
+                                    <img src={item.imageUrl} alt={item.name} className="w-14 h-14 rounded-md object-cover group-hover:scale-105 transition-transform" />
+                                ) : (
+                                    <div className="w-14 h-14 rounded-md bg-gray-700 flex items-center justify-center flex-shrink-0">
+                                        <FiStar size={14} className="text-gray-500" />
+                                    </div>
+                                )}
                                 <div className="flex-1 min-w-0">
                                     <div className="flex justify-between items-start">
                                         <h4 className="font-bold text-sm mb-0.5 truncate text-gray-100 pr-2">{item.name}</h4>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { GoogleGenAI, Chat } from '@google/genai';
 import { GEMINI_TEXT_MODEL } from '../../constants';
-import { useRestaurantData } from '../../hooks/useRestaurantData';
+import { useRestaurantDataFields } from '../../hooks/useRestaurantData';
 import { ChatMessage } from '../../types';
 import Modal from '../common/Modal';
 import Input from '../common/Input';
@@ -15,7 +15,7 @@ interface AiAssistantModalProps {
 }
 
 const AiAssistantModal: React.FC<AiAssistantModalProps> = ({ isOpen, onClose }) => {
-    const { menuItems, foodMenuCategories } = useRestaurantData();
+    const { menuItems, foodMenuCategories } = useRestaurantDataFields(['menuItems','foodMenuCategories'] as const);
     const [chat, setChat] = useState<Chat | null>(null);
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [userInput, setUserInput] = useState('');

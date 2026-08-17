@@ -4,7 +4,7 @@ import { PartialPayment, SaleItem } from '../../types';
 import Button from '../common/Button';
 import Input from '../common/Input';
 import { FiDollarSign, FiTrash2, FiCheckCircle } from 'react-icons/fi';
-import { useRestaurantData } from '@/hooks/useRestaurantData';
+import { useRestaurantDataFields } from '@/hooks/useRestaurantData';
 import { formatMoney, fromBase, toBase } from '@/utils/currency';
 import FonepayQRModal from '@/components/payments/FonepayQRModal';
 import { isNative } from '@/utils/capacitorService';
@@ -18,7 +18,7 @@ interface PaymentSectionProps {
 }
 
 export const PaymentSection: React.FC<PaymentSectionProps> = ({ orderItems, grandTotal, onFinalize, onAddTip, isAlreadyDue }) => {
-  const { getSingleActiveOutlet, currencies, applicationSettings, paymentMethods } = useRestaurantData();
+  const { getSingleActiveOutlet, currencies, applicationSettings, paymentMethods } = useRestaurantDataFields(['getSingleActiveOutlet','currencies','applicationSettings','paymentMethods'] as const);
   const outlet = getSingleActiveOutlet();
 
   const PAYMENT_METHODS = useMemo(() => {

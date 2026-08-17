@@ -1,6 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { SaleItem, SaleTaxDetail, Split, PartialPayment } from '../../../types';
+import { calcSubTotal } from '../../../utils/calcOrderTotals';
 import Button from '../../common/Button';
 import UnassignedItemsPanel from '../UnassignedItemsPanel';
 import SubBillCard from '../SubBillCard';
@@ -65,7 +66,7 @@ const ItemSplitView: React.FC<ItemSplitViewProps> = ({ orderItems, subTotal, tax
                 }
                 
                 // Recalculate totals
-                newSplit.subTotal = newSplit.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+                newSplit.subTotal = calcSubTotal(newSplit.items || []);
                 newSplit.taxAmount = newSplit.subTotal * taxRate;
                 newSplit.totalAmount = newSplit.subTotal + newSplit.taxAmount;
 

@@ -1,6 +1,6 @@
 import React, { memo, useMemo } from 'react';
 import { MenuItem, StockStatus } from '../../types';
-import { FiPlus } from 'react-icons/fi';
+import { FiPlus, FiImage } from 'react-icons/fi';
 import Money from '@/components/common/Money';
 
 const stockBadgeStyles: Record<StockStatus, string> = {
@@ -41,11 +41,13 @@ const PosMenuItemCard: React.FC<PosMenuItemCardProps> = ({ item, onAddItem, stoc
       aria-label={`Add ${item.name} to order`}
     >
       <div className="relative">
-        <img 
-          src={item.imageUrl || `https://picsum.photos/seed/${item.id}/400/300`} 
-          alt={item.name} 
-          className="w-full h-28 object-cover group-hover:scale-105 transition-transform duration-300" 
-        />
+        {item.imageUrl ? (
+          <img src={item.imageUrl} alt={item.name} className="w-full h-28 object-cover group-hover:scale-105 transition-transform duration-300" />
+        ) : (
+          <div className="w-full h-28 bg-gray-100 flex items-center justify-center">
+            <FiImage size={24} className="text-gray-300" />
+          </div>
+        )}
          <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
         <div className="absolute top-2 right-2 bg-sky-500 text-white p-1.5 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-all duration-300 scale-75 group-hover:scale-100">
           <FiPlus size={16}/>

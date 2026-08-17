@@ -18,9 +18,10 @@ import Header from './Header';
 import Footer from './Footer';
 import MobileBottomNav from './MobileBottomNav';
 import MobilePageHeader from './MobilePageHeader';
-import { useRestaurantData } from '../../hooks/useRestaurantData';
+import { useRestaurantData, useRestaurantDataFields } from '../../hooks/useRestaurantData';
 import { useAuth } from '../../hooks/useAuth';
 import { isNative } from '../../utils/capacitorService';
+import { hasPermission as checkPermission } from '../../utils/hasPermission';
 
 // Moved temporary icon definitions here
 const FiPercent: React.FC<{ className?: string, size?: string | number }> = ({ className, size }) => <span className={className} style={{ fontSize: size ? `${size}px` : undefined }}>%</span>;
@@ -176,43 +177,21 @@ const RestaurantLayout: React.FC<{ children: React.ReactNode }> = ({ children })
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   const { user } = useAuth();
-  const { getSingleActiveOutlet, hasPlanFeature } = useRestaurantData();
-  const singleActiveOutlet = getSingleActiveOutlet();
+  const { outlets, activeOutletIds, tenantEntitlements, roles } = useRestaurantDataFields(['outlets', 'activeOutletIds', 'tenantEntitlements', 'roles'] as const);
+  const singleActiveOutlet = activeOutletIds.length === 1 ? outlets.find(o => o.id === activeOutletIds[0]) : undefined;
   const isAggregateView = !singleActiveOutlet;
   const isCloudKitchen = singleActiveOutlet?.outletType === 'CloudKitchen';
+  const hasPlanFeature = (featureKey: string): boolean => {
+    if (user?.isSuperAdmin) return true;
+    if (!tenantEntitlements) return true;
+    return tenantEntitlements.featureKeys.includes(featureKey);
+  };
 
   const hasPermission = useCallback((requiredPermissions: string[] | undefined) => {
     if (!user) return false;
     if (user.isSuperAdmin || user.roleId === 'role-admin') return true;
-    if (!requiredPermissions || requiredPermissions.length === 0) return true;
-    const userPermissions = user.permissions || [];
-    if (userPermissions.includes('*')) return true;
-    return requiredPermissions.some(perm => {
-      // Exact match
-      if (userPermissions.includes(perm)) return true;
-      // Resource-level shortcut (e.g., 'inventory' matches 'inventory.view')
-      const resource = perm.split('.')[0];
-      if (userPermissions.includes(resource)) return true;
-      // Check legacy permission mappings
-      const legacyMap: Record<string, string[]> = {
-        'inventory.view': ['inventory.view_reports'],
-        'inventory.create': ['inventory.add_product'],
-        'inventory.edit': ['inventory.edit_product', 'inventory.stock_adjustment'],
-        'purchase.view': ['invoice.view'],
-        'customers.view': ['customer.view'],
-        'sales.view': ['invoice.view'],
-        'users.view': ['roles.view'],
-        'menu.view': ['inventory.add_product', 'inventory.edit_product'],
-        'tables.view': ['tables.view'],
-        'pos.view': ['pos.create_order'],
-        'kitchen.view': ['kitchen.display'],
-        'accounting.view': ['accounting.view_reports'],
-        'accounting.manage': ['accounting.manage_payments'],
-      };
-      const legacyPerms = legacyMap[perm] || [];
-      return legacyPerms.some(lp => userPermissions.includes(lp));
-    });
-  }, [user]);
+    return checkPermission(requiredPermissions, user.permissions || [], roles, user.roleId);
+  }, [user, roles]);
 
   const sidebarSections: SidebarSection[] = useMemo(() => {
     const allSections: SidebarSection[] = [

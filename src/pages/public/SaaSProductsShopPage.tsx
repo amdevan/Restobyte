@@ -314,7 +314,7 @@ const SaaSProductsShopPage: React.FC = () => {
                 size={authModal === 'register' ? 'lg' : 'md'}
             >
                 <React.Suspense fallback={<div className="p-6 flex justify-center">Loading...</div>}>
-                    {authModal === 'login' && <LoginPage onSwitchToRegister={() => setAuthModal('register')} />}
+                    {authModal === 'login' && <LoginPage onSwitchToRegister={() => setAuthModal('register')} variant="modal" />}
                     {authModal === 'register' && (
                         <RegisterPage
                             onSwitchToLogin={() => setAuthModal('login')}

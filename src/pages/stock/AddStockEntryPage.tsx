@@ -60,6 +60,7 @@ const AddStockEntryPage: React.FC = () => {
     addStockEntry,
     suppliers,
     addSupplier,
+    getSingleActiveOutlet,
   } = useRestaurantData();
 
   const [entry, setEntry] = useState<StockEntry>({
@@ -298,7 +299,7 @@ const AddStockEntryPage: React.FC = () => {
         referenceNumber: entry.invoiceNumber,
         items: entryItems,
         notes: entry.notes,
-        outletId: 'outlet-1',
+        outletId: getSingleActiveOutlet()?.id || '',
       });
 
       setEntry({

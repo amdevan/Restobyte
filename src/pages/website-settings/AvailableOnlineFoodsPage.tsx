@@ -124,7 +124,13 @@ const AvailableOnlineFoodsPage: React.FC = () => {
                     checked={selectedFoodIds.includes(item.id)}
                     onChange={() => handleSelectionChange(item.id)}
                   />
-                  <img src={item.imageUrl || `https://picsum.photos/seed/${item.id}/40/40`} alt={item.name} className="w-10 h-10 rounded-md object-cover ml-4 mr-3" />
+                  {item.imageUrl ? (
+                    <img src={item.imageUrl} alt={item.name} className="w-10 h-10 rounded-md object-cover ml-4 mr-3" />
+                  ) : (
+                    <div className="w-10 h-10 rounded-md bg-gray-100 flex items-center justify-center ml-4 mr-3 flex-shrink-0">
+                      <FiList size={14} className="text-gray-300" />
+                    </div>
+                  )}
                   <div className="flex-1">
                     <p className="font-medium text-gray-800">{item.name}</p>
                     <p className="text-xs text-gray-500">

@@ -6,7 +6,13 @@ import html2pdf from 'html2pdf.js';
 import { QRCodeSVG } from 'qrcode.react';
 const mapBackendInvoiceToSale = (invoice: any) => {
   const items = invoice?.items || [];
-  
+  const totalAmount = Number(invoice.totalAmount) || 0;
+  const taxAmount = Number(invoice.taxAmount) || 0;
+  const discountAmount = Number(invoice.discountAmount) || 0;
+
+  // Back-calculate subtotal from stored totals (more accurate than recomputing from items)
+  const subTotal = Math.max(0, totalAmount - taxAmount + discountAmount);
+
   return {
     id: invoice.invoiceNumber,
     saleDate: invoice.createdAt,
@@ -16,9 +22,9 @@ const mapBackendInvoiceToSale = (invoice: any) => {
       price: Number(item.unitPrice),
       quantity: Number(item.quantity),
     })),
-    subTotal: items.reduce((sum: number, item: any) => sum + (Number(item.unitPrice) * Number(item.quantity)), 0),
-    taxDetails: invoice.taxAmount ? [{ name: 'Tax', rate: 0, amount: invoice.taxAmount }] : [],
-    totalAmount: Number(invoice.totalAmount),
+    subTotal,
+    taxDetails: taxAmount ? [{ name: 'Tax', rate: 0, amount: taxAmount }] : [],
+    totalAmount,
     orderType: 'Invoice',
     customerId: invoice.customerId,
     customerName: invoice.customer?.name,

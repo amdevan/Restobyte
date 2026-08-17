@@ -1,14 +1,15 @@
 
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 // FIX: Refactored to use named imports for react-router-dom for consistency.
 import { useNavigate } from 'react-router-dom';
 import { useRestaurantData } from '@/hooks/useRestaurantData';
 import Input from '@/components/common/Input';
 import Button from '@/components/common/Button';
 import Card from '@/components/common/Card';
-import { FiUpload, FiArrowLeft, FiImage, FiSave } from 'react-icons/fi';
+import { FiUpload, FiArrowLeft, FiImage, FiSave, FiX } from 'react-icons/fi';
 import { FoodMenuCategory } from '@/types';
+import { processImage } from '@/utils/imageUpload';
 
 interface AddFoodMenuCategoryPageProps {
   initialData?: FoodMenuCategory | null;
@@ -22,6 +23,9 @@ const AddFoodMenuCategoryPage: React.FC<AddFoodMenuCategoryPageProps> = ({ initi
   const [description, setDescription] = useState('');
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageFileName, setImageFileName] = useState<string>('No file chosen');
+  const [imageError, setImageError] = useState<string | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const { addFoodMenuCategory: defaultAddFunction } = useRestaurantData(); // For standalone page usage
   const navigate = useNavigate();
@@ -40,19 +44,31 @@ const AddFoodMenuCategoryPage: React.FC<AddFoodMenuCategoryPageProps> = ({ initi
     }
   }, [initialData]);
 
-  const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) {
-      setImageFileName(file.name);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    } else {
-      setImageFileName('No file chosen');
-      setImagePreview(null);
+    if (!file) return;
+    setImageError(null);
+    setIsProcessing(true);
+    try {
+      const result = await processImage(file);
+      if ('message' in result) {
+        setImageError(result.message);
+      } else {
+        setImagePreview(result.dataUrl);
+        setImageFileName(result.fileName);
+      }
+    } catch {
+      setImageError('Failed to process image.');
+    } finally {
+      setIsProcessing(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
+  };
+
+  const handleRemoveImage = () => {
+    setImagePreview(null);
+    setImageFileName('No file chosen');
+    setImageError(null);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -130,23 +146,47 @@ const AddFoodMenuCategoryPage: React.FC<AddFoodMenuCategoryPageProps> = ({ initi
 
             <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                Category Image (Width: 200px, Height: 200px)
+                Category Image (Optional)
                 </label>
-                <div className="mt-1 flex items-center space-x-3">
-                <label
-                    htmlFor="categoryImage"
-                    className="cursor-pointer bg-white py-2 px-3 border border-gray-300 rounded-md shadow-sm text-sm leading-4 font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500"
-                >
-                    <FiImage className="inline-block mr-2" /> Choose File
-                </label>
-                <input id="categoryImage" name="categoryImage" type="file" className="sr-only" onChange={handleImageChange} accept="image/*" />
-                <span className="text-sm text-gray-500">{imageFileName}</span>
-                </div>
-                {imagePreview && (
-                <div className="mt-3 w-32 h-32 border border-gray-200 rounded-md overflow-hidden">
-                    <img src={imagePreview} alt="Category Preview" className="w-full h-full object-cover" />
-                </div>
+                {imagePreview ? (
+                  <div className="relative inline-block">
+                    <img src={imagePreview} alt="Category Preview" className="w-32 h-32 object-cover rounded-lg border" />
+                    <button
+                      type="button"
+                      onClick={handleRemoveImage}
+                      className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 shadow-sm"
+                    >
+                      <FiX size={12} />
+                    </button>
+                    <p className="text-[10px] text-gray-400 mt-1">{imageFileName}</p>
+                  </div>
+                ) : (
+                  <label
+                    className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-gray-50 transition-colors ${isProcessing ? 'border-sky-300 bg-sky-50' : 'border-gray-300'}`}
+                  >
+                    <div className="flex flex-col items-center justify-center">
+                      {isProcessing ? (
+                        <div className="w-6 h-6 border-2 border-sky-500 border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <>
+                          <FiImage size={24} className="text-gray-400 mb-1" />
+                          <span className="text-xs text-gray-500">Click to upload image</span>
+                          <span className="text-[10px] text-gray-400 mt-0.5">Max 5MB</span>
+                        </>
+                      )}
+                    </div>
+                    <input
+                      ref={fileInputRef}
+                      id="categoryImage"
+                      name="categoryImage"
+                      type="file"
+                      className="hidden"
+                      onChange={handleImageChange}
+                      accept="image/jpeg,image/png,image/webp"
+                    />
+                  </label>
                 )}
+                {imageError && <p className="mt-1 text-xs text-red-600">{imageError}</p>}
             </div>
 
             <div className="flex items-center justify-start space-x-3 pt-4">

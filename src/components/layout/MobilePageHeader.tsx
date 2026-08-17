@@ -2,7 +2,7 @@ import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FiLogOut, FiBell, FiCalendar, FiAlertCircle, FiGlobe, FiActivity, FiX } from 'react-icons/fi';
 import { useAuth } from '../../hooks/useAuth';
-import { useRestaurantData } from '../../hooks/useRestaurantData';
+import { useRestaurantDataFields } from '../../hooks/useRestaurantData';
 
 interface MobilePageHeaderProps {
   title: string;
@@ -20,7 +20,7 @@ interface MobilePageHeaderProps {
 const MobilePageHeader: React.FC<MobilePageHeaderProps> = ({ title }) => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const { sales, tables, reservations } = useRestaurantData();
+  const { sales, tables, reservations } = useRestaurantDataFields(['sales', 'tables', 'reservations'] as const);
   const [notifOpen, setNotifOpen] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
 

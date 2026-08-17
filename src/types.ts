@@ -76,6 +76,13 @@ export enum Page {
   Reservations = 'Reservations',
 }
 
+export interface SaleItemExtra {
+  id: string;
+  name: string;
+  price: number;
+  quantity?: number;
+}
+
 // New types for recording sales
 export interface SaleItem {
   id: string; // MenuItem ID
@@ -88,6 +95,7 @@ export interface SaleItem {
   discountType?: 'fixed' | 'percentage'; // Per-item discount type
   discountValue?: number; // Per-item discount value
   variationName?: string; // Selected variation name (e.g. "Large", "Small")
+  extras?: SaleItemExtra[];
 }
 
 export interface Customer {
@@ -1288,10 +1296,11 @@ export interface RestaurantDataContextType {
     findOrCreateStockItem: (details: { name: string; category: string; unit: string; lowStockThreshold: number, costPerUnit?: number }) => StockItem;
 
     stockEntries: StockEntry[];
-    addStockEntry: (entryData: Omit<StockEntry, 'id' | 'date'>) => StockEntry; 
+    addStockEntry: (entryData: Omit<StockEntry, 'id' | 'date'>) => Promise<StockEntry>; 
 
     stockAdjustments: StockAdjustment[];
     addStockAdjustment: (adjustmentData: Omit<StockAdjustment, 'id' | 'date'>) => void;
+    deleteStockAdjustment: (adjustmentId: string) => Promise<boolean>;
 
     // Recipes & Ingredient Mapping
     recipes: Recipe[];

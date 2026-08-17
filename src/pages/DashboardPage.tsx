@@ -27,6 +27,7 @@ import RecentActivityCard from '@/components/dashboard/RecentActivityCard';
 import OrderTypeDistributionChart from '@/components/dashboard/OrderTypeDistributionChart';
 import PaymentMethodDistributionChart from '@/components/dashboard/PaymentMethodDistributionChart';
 import TopItemsList from '@/components/dashboard/TopItemsList';
+import AtAGlanceCard from '@/components/dashboard/AtAGlanceCard';
 import OutletSelector from '@/components/common/OutletSelector';
 
 const getDateString = (date: Date): string => date.toISOString().split('T')[0];
@@ -40,7 +41,7 @@ const DashboardPage: React.FC = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastRefreshTime, setLastRefreshTime] = useState<Date | null>(null);
 
-  const [activeFilter, setActiveFilter] = useState<'today' | '7d' | '30d' | 'custom'>('today');
+  const [activeFilter, setActiveFilter] = useState<'today' | 'week' | 'month' | 'lastMonth' | '7d' | '30d' | '90d' | 'custom'>('today');
   const [startDate, setStartDate] = useState(getDateString(new Date()));
   const [endDate, setEndDate] = useState(getDateString(new Date()));
   const [isDatePopoverOpen, setIsDatePopoverOpen] = useState(false);
@@ -103,16 +104,25 @@ const DashboardPage: React.FC = () => {
 
   
   
-  const handleSetDateRangePreset = (preset: 'today' | '7d' | '30d') => {
+  const handleSetDateRangePreset = (preset: 'today' | 'week' | 'month' | 'lastMonth' | '7d' | '30d' | '90d') => {
     const today = new Date();
     let sDate = new Date();
     
     if (preset === 'today') {
         sDate = new Date(today);
+    } else if (preset === 'week') {
+        sDate.setDate(today.getDate() - today.getDay());
+    } else if (preset === 'month') {
+        sDate = new Date(today.getFullYear(), today.getMonth(), 1);
+    } else if (preset === 'lastMonth') {
+        sDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+        today.setTime(new Date(today.getFullYear(), today.getMonth(), 0).getTime());
     } else if (preset === '7d') {
         sDate.setDate(today.getDate() - 6);
     } else if (preset === '30d') {
         sDate.setDate(today.getDate() - 29);
+    } else if (preset === '90d') {
+        sDate.setDate(today.getDate() - 89);
     }
     
     setStartDate(getDateString(sDate));
@@ -125,16 +135,6 @@ const DashboardPage: React.FC = () => {
     setter(value);
     setActiveFilter('custom');
   };
-  
-  const customDateDisplay = useMemo(() => {
-    if (activeFilter !== 'custom' || !startDate || !endDate) {
-      return "Custom Range";
-    }
-    const sDate = new Date(startDate + 'T00:00:00');
-    const eDate = new Date(endDate + 'T00:00:00');
-    const options: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
-    return `${sDate.toLocaleDateString(undefined, options)} - ${eDate.toLocaleDateString(undefined, options)}`;
-  }, [startDate, endDate, activeFilter]);
   
   function filterByDateAndOutlet(items: Sale[]): Sale[];
   function filterByDateAndOutlet(items: Purchase[]): Purchase[];
@@ -213,6 +213,26 @@ const DashboardPage: React.FC = () => {
   }, [stockItems]);
 
   const salesTrendData = useMemo((): SalesTrendDataPoint[] => {
+    if (activeFilter === 'today') {
+      // Hourly breakdown for today
+      const hourMap: Record<number, number> = {};
+      filteredSales.forEach(sale => {
+        const saleDate = new Date(sale.saleDate);
+        if (getDateString(saleDate) === startDate) {
+          const hour = saleDate.getHours();
+          hourMap[hour] = (hourMap[hour] || 0) + sale.totalAmount;
+        }
+      });
+      const now = new Date();
+      const currentHour = now.getHours();
+      const trend: SalesTrendDataPoint[] = [];
+      for (let h = 0; h <= currentHour; h++) {
+        const label = h === 0 ? '12 AM' : h < 12 ? `${h} AM` : h === 12 ? '12 PM' : `${h - 12} PM`;
+        trend.push({ date: label, sales: hourMap[h] || 0 });
+      }
+      return trend;
+    }
+    // Daily breakdown for other periods
     const dateMap: Record<string, number> = {};
     filteredSales.forEach(sale => {
         const date = sale.saleDate.split('T')[0];
@@ -227,7 +247,7 @@ const DashboardPage: React.FC = () => {
         trend.push({ date: dateStr, sales: dateMap[dateStr] || 0 });
     }
     return trend;
-  }, [filteredSales, startDate, endDate]);
+  }, [filteredSales, startDate, endDate, activeFilter]);
 
   const formatAmount = (amount: number): string => {
     const cur = getDefaultCurrency(currencies);
@@ -241,11 +261,18 @@ const DashboardPage: React.FC = () => {
 
   // Period label for cards
   const periodLabel = useMemo(() => {
-    if (activeFilter === 'today') return 'Today';
-    if (activeFilter === '7d') return 'Last 7 days';
-    if (activeFilter === '30d') return 'Last 30 days';
-    return customDateDisplay;
-  }, [activeFilter, customDateDisplay]);
+    switch (activeFilter) {
+      case 'today': return 'Today';
+      case 'week': return 'This Week';
+      case 'month': return 'This Month';
+      case 'lastMonth': return 'Last Month';
+      case '7d': return 'Last 7 Days';
+      case '30d': return 'Last 30 Days';
+      case '90d': return 'Last 90 Days';
+      case 'custom': return 'Custom Range';
+      default: return 'Today';
+    }
+  }, [activeFilter]);
 
   // Compute simple deltas for Income, Orders, AOV vs previous same-length range
   const deltas = useMemo(() => {
@@ -365,17 +392,21 @@ const DashboardPage: React.FC = () => {
     const prev = salesTrendData.length > 1 ? salesTrendData[salesTrendData.length - 2] : null;
     const delta = prev ? last.sales - prev.sales : 0;
     const pct = prev && prev.sales !== 0 ? (delta / prev.sales) * 100 : 0;
-    const fmtDate = (iso: string) => new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    const isToday = activeFilter === 'today';
+    const fmtLabel = (val: string) => {
+      if (isToday) return val; // Already formatted as "12 PM" etc.
+      return new Date(val).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    };
     return {
-      bestDate: fmtDate(best.date),
+      bestDate: fmtLabel(best.date),
       bestSales: best.sales,
-      worstDate: fmtDate(worst.date),
+      worstDate: fmtLabel(worst.date),
       worstSales: worst.sales,
       lastSales: last.sales,
       dayDelta: delta,
       dayDeltaPct: pct,
     };
-  }, [salesTrendData]);
+  }, [salesTrendData, activeFilter]);
 
   return (
     <div className="p-4 md:p-6 space-y-6 bg-gradient-to-b from-gray-50 via-gray-50 to-white min-h-full">
@@ -429,25 +460,38 @@ const DashboardPage: React.FC = () => {
                     </button>
                     <button
                       type="button"
-                      className={`shrink-0 px-3 py-2 text-sm font-semibold rounded-xl transition-all ${activeFilter === '7d' ? 'bg-white text-sky-700 shadow-sm ring-1 ring-gray-200/70' : 'text-gray-600 hover:bg-white/60'}`}
-                      onClick={() => handleSetDateRangePreset('7d')}
+                      className={`shrink-0 px-3 py-2 text-sm font-semibold rounded-xl transition-all ${activeFilter === 'week' ? 'bg-white text-sky-700 shadow-sm ring-1 ring-gray-200/70' : 'text-gray-600 hover:bg-white/60'}`}
+                      onClick={() => handleSetDateRangePreset('week')}
                     >
-                      7 Days
+                      This Week
                     </button>
                     <button
                       type="button"
-                      className={`shrink-0 px-3 py-2 text-sm font-semibold rounded-xl transition-all ${activeFilter === '30d' ? 'bg-white text-sky-700 shadow-sm ring-1 ring-gray-200/70' : 'text-gray-600 hover:bg-white/60'}`}
-                      onClick={() => handleSetDateRangePreset('30d')}
+                      className={`shrink-0 px-3 py-2 text-sm font-semibold rounded-xl transition-all ${activeFilter === 'month' ? 'bg-white text-sky-700 shadow-sm ring-1 ring-gray-200/70' : 'text-gray-600 hover:bg-white/60'}`}
+                      onClick={() => handleSetDateRangePreset('month')}
                     >
-                      30 Days
+                      This Month
+                    </button>
+                    <button
+                      type="button"
+                      className={`shrink-0 px-3 py-2 text-sm font-semibold rounded-xl transition-all ${activeFilter === '90d' ? 'bg-white text-sky-700 shadow-sm ring-1 ring-gray-200/70' : 'text-gray-600 hover:bg-white/60'}`}
+                      onClick={() => handleSetDateRangePreset('90d')}
+                    >
+                      90 Days
+                    </button>
+                    <button
+                      type="button"
+                      className={`shrink-0 px-3 py-2 text-sm font-semibold rounded-xl transition-all ${activeFilter === 'lastMonth' ? 'bg-white text-sky-700 shadow-sm ring-1 ring-gray-200/70' : 'text-gray-600 hover:bg-white/60'}`}
+                      onClick={() => handleSetDateRangePreset('lastMonth')}
+                    >
+                      Last Month
                     </button>
                     <button
                       type="button"
                       className={`shrink-0 px-3 py-2 text-sm font-semibold rounded-xl transition-all flex items-center gap-2 ${activeFilter === 'custom' ? 'bg-white text-sky-700 shadow-sm ring-1 ring-gray-200/70' : 'text-gray-600 hover:bg-white/60'}`}
                       onClick={() => setIsDatePopoverOpen(prev => !prev)}
                     >
-                      <span className="hidden md:inline">{activeFilter === 'custom' ? customDateDisplay : 'Custom'}</span>
-                      <span className="md:hidden">Custom</span>
+                      <span className="hidden md:inline">Custom</span>
                       <FiCalendar size={16} />
                     </button>
                   </div>
@@ -633,9 +677,9 @@ const DashboardPage: React.FC = () => {
             icon={<FiTrendingUp className="text-blue-600" />}
             className="!shadow-sm border border-gray-200/70 rounded-2xl"
             actions={
-              <select className="text-xs border border-gray-200 rounded-lg px-2 py-1 bg-white text-gray-700">
-                <option>By Day</option>
-              </select>
+              <span className="text-xs font-semibold text-gray-500 bg-gray-100 px-2.5 py-1 rounded-lg">
+                {periodLabel}
+              </span>
             }
           >
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_240px] gap-4 items-stretch">
@@ -652,7 +696,7 @@ const DashboardPage: React.FC = () => {
                     </div>
                   </div>
                   <div>
-                    <div className="text-xs text-gray-500">Average Daily</div>
+                    <div className="text-xs text-gray-500">{activeFilter === 'today' ? 'Avg Hourly' : 'Average Daily'}</div>
                     <div className="text-lg font-extrabold text-gray-900 tabular-nums mt-1">{formatAmount(avgDailySales)}</div>
                   </div>
                   <div className="grid grid-cols-2 gap-3 pt-1">
@@ -668,7 +712,7 @@ const DashboardPage: React.FC = () => {
                   {trendSummary && (
                     <div className="pt-1 space-y-2">
                       <div className="flex items-center justify-between gap-3">
-                        <div className="text-[10px] text-gray-500">Best Day</div>
+                        <div className="text-[10px] text-gray-500">{activeFilter === 'today' ? 'Peak Hour' : 'Best Day'}</div>
                         <div className="text-[10px] font-semibold text-gray-700">{trendSummary.bestDate}</div>
                       </div>
                       <div className="flex items-center justify-between gap-3">
@@ -676,7 +720,7 @@ const DashboardPage: React.FC = () => {
                         <div className="text-[11px] text-emerald-700 bg-emerald-50 border border-emerald-200/70 px-2 py-0.5 rounded-full">Peak</div>
                       </div>
                       <div className="flex items-center justify-between gap-3 pt-2 border-t border-gray-200">
-                        <div className="text-[10px] text-gray-500">Lowest Day</div>
+                        <div className="text-[10px] text-gray-500">{activeFilter === 'today' ? 'Slowest Hour' : 'Lowest Day'}</div>
                         <div className="text-[10px] font-semibold text-gray-700">{trendSummary.worstDate}</div>
                       </div>
                       <div className="flex items-center justify-between gap-3">
@@ -776,6 +820,7 @@ const DashboardPage: React.FC = () => {
           </div>
 
           <RecentActivityCard sales={filteredSales} purchases={filteredPurchases} expenses={filteredExpenses} lowStockCount={lowStockAlertsCount} />
+          <AtAGlanceCard />
         </div>
       </div>
     </div>

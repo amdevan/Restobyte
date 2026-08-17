@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, useSearchParams, Link } from 'react-router-dom';
 import { FiSearch, FiGrid, FiAlertTriangle, FiX, FiPlus, FiMinus, FiShoppingBag, FiCheck, FiClock, FiLoader, FiChevronDown, FiChevronUp, FiPackage } from 'react-icons/fi';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+import { API_BASE_URL } from '@/config';
 
 interface MenuItem {
   id: string;
@@ -81,11 +80,13 @@ const ItemDetailModal: React.FC<{
       >
         {/* Image */}
         <div className="relative h-48 bg-gray-100">
-          <img
-            src={item.imageUrl || `https://coresg-normal.trae.ai/api/ide/v1/text_to_image?prompt=${encodeURIComponent(item.name + ' food dish appetizing restaurant quality')}&image_size=square`}
-            alt={item.name}
-            className="w-full h-full object-cover"
-          />
+          {item.imageUrl ? (
+            <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full bg-gray-100 flex items-center justify-center">
+              <FiGrid size={32} className="text-gray-300" />
+            </div>
+          )}
           <button onClick={onClose} className="absolute top-3 right-3 w-8 h-8 bg-white/90 rounded-full flex items-center justify-center shadow">
             <FiX size={16} />
           </button>
@@ -212,11 +213,13 @@ const CartDrawer: React.FC<{
               return (
                 <div key={`${ci.menuItem.id}-${ci.variationName}-${idx}`} className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-lg bg-gray-100 overflow-hidden flex-shrink-0">
-                    <img
-                      src={ci.menuItem.imageUrl || `https://coresg-normal.trae.ai/api/ide/v1/text_to_image?prompt=${encodeURIComponent(ci.menuItem.name + ' food')}&image_size=square`}
-                      alt={ci.menuItem.name}
-                      className="w-full h-full object-cover"
-                    />
+                    {ci.menuItem.imageUrl ? (
+                      <img src={ci.menuItem.imageUrl} alt={ci.menuItem.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full bg-gray-100 flex items-center justify-center">
+                        <FiGrid size={14} className="text-gray-300" />
+                      </div>
+                    )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-gray-800 truncate">{ci.menuItem.name}</p>
@@ -367,6 +370,10 @@ function formatTime(dateStr: string): string {
 // ── Main Page ──
 const PublicQrMenuPage: React.FC = () => {
   const { tableId } = useParams<{ tableId: string }>();
+  const [searchParams] = useSearchParams();
+  const queryOutletId = searchParams.get('outletId') || undefined;
+  const queryTableId = searchParams.get('tableId') || undefined;
+  const effectiveTableId = tableId || queryTableId;
   const [table, setTable] = useState<TableInfo | null>(null);
   const [outlet, setOutlet] = useState<OutletInfo | null>(null);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
@@ -388,17 +395,17 @@ const PublicQrMenuPage: React.FC = () => {
 
   // Load active order IDs from localStorage
   const getOrderIds = useCallback((): string[] => {
-    if (!tableId) return [];
+    if (!effectiveTableId) return [];
     try {
-      const raw = localStorage.getItem(`qr-orders-${tableId}`);
+      const raw = localStorage.getItem(`qr-orders-${effectiveTableId}`);
       return raw ? JSON.parse(raw) : [];
     } catch { return []; }
-  }, [tableId]);
+  }, [effectiveTableId]);
 
   const saveOrderIds = useCallback((ids: string[]) => {
-    if (!tableId) return;
-    localStorage.setItem(`qr-orders-${tableId}`, JSON.stringify(ids));
-  }, [tableId]);
+    if (!effectiveTableId) return;
+    localStorage.setItem(`qr-orders-${effectiveTableId}`, JSON.stringify(ids));
+  }, [effectiveTableId]);
 
   // Fetch active orders
   const fetchActiveOrders = useCallback(async () => {
@@ -427,10 +434,10 @@ const PublicQrMenuPage: React.FC = () => {
   }, [fetchActiveOrders]);
 
   useEffect(() => {
-    if (!tableId) { setError('No table specified'); setLoading(false); return; }
+    if (!effectiveTableId) { setError('No table specified'); setLoading(false); return; }
     const loadData = async () => {
       try {
-        const tableRes = await fetch(`${API_BASE_URL}/tables/public/${tableId}`);
+        const tableRes = await fetch(`${API_BASE_URL}/tables/public/${effectiveTableId}`);
         if (!tableRes.ok) {
           setError(tableRes.status === 404 ? 'Table not found. This QR code may be invalid or expired.' : 'Failed to load table information.');
           setLoading(false);
@@ -439,13 +446,14 @@ const PublicQrMenuPage: React.FC = () => {
         const tableData = await tableRes.json();
         setTable(tableData.table);
         setOutlet(tableData.outlet);
-        const menuRes = await fetch(`${API_BASE_URL}/menu-items?outletId=${tableData.outlet.id}`);
+        const outletIdForMenu = queryOutletId || tableData.outlet.id;
+        const menuRes = await fetch(`${API_BASE_URL}/menu-items?outletId=${outletIdForMenu}`);
         if (menuRes.ok) setMenuItems(await menuRes.json());
       } catch { setError('Unable to connect to the server. Please try again.'); }
       finally { setLoading(false); }
     };
     loadData();
-  }, [tableId]);
+  }, [effectiveTableId, queryOutletId]);
 
   const categories = useMemo(() => {
     const cats = new Set(menuItems.map(i => i.category?.name || 'Uncategorized'));
@@ -764,12 +772,13 @@ const PublicQrMenuPage: React.FC = () => {
                 >
                   {/* Image */}
                   <div className="relative aspect-square bg-gray-100">
-                    <img
-                      src={item.imageUrl || `https://coresg-normal.trae.ai/api/ide/v1/text_to_image?prompt=${encodeURIComponent(item.name + ' food dish appetizing restaurant quality')}&image_size=square`}
-                      alt={item.name}
-                      className="w-full h-full object-cover"
-                      loading="lazy"
-                    />
+                    {item.imageUrl ? (
+                      <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" loading="lazy" />
+                    ) : (
+                      <div className="w-full h-full bg-gray-100 flex items-center justify-center">
+                        <FiGrid size={20} className="text-gray-300" />
+                      </div>
+                    )}
                     {item.isVegetarian && <span className="absolute top-1 left-1 w-3 h-3 bg-green-500 rounded-full border border-white" />}
                     {inCart > 0 && (
                       <span className="absolute top-1 right-1 bg-orange-500 text-white text-[9px] font-bold w-4.5 h-4.5 rounded-full flex items-center justify-center min-w-[18px] px-1">

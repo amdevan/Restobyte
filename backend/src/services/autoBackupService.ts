@@ -6,8 +6,53 @@ import * as crypto from 'crypto';
 import prisma from '../db/prisma.js';
 
 const execAsync = promisify(exec);
-const BACKUP_DIR = path.join(process.cwd(), 'backups');
-const SCHEDULE_FILE = path.join(process.cwd(), 'backup-schedule.json');
+
+// ── Configurable Paths (match backupController) ──
+function resolveBackupDir(): string {
+  const raw = process.env.BACKUP_DIR;
+  if (raw && raw.trim()) {
+    return path.isAbsolute(raw.trim())
+      ? raw.trim()
+      : path.resolve(process.cwd(), raw.trim());
+  }
+  return path.resolve(process.cwd(), 'backups');
+}
+
+const BACKUP_DIR = resolveBackupDir();
+const SCHEDULE_FILE = process.env.BACKUP_SCHEDULE_FILE
+  ? path.isAbsolute(process.env.BACKUP_SCHEDULE_FILE)
+    ? process.env.BACKUP_SCHEDULE_FILE
+    : path.resolve(process.cwd(), process.env.BACKUP_SCHEDULE_FILE)
+  : path.join(BACKUP_DIR, 'backup-schedule.json');
+const ACTIVITY_LOG_FILE = path.join(BACKUP_DIR, 'backup-activity.log');
+
+// ── Directory / Permissions helpers ──
+function ensureBackupDir(): void {
+  if (!fs.existsSync(BACKUP_DIR)) {
+    fs.mkdirSync(BACKUP_DIR, { recursive: true, mode: 0o755 });
+  } else {
+    try { fs.chmodSync(BACKUP_DIR, 0o755); } catch { /* ignore */ }
+  }
+}
+
+function setFilePermissions(filePath: string, mode: number = 0o644): void {
+  try { fs.chmodSync(filePath, mode); } catch { /* ignore */ }
+}
+
+function logActivity(message: string, meta?: Record<string, unknown>): void {
+  try {
+    ensureBackupDir();
+    const ts = new Date().toISOString();
+    const metaStr = meta ? ` | ${JSON.stringify(meta)}` : '';
+    const line = `[${ts}] ${message}${metaStr}\n`;
+    fs.appendFileSync(ACTIVITY_LOG_FILE, line, { mode: 0o644 });
+    console.warn(`[autoBackup-audit] ${message}${metaStr}`);
+  } catch {
+    console.warn('[autoBackup-audit] Failed to write activity log:', message);
+  }
+}
+
+ensureBackupDir();
 
 export interface BackupSchedule {
   enabled: boolean;
@@ -43,7 +88,9 @@ export function loadSchedule(): BackupSchedule {
 }
 
 export function saveSchedule(schedule: BackupSchedule): void {
-  fs.writeFileSync(SCHEDULE_FILE, JSON.stringify(schedule, null, 2));
+  ensureBackupDir();
+  fs.writeFileSync(SCHEDULE_FILE, JSON.stringify(schedule, null, 2), { mode: 0o644 });
+  setFilePermissions(SCHEDULE_FILE, 0o644);
   // Restart scheduler with new config
   stopScheduler();
   if (schedule.enabled) startScheduler();
@@ -59,9 +106,8 @@ function parseDbUrl(url: string) {
 async function runAutoBackup(schedule: BackupSchedule): Promise<void> {
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
   const filename = `auto-backup-${schedule.type}-${timestamp}.sql`;
+  ensureBackupDir();
   const filePath = path.join(BACKUP_DIR, filename);
-
-  if (!fs.existsSync(BACKUP_DIR)) fs.mkdirSync(BACKUP_DIR, { recursive: true });
 
   const dbUrl = process.env.DATABASE_URL || '';
   const db = parseDbUrl(dbUrl);
@@ -69,6 +115,7 @@ async function runAutoBackup(schedule: BackupSchedule): Promise<void> {
   // Run pg_dump
   const cmd = `pg_dump -h ${db.host} -p ${db.port} -U ${db.user} -d ${db.database} --no-owner --no-acl -F c -f "${filePath}"`;
   await execAsync(cmd, { env: { ...process.env, PGPASSWORD: db.password }, maxBuffer: 50 * 1024 * 1024 });
+  setFilePermissions(filePath, 0o644);
 
   const stats = fs.statSync(filePath);
   const checksum = crypto.createHash('sha256').update(fs.readFileSync(filePath)).digest('hex');
@@ -85,6 +132,13 @@ async function runAutoBackup(schedule: BackupSchedule): Promise<void> {
       status: 'SUCCESS',
       createdById: 'system-auto',
     },
+  });
+
+  logActivity('AUTO_BACKUP_SUCCESS', {
+    filename,
+    scheduleType: schedule.type,
+    frequency: schedule.frequency,
+    sizeBytes: stats.size,
   });
 
   console.log(`[autoBackup] Completed: ${filename} (${stats.size} bytes)`);
@@ -114,6 +168,7 @@ async function cleanupOldBackups(retentionDays: number): Promise<void> {
 
   if (oldBackups.length > 0) {
     console.log(`[autoBackup] Cleaned up ${oldBackups.length} old backups (retention: ${retentionDays} days)`);
+    logActivity('AUTO_BACKUP_CLEANUP', { removedCount: oldBackups.length, retentionDays });
   }
 }
 
@@ -165,6 +220,7 @@ function checkAndRun(schedule: BackupSchedule): void {
 
   // Run the backup
   console.log(`[autoBackup] Running scheduled ${schedule.frequency} backup...`);
+  logActivity('AUTO_BACKUP_START', { frequency: schedule.frequency, type: schedule.type });
   runAutoBackup(schedule)
     .then(() => {
       // Update last run
@@ -173,6 +229,7 @@ function checkAndRun(schedule: BackupSchedule): void {
     })
     .catch(err => {
       console.error('[autoBackup] Backup failed:', err);
+      logActivity('AUTO_BACKUP_FAILED', { frequency: schedule.frequency, type: schedule.type, error: err?.message || 'Unknown error' });
       // Record failed backup
       prisma.backupHistory.create({
         data: {
@@ -221,5 +278,6 @@ export function stopScheduler(): void {
 export async function triggerManualBackup(schedule?: Partial<BackupSchedule>): Promise<void> {
   const current = loadSchedule();
   const config = { ...current, ...schedule };
+  logActivity('MANUAL_TRIGGER_START', { type: config.type, from: 'autoBackupService' });
   await runAutoBackup(config);
 }

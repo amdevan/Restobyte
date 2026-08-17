@@ -4,7 +4,7 @@ import { KOT, PrinterType } from '../../types';
 import Button from '../common/Button';
 import Modal from '../common/Modal';
 import { FiPrinter, FiXCircle } from 'react-icons/fi';
-import { useRestaurantData } from '../../hooks/useRestaurantData';
+import { useRestaurantDataFields } from '../../hooks/useRestaurantData';
 import { clampCharsPerLine, escPosCenterText, getEscPosBottomFeed } from '../../utils/printSettings';
 
 interface KotModalProps {
@@ -14,7 +14,7 @@ interface KotModalProps {
 }
 
 const KotModal: React.FC<KotModalProps> = ({ isOpen, onClose, kotData }) => {
-  const { printers, printKot, applicationSettings } = useRestaurantData();
+  const { printers, printKot, applicationSettings } = useRestaurantDataFields(['printers','printKot','applicationSettings'] as const);
   const kotRef = useRef<HTMLDivElement>(null);
 
   if (!kotData) return null;

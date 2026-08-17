@@ -645,7 +645,7 @@ const SaaSPricingPage: React.FC = () => {
             {/* Auth Modals */}
             <Modal isOpen={authModal !== null} onClose={closeModal} title={authModal === 'login' ? 'Sign In' : authModal === 'register' ? 'Start Free Trial' : 'Request a Free Demo'} size={authModal === 'register' ? 'lg' : 'md'}>
                 <React.Suspense fallback={<div className="p-6 flex justify-center">Loading...</div>}>
-                    {authModal === 'login' && <LoginPage onSwitchToRegister={() => setAuthModal('register')} />}
+                    {authModal === 'login' && <LoginPage onSwitchToRegister={() => setAuthModal('register')} variant="modal" />}
                     {authModal === 'register' && (
                         <RegisterPage
                             onSwitchToLogin={() => setAuthModal('login')}

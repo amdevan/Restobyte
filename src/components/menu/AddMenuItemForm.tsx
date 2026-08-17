@@ -1,11 +1,12 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { MenuItem, FoodMenuCategory, Variation } from '../../types';
 import Input from '../common/Input';
 import Button from '../common/Button';
 import { generateMenuItemDescription } from '../../services/geminiService';
-import { FiZap, FiPlus, FiTrash2, FiTag } from 'react-icons/fi'; 
+import { FiZap, FiPlus, FiTrash2, FiTag, FiX, FiImage } from 'react-icons/fi'; 
 import { useRestaurantData } from '../../hooks/useRestaurantData';
+import { processImage } from '../../utils/imageUpload';
 
 interface AddMenuItemFormProps {
   onSubmit: (item: Omit<MenuItem, 'id' | 'imageUrl'>, imageUrl?: string, isVeg?: boolean) => void;
@@ -25,6 +26,9 @@ const AddMenuItemForm: React.FC<AddMenuItemFormProps> = ({ onSubmit, onUpdate, i
   const [isVeg, setIsVeg] = useState(true);
   const [isGeneratingDesc, setIsGeneratingDesc] = useState(false);
   const [selectedAddonGroupIds, setSelectedAddonGroupIds] = useState<string[]>([]);
+  const [imageError, setImageError] = useState<string | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const noCategoriesExist = categories.length === 0;
 
@@ -76,15 +80,29 @@ const AddMenuItemForm: React.FC<AddMenuItemFormProps> = ({ onSubmit, onUpdate, i
     setIsGeneratingDesc(false);
   };
   
-  const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-            setImageUrl(reader.result as string);
-        };
-        reader.readAsDataURL(file);
+    if (!file) return;
+    setImageError(null);
+    setIsProcessing(true);
+    try {
+      const result = await processImage(file);
+      if ('message' in result) {
+        setImageError(result.message);
+      } else {
+        setImageUrl(result.dataUrl);
+      }
+    } catch {
+      setImageError('Failed to process image.');
+    } finally {
+      setIsProcessing(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
+  };
+
+  const handleRemoveImage = () => {
+    setImageUrl('');
+    setImageError(null);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -182,8 +200,42 @@ const AddMenuItemForm: React.FC<AddMenuItemFormProps> = ({ onSubmit, onUpdate, i
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Image (Optional)</label>
-        <input type="file" onChange={handleImageChange} accept="image/*" className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-sky-50 file:text-sky-700 hover:file:bg-sky-100" />
-        {imageUrl && <img src={imageUrl} alt="Preview" className="mt-2 h-24 w-24 object-cover rounded-md border" />}
+        {imageUrl ? (
+          <div className="relative inline-block">
+            <img src={imageUrl} alt="Preview" className="h-24 w-24 object-cover rounded-lg border" />
+            <button
+              type="button"
+              onClick={handleRemoveImage}
+              className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 shadow-sm"
+            >
+              <FiX size={12} />
+            </button>
+          </div>
+        ) : (
+          <label
+            className={`flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-lg cursor-pointer hover:bg-gray-50 transition-colors ${isProcessing ? 'border-sky-300 bg-sky-50' : 'border-gray-300'}`}
+          >
+            <div className="flex flex-col items-center justify-center">
+              {isProcessing ? (
+                <div className="w-6 h-6 border-2 border-sky-500 border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <>
+                  <FiImage size={20} className="text-gray-400 mb-1" />
+                  <span className="text-xs text-gray-500">Click to upload image</span>
+                  <span className="text-[10px] text-gray-400 mt-0.5">Max 5MB</span>
+                </>
+              )}
+            </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              onChange={handleImageChange}
+              accept="image/jpeg,image/png,image/webp"
+              className="hidden"
+            />
+          </label>
+        )}
+        {imageError && <p className="mt-1 text-xs text-red-600">{imageError}</p>}
       </div>
       
       <div className="flex items-center">

@@ -7,7 +7,7 @@ import SubBillCard from '../SubBillCard';
 import PaySplitModal from '../PaySplitModal';
 import { FiArrowLeft, FiCheckCircle, FiDollarSign } from 'react-icons/fi';
 import Money from '../../common/Money';
-import { useRestaurantData } from '../../../hooks/useRestaurantData';
+import { useRestaurantDataFields } from '../../../hooks/useRestaurantData';
 import { formatMoney, getDefaultCurrency } from '../../../utils/currency';
 
 interface CustomSplitViewProps {
@@ -17,7 +17,7 @@ interface CustomSplitViewProps {
 }
 
 const CustomSplitView: React.FC<CustomSplitViewProps> = ({ grandTotal, onFinalize, onBack }) => {
-    const { currencies, applicationSettings } = useRestaurantData();
+    const { currencies, applicationSettings } = useRestaurantDataFields(['currencies','applicationSettings'] as const);
     const defaultCurrency = getDefaultCurrency(currencies);
     const [customAmount, setCustomAmount] = useState('');
     const [splits, setSplits] = useState<Split[]>([]);

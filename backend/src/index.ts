@@ -15,6 +15,7 @@ import currencyRoutes from './routes/currencyRoutes.js';
 import tenantRoutes from './routes/tenantRoutes.js';
 import tableRoutes from './routes/tableRoutes.js';
 import analyticsRoutes from './routes/analyticsRoutes.js';
+import reportsRoutes from './routes/reportsRoutes.js';
 import crmRoutes from './routes/crmRoutes.js';
 import emailRoutes from './routes/emailRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
@@ -63,21 +64,42 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
 });
 
 // CORS and body parsing
-const allowedOrigins = process.env.CORS_ORIGINS 
+// Production-safe CORS: dynamic origin matching so any mobile browser (Android Chrome,
+// iPhone Safari) can hit public endpoints without auth cookie issues.
+// When CREDENTIALS mode is used, we echo the exact origin (never wildcard).
+const allowedOrigins = process.env.CORS_ORIGINS
   ? process.env.CORS_ORIGINS.split(',').map(o => o.trim())
   : ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:3000'];
 
+const isProduction = process.env.NODE_ENV === 'production';
+
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
+    // No origin (e.g. same-origin, curl, server-to-server) → allow
+    if (!origin) {
       callback(null, true);
-    } else {
-      callback(null, true); // Allow in dev, restrict in production
+      return;
     }
+    // Explicitly whitelisted → allow
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+      return;
+    }
+    // Production: public pages / QR menus may come from any origin (mobile browsers).
+    // Reflect the origin so credentials/cookies still work for same-tenant requests.
+    if (isProduction) {
+      callback(null, origin);
+      return;
+    }
+    // Dev: lenient — allow anything
+    callback(null, true);
   },
   credentials: true,
+  // Allow standard headers including range for blobs / downloads
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Range', 'Accept'],
+  exposedHeaders: ['Content-Disposition', 'Content-Length', 'X-Total-Count'],
 }));
-app.use(express.json());
+app.use(express.json({ limit: '25mb' }));
 
 app.get('/', (_req, res) => {
   res.send('RestoByte Backend is running!');
@@ -98,6 +120,13 @@ app.use('/api/currencies', currencyRoutes);
 app.use('/api/tenants', tenantRoutes);
 app.use('/api/tables', tableRoutes);
 app.use('/api/analytics', analyticsRoutes);
+// Reports — give them a long timeout (10 min) since large exports can be slow
+app.use('/api/reports', (req, _res, next) => {
+  req.setTimeout(10 * 60 * 1000, () => {
+    console.warn(`[server] Report request timed out: ${req.method} ${req.originalUrl}`);
+  });
+  next();
+}, reportsRoutes);
 app.use('/api/crm', crmRoutes);
 app.use('/api/email', emailRoutes);
 app.use('/api/payments', paymentRoutes);

@@ -7,16 +7,17 @@ import {
   getJobResult,
 } from '../controllers/printAgentController.js';
 import { authenticate } from '../middleware/authMiddleware.js';
+import { requirePermission } from '../utils/roleUtils.js';
 
 const router = express.Router();
 
 // All print agent routes require authentication
 router.use(authenticate);
 
-router.get('/status', getAgentStatus);
-router.get('/printers', getAgentPrinters);
-router.get('/jobs', getPendingJobs);
-router.post('/jobs/:jobId/complete', completeJob);
-router.get('/jobs/:jobId/result', getJobResult);
+router.get('/status', requirePermission('settings.view'), getAgentStatus);
+router.get('/printers', requirePermission('settings.view'), getAgentPrinters);
+router.get('/jobs', requirePermission('settings.view'), getPendingJobs);
+router.post('/jobs/:jobId/complete', requirePermission('settings.edit'), completeJob);
+router.get('/jobs/:jobId/result', requirePermission('settings.view'), getJobResult);
 
 export default router;

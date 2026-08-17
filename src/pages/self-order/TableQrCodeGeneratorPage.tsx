@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import QRCode from 'qrcode';
 import { useRestaurantData } from '@/hooks/useRestaurantData';
 import { Table } from '@/types';
@@ -331,13 +331,35 @@ const TableQrCodeGeneratorPage: React.FC = () => {
     }
   }, [tables, tablesByArea, selectedTableId]);
 
+  const resolvePublicBaseUrl = useCallback((): string => {
+    const envUrl = (import.meta.env.VITE_PUBLIC_APP_URL as string | undefined)
+      || (import.meta.env.VITE_APP_URL as string | undefined)
+      || (import.meta.env.VITE_COOLIFY_FQDN as string | undefined);
+    if (envUrl) {
+      const trimmed = envUrl.trim().replace(/\/+$/, '');
+      if (trimmed) return trimmed;
+    }
+    if (typeof window !== 'undefined' && window.location?.origin) {
+      return window.location.origin;
+    }
+    return '';
+  }, []);
+
+  const buildMenuQrUrl = useCallback((table: Table): string => {
+    const base = resolvePublicBaseUrl();
+    const params: Record<string, string> = { tableId: table.id };
+    if (table.outletId) params.outletId = String(table.outletId);
+    const query = new URLSearchParams(params).toString();
+    return `${base}/qr-menu/${table.id}?${query}`;
+  }, [resolvePublicBaseUrl]);
+
   // Generate QR codes
   useEffect(() => {
     const generate = async () => {
       if (tables.length === 0) { setIsLoading(false); return; }
       setIsLoading(true);
       const results = await Promise.all(tables.map(async (table) => {
-        const url = `${window.location.origin}/qr-menu/${table.id}`;
+        const url = buildMenuQrUrl(table);
         try {
           const dataUrl = await QRCode.toDataURL(url, {
             errorCorrectionLevel: 'H',
@@ -354,14 +376,14 @@ const TableQrCodeGeneratorPage: React.FC = () => {
       setIsLoading(false);
     };
     if (!qrCodes[themeId]) generate();
-  }, [tables, themeId, qrCodes, theme.fg, theme.bg]);
+  }, [tables, themeId, qrCodes, theme.fg, theme.bg, buildMenuQrUrl]);
 
   const selectedTable = useMemo(() => tables.find(t => t.id === selectedTableId), [selectedTableId, tables]);
   const selectedQrUrl = selectedTableId && qrCodes[themeId] ? qrCodes[themeId][selectedTableId] : undefined;
 
   const handleCopyUrl = () => {
     if (!selectedTable) return;
-    navigator.clipboard.writeText(`${window.location.origin}/qr-menu/${selectedTable.id}`);
+    navigator.clipboard.writeText(buildMenuQrUrl(selectedTable));
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -756,7 +778,7 @@ const TableQrCodeGeneratorPage: React.FC = () => {
                     <div className="bg-gray-50 rounded-xl p-3">
                       <div className="flex items-center gap-2">
                         <code className="flex-1 text-[11px] text-gray-600 bg-white rounded-lg px-3 py-2 border border-gray-200 truncate font-mono">
-                          {window.location.origin}/qr-menu/{selectedTable.id}
+                          {selectedTable ? buildMenuQrUrl(selectedTable) : ''}
                         </code>
                         <button
                           onClick={handleCopyUrl}

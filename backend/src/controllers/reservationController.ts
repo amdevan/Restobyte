@@ -37,7 +37,7 @@ async function findOrCreateCustomer(outletId: string, customerName: string, phon
       where: {
         AND: [
           { OR: [{ phone }, { name: customerName }] },
-          { outletId: { in: [outletId, null] } },
+          { outletId: { in: [outletId] } },
         ],
       },
       orderBy: { createdAt: 'desc' },
@@ -48,7 +48,7 @@ async function findOrCreateCustomer(outletId: string, customerName: string, phon
       where: {
         AND: [
           { name: customerName },
-          { outletId: { in: [outletId, null] } },
+          { outletId: { in: [outletId] } },
         ],
       },
       orderBy: { createdAt: 'desc' },

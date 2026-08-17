@@ -12,6 +12,7 @@ interface AuthContextType {
   register: (username: string, password: string, restaurantName: string, fullName: string, mobile: string, address: string) => Promise<{ success: boolean; message: string; user?: User }>;
   publicRegister: (name: string, email: string, password: string, outletId?: string) => Promise<{ success: boolean; message: string }>;
   logout: () => void;
+  refreshPermissions: (newPermissions: string[]) => void;
   isLoading: boolean;
 }
 
@@ -234,8 +235,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     navigate('/', { replace: true });
   }, [location.pathname, navigate]);
 
+  const refreshPermissions = useCallback((newPermissions: string[]) => {
+    if (!user) return;
+    const updated = { ...user, permissions: newPermissions };
+    setUser(updated);
+    localStorage.setItem('authUser', JSON.stringify(updated));
+  }, [user]);
+
   return (
-    <AuthContext.Provider value={{ isAuthenticated, user, login, register, publicRegister, logout, isLoading }}>
+    <AuthContext.Provider value={{ isAuthenticated, user, login, register, publicRegister, logout, refreshPermissions, isLoading }}>
       {children}
     </AuthContext.Provider>
   );

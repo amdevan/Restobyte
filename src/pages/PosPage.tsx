@@ -1,7 +1,8 @@
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
-import { useRestaurantData } from '../hooks/useRestaurantData';
+import { useRestaurantData, useRestaurantDataFields } from '../hooks/useRestaurantData';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { MenuItem as MenuItemType, SaleItem, Customer, Waiter, Table, DeliveryPartner, Sale, TableStatus, SaleTaxDetail, PartialPayment, KOT, Split, Variation, StockStatus } from '../types';
+import { calcSubTotal, calcItemLineTotal } from '../utils/calcOrderTotals';
 import Modal from '@/components/common/Modal';
 import Button from '@/components/common/Button';
 import Input from '@/components/common/Input';
@@ -27,6 +28,45 @@ import { isNative, vibrate } from '../utils/capacitorService';
 import {
   FiShoppingCart, FiXCircle, FiSearch, FiRefreshCw
 } from 'react-icons/fi';
+
+// Helpers for zero-flicker: stable hash + deep equal so we never call
+// setState when the incoming data is byte-identical to what we already have.
+const stableHashStr = (v: unknown): string => {
+  if (v === null || v === undefined) return String(v);
+  if (typeof v !== 'object') return JSON.stringify(v);
+  if (Array.isArray(v)) return '[' + v.map(stableHashStr).join(',') + ']';
+  const keys = Object.keys(v as Record<string, unknown>).sort();
+  return '{' + keys.map(k => JSON.stringify(k) + ':' + stableHashStr((v as Record<string, unknown>)[k])).join(',') + '}';
+};
+const deepEq = (a: unknown, b: unknown) => {
+  try { return stableHashStr(a) === stableHashStr(b); } catch { return a === b; }
+};
+const stableOrderItemLineId = (item: Record<string, unknown>, idx: number): string => {
+  const base = `${String(item.id ?? '')}_${String(item.variationName ?? '')}_${String(item.price ?? '')}_${String(item.notes ?? '')}_${idx}`;
+  let h1 = 0x811c9dc5;
+  for (let i = 0; i < base.length; i++) { h1 ^= base.charCodeAt(i); h1 = Math.imul(h1, 0x01000193); }
+  return 'line-' + (h1 >>> 0).toString(36);
+};
+
+// #region debug-point A-E:running-order-flicker
+const DEBUG_RUNNING_ORDER_FLICKER_URL = 'http://127.0.0.1:7777/event';
+const DEBUG_RUNNING_ORDER_FLICKER_SESSION = 'running-order-flicker';
+const reportRunningOrderFlickerDebug = (hypothesisId: string, location: string, msg: string, data: Record<string, unknown> = {}) => {
+  fetch(DEBUG_RUNNING_ORDER_FLICKER_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      sessionId: DEBUG_RUNNING_ORDER_FLICKER_SESSION,
+      runId: 'pre-fix',
+      hypothesisId,
+      location,
+      msg: `[DEBUG] ${msg}`,
+      data,
+      ts: Date.now(),
+    }),
+  }).catch(() => {});
+};
+// #endregion
 
 
 // --- Sound Utilities ---
@@ -77,6 +117,10 @@ const playSaleFinalizedSound = () => {
 type OrderItem = SaleItem & { status: 'new' | 'sent'; lineId: string };
 
 const PosPage: React.FC = () => {
+  // POS PAGE ZERO-FLICKER GUARD: use selector-based subscription so PosPage
+  // only re-renders when the content of these 24 fields ACTUALLY changes
+  // (not when some unrelated field in the parent context value changes
+  // reference). This is the single biggest POS flicker fix.
   const {
     menuItems,
     preMadeFoodItems,
@@ -101,7 +145,13 @@ const PosPage: React.FC = () => {
     checkStockAvailability,
     recipes,
     stockItems,
-  } = useRestaurantData();
+  } = useRestaurantDataFields([
+    'menuItems','preMadeFoodItems','foodMenuCategories','customers','addCustomer',
+    'tables','waiters','deliveryPartners','getSingleActiveOutlet','applicationSettings',
+    'websiteSettings','recordSale','updateSale','sales','applyCustomerDueDelta',
+    'printers','printInvoice','printKot','printBot','printDelivery',
+    'checkStockAvailability','recipes','stockItems'
+  ] as const) as any;
 
   const navigate = useNavigate();
   const { tableId } = useParams<{ tableId?: string }>();
@@ -122,12 +172,17 @@ const PosPage: React.FC = () => {
   const customersRef = useRef(customers);
   const deliveryPartnersRef = useRef(deliveryPartners);
   const outletRef = useRef(singleActiveOutlet);
+  const menuItemsRef = useRef(menuItems);
+  const preMadeFoodItemsRef = useRef(preMadeFoodItems);
+  const currentOrderItemsRef = useRef<OrderItem[]>([]);
   salesRef.current = sales;
   tablesRef.current = tables;
   waitersRef.current = waiters;
   customersRef.current = customers;
   deliveryPartnersRef.current = deliveryPartners;
   outletRef.current = singleActiveOutlet;
+  menuItemsRef.current = menuItems;
+  preMadeFoodItemsRef.current = preMadeFoodItems;
 
 
   // Outlet selection is now handled in the context provider to prevent
@@ -150,6 +205,7 @@ const PosPage: React.FC = () => {
 
   // Order State
   const [currentOrderItems, setCurrentOrderItems] = useState<OrderItem[]>([]);
+  currentOrderItemsRef.current = currentOrderItems;
   const [editingSale, setEditingSale] = useState<Sale | null>(null);
   const [orderType, setOrderType] = useState<'Dine In' | 'Delivery' | 'Pickup' | 'WhatsApp'>(
     singleActiveOutlet?.outletType === 'CloudKitchen' ? 'Delivery' : (applicationSettings.defaultOrderType || 'Dine In')
@@ -167,6 +223,7 @@ const PosPage: React.FC = () => {
   const [selectedDeliveryPartner, setSelectedDeliveryPartner] = useState<DeliveryPartner | null>(null);
   const [editingNoteItem, setEditingNoteItem] = useState<OrderItem | null>(null);
   const [itemToCustomize, setItemToCustomize] = useState<MenuItemType | null>(null); // New
+  const [editingExtrasLineId, setEditingExtrasLineId] = useState<string | null>(null);
   const [pax, setPax] = useState<number>(1);
   const [orderNotes, setOrderNotes] = useState('');
   const [discountType, setDiscountType] = useState<'fixed' | 'percentage' | null>(null);
@@ -177,6 +234,38 @@ const PosPage: React.FC = () => {
 
   // Post-Sale State
   const [lastCompletedSale, setLastCompletedSale] = useState<Sale | null>(null);
+  const debugCommitCountRef = useRef(0);
+  const debugRouteOpenTsRef = useRef(Date.now());
+
+  useEffect(() => {
+    // #region debug-point A:pos-mount
+    reportRunningOrderFlickerDebug('A', 'PosPage:mount', 'PosPage mounted', { tableId: tableId || null });
+    return () => {
+      reportRunningOrderFlickerDebug('A', 'PosPage:unmount', 'PosPage unmounted', { tableId: tableId || null });
+    };
+    // #endregion
+  }, []);
+
+  useEffect(() => {
+    // #region debug-point A:route-open
+    debugRouteOpenTsRef.current = Date.now();
+    reportRunningOrderFlickerDebug('A', 'PosPage:route-open', 'Route/table changed', { tableId: tableId || null });
+    // #endregion
+  }, [tableId]);
+
+  useEffect(() => {
+    // #region debug-point C-E:commit
+    debugCommitCountRef.current += 1;
+    reportRunningOrderFlickerDebug('C', 'PosPage:commit', 'Observed POS commit', {
+      commitCount: debugCommitCountRef.current,
+      tableId: tableId || null,
+      editingSaleId: editingSale?.id || null,
+      selectedTableId: selectedTable?.id || null,
+      currentOrderItemsCount: currentOrderItems.length,
+      msSinceRouteOpen: Date.now() - debugRouteOpenTsRef.current,
+    });
+    // #endregion
+  }, [tableId, editingSale?.id, selectedTable?.id, currentOrderItems.length]);
 
   const generateKotPrintContent = useCallback((kot: KOT) => {
     const lineWidth = clampCharsPerLine(applicationSettings?.kotCharactersPerLine, applicationSettings?.kotPaperSize);
@@ -241,6 +330,13 @@ const PosPage: React.FC = () => {
       lines.push(`${serial}${' '.repeat(columnGap)}${nameLines[0].padEnd(nameWidth)}${qty}`);
       nameLines.slice(1).forEach((line) => {
         lines.push(`${' '.repeat(serialWidth + columnGap)}${line}`);
+      });
+      // Print structured extras
+      (item.extras || []).forEach((extra) => {
+        const qtyStr = extra.quantity && extra.quantity > 1 ? ` x ${extra.quantity}` : '';
+        wrapText(`+ ${extra.name}${qtyStr}`, nameWidth).forEach((line) => {
+          lines.push(`${' '.repeat(serialWidth + columnGap)}${line}`);
+        });
       });
       if (item.notes) {
         wrapText(`Note: ${item.notes}`, nameWidth).forEach((line) => {
@@ -322,6 +418,13 @@ const PosPage: React.FC = () => {
       lines.push(`${serial}${' '.repeat(columnGap)}${nameLines[0].padEnd(nameWidth)}${qty}`);
       nameLines.slice(1).forEach((line) => {
         lines.push(`${' '.repeat(serialWidth + columnGap)}${line}`);
+      });
+      // Print structured extras
+      (item.extras || []).forEach((extra) => {
+        const qtyStr = extra.quantity && extra.quantity > 1 ? ` x ${extra.quantity}` : '';
+        wrapText(`+ ${extra.name}${qtyStr}`, nameWidth).forEach((line) => {
+          lines.push(`${' '.repeat(serialWidth + columnGap)}${line}`);
+        });
       });
       if (item.notes) {
         wrapText(`Note: ${item.notes}`, nameWidth).forEach((line) => {
@@ -420,6 +523,13 @@ const PosPage: React.FC = () => {
       nameLines.slice(1).forEach((line) => {
         lines.push(`    ${line}`);
       });
+      // Print structured extras
+      (item.extras || []).forEach((extra) => {
+        const qtyStr = extra.quantity && extra.quantity > 1 ? ` x ${extra.quantity}` : '';
+        wrapText(`+ ${extra.name}${qtyStr}`, lineWidth - 12).forEach((line) => {
+          lines.push(`    ${line}`);
+        });
+      });
       if (item.notes) {
         wrapText(`Note: ${item.notes}`, lineWidth - 12).forEach((line) => {
           lines.push(`    ${line}`);
@@ -428,10 +538,13 @@ const PosPage: React.FC = () => {
     });
 
     lines.push(divider);
-    lines.push(formatTwoCol('Subtotal', `$${(sale.totalAmount || 0).toFixed(2)}`));
+    lines.push(formatTwoCol('Subtotal', `$${(sale.subTotal || 0).toFixed(2)}`));
     if ((sale.discountAmount || 0) > 0) {
       lines.push(formatTwoCol('Discount', `-$${(sale.discountAmount || 0).toFixed(2)}`));
     }
+    (sale.taxDetails || []).forEach(tax => {
+      lines.push(formatTwoCol(`  ${tax.name} (${tax.rate}%)`, `$${(tax.amount || 0).toFixed(2)}`));
+    });
     lines.push(formatTwoCol('Total', `$${(sale.totalAmount || 0).toFixed(2)}`));
     lines.push(divider);
     lines.push(centerText('Thank you for your order!'));
@@ -536,6 +649,14 @@ const PosPage: React.FC = () => {
       const rate = item.price.toFixed(2).padStart(6);
       const amount = (item.price * item.quantity).toFixed(2).padStart(7);
       invoiceText += `${name}${qty} ${rate} ${amount}\n`;
+      // Print structured extras with prices (affecting total)
+      (item.extras || []).forEach((extra) => {
+        const qtyStr = extra.quantity && extra.quantity > 1 ? ` x ${extra.quantity}` : '';
+        const extraPriceText = `$${extra.price.toFixed(2)}`;
+        const extraLineStart = `  + ${extra.name}${qtyStr} (${extraPriceText})`;
+        const extraLine = extraLineStart.substring(0, itemNameWidth).padEnd(itemNameWidth);
+        invoiceText += `${extraLine}${' '.repeat(4)} ${' '.repeat(6)} ${' '.repeat(7)}\n`;
+      });
     });
 
     invoiceText += `${divider}\n`;
@@ -639,9 +760,35 @@ const PosPage: React.FC = () => {
   const activeWaiters = useMemo(() => (waiters || []), [waiters]);
   const activeDeliveryPartners = useMemo(() => (deliveryPartners || []).filter(dp => dp.isEnabled), [deliveryPartners]);
   const hasNewItems = useMemo(() => (currentOrderItems || []).some(item => item.status === 'new'), [currentOrderItems]);
-  
+
+  // Track quantities at the time items were sent to kitchen, to detect decreases
+  const sentQuantitiesRef = useRef<Map<string, number>>(new Map());
+
+  const hasModifiedItems = useMemo(() => {
+    return (currentOrderItems || []).some(item => {
+      if (item.status !== 'sent') return false;
+      const sentQty = sentQuantitiesRef.current.get(item.lineId);
+      return sentQty !== undefined && item.quantity < sentQty;
+    });
+  }, [currentOrderItems]);
+
+  // Record original quantities for loaded sent items (from backend) so decreases are detected
+  useEffect(() => {
+    (currentOrderItems || []).forEach(item => {
+      if (item.status === 'sent' && !sentQuantitiesRef.current.has(item.lineId)) {
+        sentQuantitiesRef.current.set(item.lineId, item.quantity);
+      }
+    });
+  }, [currentOrderItems]);
+
+  const clearedTableIdRef = useRef<string | null>(null);
+
   const clearOrder = useCallback((keepTable: boolean = false) => {
+      if (tableId && !keepTable) {
+        clearedTableIdRef.current = tableId;
+      }
       setCurrentOrderItems([]);
+      sentQuantitiesRef.current.clear();
       setSelectedCustomer(null);
       if (!keepTable) {
         setSelectedTable(null);
@@ -660,7 +807,14 @@ const PosPage: React.FC = () => {
 // FIX: Moved handleSendKot before the useEffect that uses it.
 const handleSendKot = useCallback(async () => {
     const newItems = (currentOrderItems || []).filter(item => item.status === 'new');
-    if (newItems.length === 0) {
+    const hasModifiedItems = (currentOrderItems || []).some(item => {
+      if (item.status !== 'sent') return false;
+      const sentQty = sentQuantitiesRef.current.get(item.lineId);
+      return sentQty !== undefined && item.quantity < sentQty;
+    });
+
+    // Block only if there are truly no changes at all
+    if (newItems.length === 0 && !hasModifiedItems) {
       alert("No new items to send to the kitchen.");
       return;
     }
@@ -736,57 +890,66 @@ const handleSendKot = useCallback(async () => {
         setEditingSale(newSale);
     }
     
-    const kot: KOT = {
-        kotNumber: `KOT-${Date.now().toString().slice(-5)}`,
-        customer: selectedCustomer?.name,
-        table: selectedTable?.name,
-        waiter: selectedWaiter?.name,
-        timestamp: (() => {
-          const now = new Date();
-          const datePart = now.toLocaleDateString('en-GB', {
-            day: '2-digit',
-            month: '2-digit',
-            year: '2-digit',
-          });
-          const timePart = now.toLocaleTimeString('en-US', {
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: true,
-          }).toUpperCase();
-          return `${datePart} ${timePart}`;
-        })(),
-        items: newItems,
-    };
-    setKotData(kot);
-    setIsKotModalOpen(true);
-    const kotPrintContent = generateKotPrintContent(kot);
-    directKotPrinters.forEach((printer) => {
-      void printKot(printer.id, kotPrintContent);
-    });
-
-    // Print BOT (Bar Order Ticket) for bar items if BOT printers are configured
-    if (directBotPrinters.length > 0) {
-      const botPrintContent = generateBotPrintContent(kot);
-      directBotPrinters.forEach((printer) => {
-        void printBot(printer.id, botPrintContent);
+    // Only print KOT if there are new items (not for pure quantity decrease updates)
+    if (newItems.length > 0) {
+      const kot: KOT = {
+          kotNumber: `KOT-${Date.now().toString().slice(-5)}`,
+          customer: selectedCustomer?.name,
+          table: selectedTable?.name,
+          waiter: selectedWaiter?.name,
+          timestamp: (() => {
+            const now = new Date();
+            const datePart = now.toLocaleDateString('en-GB', {
+              day: '2-digit',
+              month: '2-digit',
+              year: '2-digit',
+            });
+            const timePart = now.toLocaleTimeString('en-US', {
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: true,
+            }).toUpperCase();
+            return `${datePart} ${timePart}`;
+          })(),
+          items: newItems,
+      };
+      setKotData(kot);
+      setIsKotModalOpen(true);
+      const kotPrintContent = generateKotPrintContent(kot);
+      directKotPrinters.forEach((printer) => {
+        void printKot(printer.id, kotPrintContent);
       });
+
+      // Print BOT (Bar Order Ticket) for bar items if BOT printers are configured
+      if (directBotPrinters.length > 0) {
+        const botPrintContent = generateBotPrintContent(kot);
+        directBotPrinters.forEach((printer) => {
+          void printBot(printer.id, botPrintContent);
+        });
+      }
+
+      // Print delivery slip for delivery orders if delivery printers are configured
+      if (orderType === 'Delivery' && directDeliveryPrinters.length > 0 && editingSale) {
+        const deliveryPrintContent = generateDeliveryPrintContent(editingSale);
+        directDeliveryPrinters.forEach((printer) => {
+          void printDelivery(printer.id, deliveryPrintContent);
+        });
+      }
+
+      playKotSentSound();
     }
 
-    // Print delivery slip for delivery orders if delivery printers are configured
-    if (orderType === 'Delivery' && directDeliveryPrinters.length > 0 && editingSale) {
-      const deliveryPrintContent = generateDeliveryPrintContent(editingSale);
-      directDeliveryPrinters.forEach((printer) => {
-        void printDelivery(printer.id, deliveryPrintContent);
-      });
-    }
-
-    playKotSentSound();
-
-    setCurrentOrderItems(prevItems => 
-        prevItems.map(item => 
+    setCurrentOrderItems(prevItems => {
+        // Record sent quantities so we can detect decreases later
+        prevItems.forEach(item => {
+            if (item.status === 'new') {
+                sentQuantitiesRef.current.set(item.lineId, item.quantity);
+            }
+        });
+        return prevItems.map(item =>
             item.status === 'new' ? { ...item, status: 'sent' } : item
-        )
-    );
+        );
+    });
   }, [
     currentOrderItems, orderType, selectedTable, selectedWaiter, singleActiveOutlet, editingSale,
     recordSale, updateSale, setEditingSale, discountType, discountAmount, pax,
@@ -805,7 +968,7 @@ const handleSendKot = useCallback(async () => {
 
         if (event.ctrlKey && event.key.toLowerCase() === 's') {
             event.preventDefault();
-            if(hasNewItems && currentOrderItems.length > 0) handleSendKot();
+            if((hasNewItems || hasModifiedItems) && currentOrderItems.length > 0) handleSendKot();
         }
         if (event.ctrlKey && event.key.toLowerCase() === 'p') {
             event.preventDefault();
@@ -829,42 +992,94 @@ const handleSendKot = useCallback(async () => {
     // lookup values (sales/tables/waiters/customers/outlet) are read
     // from refs so a background data refresh can never re-trigger this
     // effect and wipe the cart mid-use.
+    // #region debug-point B:hydrate-entry
+    reportRunningOrderFlickerDebug('B', 'PosPage:hydrate-entry', 'Entered table hydration effect', {
+      tableId: tableId || null,
+      clearedTableId: clearedTableIdRef.current,
+      outletType: outletRef.current?.outletType || null,
+      salesCount: salesRef.current.length,
+      tablesCount: tablesRef.current.length,
+    });
+    // #endregion
     if (tableId && outletRef.current?.outletType !== 'CloudKitchen') {
+      if (clearedTableIdRef.current === tableId) {
+        // Table order was explicitly cleared; do not re-populate cart from salesRef
+        return;
+      }
       const tableFromUrl = tablesRef.current.find(t => t.id === tableId);
       if (tableFromUrl) {
           const openOrdersForTable = salesRef.current.filter(s => s.assignedTableId === tableId && !(s.isClosed ?? s.isSettled));
+          // #region debug-point B:orders-found
+          reportRunningOrderFlickerDebug('B', 'PosPage:orders-found', 'Resolved table and open orders', {
+            tableId,
+            tableName: tableFromUrl.name,
+            openOrdersForTableCount: openOrdersForTable.length,
+            openOrderIds: openOrdersForTable.map(order => order.id),
+          });
+          // #endregion
           
           if (openOrdersForTable.length > 0) {
             // Use the most recent order as the primary (for metadata)
             const primaryOrder = openOrdersForTable[0];
             // Aggregate items from ALL open orders for this table
             const allItems = openOrdersForTable.flatMap(o => o.items);
-            const mergedItems = allItems.reduce((merged, item) => {
-                const existing = merged.find(m => m.id === item.id && !m.notes && m.price === item.price);
+            const mergedItems = allItems.reduce((merged, item, flatIdx) => {
+                const existing = merged.find(m => m.id === item.id && !m.notes && !m.extras?.length && m.price === item.price);
                 if (existing) {
                     return merged.map(m => m.lineId === existing.lineId ? { ...m, quantity: m.quantity + item.quantity } : m);
                 }
-                return [...merged, {...item, status: 'sent', lineId: `line-${item.id}-${Math.random()}`}];
+                // Stable deterministic lineId (no Math.random) so same logical item
+                // always gets the same React key across renders → zero item remounting.
+                const determinedLineId = (item as any).lineId && String((item as any).lineId).startsWith('line-')
+                  ? String((item as any).lineId)
+                  : stableOrderItemLineId(item as Record<string, unknown>, flatIdx);
+                return [...merged, {...item, status: 'sent', lineId: determinedLineId}];
             }, [] as OrderItem[]);
 
-            // Load existing order
-            setEditingSale(primaryOrder);
-            setCurrentOrderItems(mergedItems);
-            setOrderType(primaryOrder.orderType as any);
-            setSelectedTable(tableFromUrl);
-            setSelectedWaiter(waitersRef.current.find(w => w.id === primaryOrder.waiterId) || null);
-            setSelectedCustomer(customersRef.current.find(c => c.id === primaryOrder.customerId) || null);
-            setOrderNotes(primaryOrder.orderNotes || '');
-            setDiscountType(primaryOrder.discountType || null);
-            setDiscountAmount(primaryOrder.discountAmount || 0);
-            setPax(Number(primaryOrder.pax) || 1);
+            // ZERO-FLICKER GUARD: compute desired next state, then only setState
+            // if any field actually differs. Without this, sales ref churn from
+            // polling causes full POS re-render + cart items re-mount (flicker).
+            const desired = {
+              editingSale: primaryOrder,
+              currentOrderItems: mergedItems,
+              orderType: primaryOrder.orderType,
+              selectedTable: tableFromUrl,
+              selectedWaiter: waitersRef.current.find(w => w.id === primaryOrder.waiterId) || null,
+              selectedCustomer: customersRef.current.find(c => c.id === primaryOrder.customerId) || null,
+              orderNotes: primaryOrder.orderNotes || '',
+              discountType: primaryOrder.discountType || null,
+              discountAmount: primaryOrder.discountAmount || 0,
+              pax: Number(primaryOrder.pax) || 1,
+            };
+            let dirty = false;
+            setEditingSale(prev => { if (deepEq(prev, desired.editingSale)) return prev; dirty = true; return desired.editingSale as any; });
+            setCurrentOrderItems(prev => { if (deepEq(prev, desired.currentOrderItems)) return prev; dirty = true; return desired.currentOrderItems; });
+            setOrderType(prev => { if (prev === desired.orderType) return prev; dirty = true; return desired.orderType as any; });
+            setSelectedTable(prev => { if (deepEq(prev, desired.selectedTable)) return prev; dirty = true; return desired.selectedTable; });
+            setSelectedWaiter(prev => { if (deepEq(prev, desired.selectedWaiter)) return prev; dirty = true; return desired.selectedWaiter; });
+            setSelectedCustomer(prev => { if (deepEq(prev, desired.selectedCustomer)) return prev; dirty = true; return desired.selectedCustomer; });
+            setOrderNotes(prev => { if (prev === desired.orderNotes) return prev; dirty = true; return desired.orderNotes; });
+            setDiscountType(prev => { if (prev === desired.discountType) return prev; dirty = true; return desired.discountType as any; });
+            setDiscountAmount(prev => { if (prev === desired.discountAmount) return prev; dirty = true; return desired.discountAmount; });
+            setPax(prev => { if (prev === desired.pax) return prev; dirty = true; return desired.pax; });
+            // #region debug-point B:hydrate-apply
+            reportRunningOrderFlickerDebug('B', 'PosPage:hydrate-apply', 'Applied running order hydration', {
+              tableId,
+              primaryOrderId: primaryOrder.id,
+              mergedItemsCount: mergedItems.length,
+              dirty,
+            });
+            // #endregion
           } else {
              // Start new order for this table
              clearOrder(true);
-             setSelectedTable(tableFromUrl);
-             setOrderType('Dine In');
+             setSelectedTable(prev => (deepEq(prev, tableFromUrl) ? prev : tableFromUrl));
+             setOrderType(prev => (prev === 'Dine In' ? prev : 'Dine In'));
           }
       }
+    } else {
+      // tableId is null/empty now
+      clearedTableIdRef.current = null;
     }
     // NOTE: We intentionally do NOT clear the order when tableId is empty.
     // The cart state is local to PosPage and is reset when the component
@@ -919,17 +1134,134 @@ const handleSendKot = useCallback(async () => {
         return [...prevItems, newItem];
     });
   }, []);
+
+  const handleAddItemWithVibrate = useCallback((itemToAdd: MenuItemType) => {
+    handleAddItem(itemToAdd);
+    vibrate();
+  }, [handleAddItem]);
   
    const handleSaveCustomizedItem = useCallback((customizedItem: SaleItem) => {
-    // Customized items are always added as new lines to avoid merging complex orders
-    const newItem: OrderItem = {
-      ...customizedItem,
-      status: 'new',
-      lineId: `line-${Date.now()}-${Math.random()}`
-    };
-    setCurrentOrderItems(prev => [...prev, newItem]);
+    if (editingExtrasLineId) {
+      // Edit existing cart item extras
+      setCurrentOrderItems(prevItems => prevItems.map(item => {
+        if (item.lineId !== editingExtrasLineId) return item;
+        
+        // Recalculate price: original basePrice or remove old extras, then add new extras
+        const oldExtrasSum = (item.extras || []).reduce((s, e) => s + (e.price * (e.quantity || 1)), 0);
+        const newExtrasSum = (customizedItem.extras || []).reduce((s, e) => s + (e.price * (e.quantity || 1)), 0);
+        
+        let effectiveBase = item.basePrice;
+        if (effectiveBase === undefined) {
+          // Derive base from current price minus old extras
+          effectiveBase = item.price - oldExtrasSum;
+        }
+        
+        const newPrice = Math.max(0, effectiveBase + newExtrasSum);
+        
+        // Build notes for backward compatibility (preserve any non-addon user notes in legacy format)
+        const newExtras = customizedItem.extras || [];
+        const addonNoteLines = newExtras.map(e => {
+          try {
+            const decimals = 2;
+            const fixed = e.price.toFixed(decimals);
+            return `+ ${e.name} ($${fixed})`;
+          } catch {
+            return `+ ${e.name}`;
+          }
+        }).join('\n');
+        
+        return {
+          ...item,
+          extras: newExtras,
+          price: newPrice,
+          basePrice: effectiveBase,
+          notes: addonNoteLines || undefined,
+          variationName: customizedItem.variationName || item.variationName,
+          // If item was already sent, mark that it was updated (visual indicator can be added later)
+        };
+      }));
+      setEditingExtrasLineId(null);
+    } else {
+      // Try to merge with existing cart item (same id, variant, price, and extras)
+      const extrasKey = (extras: any[] | undefined) => {
+        if (!extras || extras.length === 0) return '';
+        return [...extras].sort((a, b) => (a.name || '').localeCompare(b.name || '')).map(e => `${e.name}:${e.price}:${e.quantity || 1}`).join('|');
+      };
+      const newExtrasKey = extrasKey(customizedItem.extras);
+
+      setCurrentOrderItems(prev => {
+        const existingItem = prev.find(item =>
+          item.id === customizedItem.id &&
+          (item.variationName || '') === (customizedItem.variationName || '') &&
+          item.price === customizedItem.price &&
+          extrasKey(item.extras) === newExtrasKey &&
+          !item.notes // avoid merging items with custom user notes
+        );
+
+        if (existingItem) {
+          // Increment quantity instead of adding a duplicate line
+          return prev.map(item =>
+            item.lineId === existingItem.lineId
+              ? { ...item, quantity: item.quantity + 1, status: item.status === 'sent' ? 'new' : item.status }
+              : item
+          );
+        }
+
+        // No match — add as new line
+        const newItem: OrderItem = {
+          ...customizedItem,
+          status: 'new',
+          lineId: `line-${Date.now()}-${Math.random()}`
+        };
+        return [...prev, newItem];
+      });
+    }
     setIsCustomizationModalOpen(false);
     setItemToCustomize(null);
+  }, [editingExtrasLineId]);
+
+  const handleEditExtras = useCallback((lineId: string) => {
+    const cartItem = currentOrderItemsRef.current.find(i => i.lineId === lineId);
+    if (!cartItem) return;
+    const menuItem = menuItemsRef.current.find(m => m.id === cartItem.id) || preMadeFoodItemsRef.current.find(m => m.id === cartItem.id);
+    if (!menuItem) return;
+    setItemToCustomize(menuItem);
+    setEditingExtrasLineId(lineId);
+    setIsCustomizationModalOpen(true);
+  }, []);
+
+  const handleRemoveExtra = useCallback((lineId: string, extraId: string) => {
+    setCurrentOrderItems(prevItems => prevItems.map(item => {
+      if (item.lineId !== lineId) return item;
+      const filtered = (item.extras || []).filter(e => e.id !== extraId);
+      const removed = (item.extras || []).find(e => e.id === extraId);
+      let newPrice = item.price;
+      let newBase = item.basePrice;
+      if (removed) {
+        newPrice = Math.max(0, item.price - (removed.price * (removed.quantity || 1)));
+        if (newBase === undefined) {
+          const oldExtrasSum = (item.extras || []).reduce((s, e) => s + (e.price * (e.quantity || 1)), 0);
+          newBase = item.price - oldExtrasSum;
+        }
+      }
+      // Rebuild notes string
+      const addonNoteLines = filtered.map(e => {
+        try {
+          const decimals = 2;
+          const fixed = e.price.toFixed(decimals);
+          return `+ ${e.name} ($${fixed})`;
+        } catch {
+          return `+ ${e.name}`;
+        }
+      }).join('\n');
+      return {
+        ...item,
+        extras: filtered,
+        price: newPrice,
+        basePrice: newBase,
+        notes: filtered.length > 0 ? addonNoteLines : undefined,
+      };
+    }));
   }, []);
 
 
@@ -938,9 +1270,14 @@ const handleSendKot = useCallback(async () => {
         if (newQuantity <= 0) {
             return prevItems.filter(item => item.lineId !== lineId);
         } else {
-            return prevItems.map(item =>
-                item.lineId === lineId ? { ...item, quantity: newQuantity } : item
-            );
+            return prevItems.map(item => {
+                if (item.lineId !== lineId) return item;
+                // If sent item's quantity increased, mark as new so extra units are sent to kitchen
+                if (item.status === 'sent' && newQuantity > item.quantity) {
+                    return { ...item, quantity: newQuantity, status: 'new' as const };
+                }
+                return { ...item, quantity: newQuantity };
+            });
         }
     });
   }, []);
@@ -971,8 +1308,17 @@ const handleSendKot = useCallback(async () => {
   const handleOpenDiscountModal = useCallback(() => setIsDiscountModalOpen(true), []);
   const handleOpenPaymentModal = useCallback(() => setIsPaymentModalOpen(true), []);
   const handleClearOrder = useCallback(() => clearOrder(), [clearOrder]);
-  const handleTableSelect = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => 
-    setSelectedTable(tablesRef.current.find(t => t.id === e.target.value) || null), []);
+  const handleTableSelect = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newTableId = e.target.value;
+    clearedTableIdRef.current = null;
+    const foundTable = tablesRef.current.find(t => t.id === newTableId) || null;
+    setSelectedTable(foundTable);
+    if (newTableId) {
+      navigate(`/app/panel/pos/${newTableId}`);
+    } else {
+      navigate('/app/panel/pos');
+    }
+  }, [navigate]);
   const handleWaiterSelect = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => 
     setSelectedWaiter(waitersRef.current.find(w => w.id === e.target.value) || null), []);
   const handleDeliveryPartnerSelect = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => 
@@ -1075,7 +1421,7 @@ const handleSendKot = useCallback(async () => {
       return;
     }
     
-    const subTotal = (currentOrderItems || []).reduce((sum, item) => sum + item.price * item.quantity, 0);
+    const subTotal = calcSubTotal(currentOrderItems || []);
     const discountValue = discountType === 'fixed' ? discountAmount : (subTotal * discountAmount) / 100;
     const totalAfterDiscount = subTotal - discountValue;
     
@@ -1085,9 +1431,9 @@ const handleSendKot = useCallback(async () => {
     });
     
     const totalTaxAmount = (taxDetails || []).reduce((sum, tax) => sum + tax.amount, 0);
-    const totalAmount = totalAfterDiscount + totalTaxAmount + paymentDetails.tip;
+    const totalAmount = totalAfterDiscount + totalTaxAmount;
     const totalPaid = (paymentDetails.payments || []).reduce((sum, p) => sum + (typeof p.amount === 'number' ? p.amount : Number(p.amount)), 0);
-    const outstandingAmount = Math.max(0, totalAmount - totalPaid);
+    const outstandingAmount = Math.max(0, (totalAmount + paymentDetails.tip) - totalPaid);
     
     let saleToProcess: Sale;
 
@@ -1175,7 +1521,20 @@ const handleSendKot = useCallback(async () => {
       {editingNoteItem && <ItemNoteModal isOpen={isNoteModalOpen} onClose={() => setIsNoteModalOpen(false)} item={editingNoteItem} onSave={(lineId, note) => handleSaveItemNote(lineId, note)} />}
       {lastCompletedSale && <Modal isOpen={isReceiptModalOpen} onClose={() => setIsReceiptModalOpen(false)} title="Sale Completed" size="sm"><ReceiptModal sale={lastCompletedSale} onClose={() => setIsReceiptModalOpen(false)} /></Modal>}
       {kotData && <KotModal isOpen={isKotModalOpen} kotData={kotData} onClose={() => setIsKotModalOpen(false)} /> }
-      {isCustomizationModalOpen && itemToCustomize && <ItemCustomizationModal isOpen={isCustomizationModalOpen} item={itemToCustomize} onClose={() => setIsCustomizationModalOpen(false)} onSave={handleSaveCustomizedItem} />}
+      {isCustomizationModalOpen && itemToCustomize && (
+        <ItemCustomizationModal
+          isOpen={isCustomizationModalOpen}
+          item={itemToCustomize}
+          onClose={() => {
+            setIsCustomizationModalOpen(false);
+            setEditingExtrasLineId(null);
+            setItemToCustomize(null);
+          }}
+          onSave={handleSaveCustomizedItem}
+          existingExtras={editingExtrasLineId ? currentOrderItems.find(i => i.lineId === editingExtrasLineId)?.extras : undefined}
+          existingVariationName={editingExtrasLineId ? currentOrderItems.find(i => i.lineId === editingExtrasLineId)?.variationName : undefined}
+        />
+      )}
       <AiAssistantModal isOpen={isAiAssistantOpen} onClose={() => setIsAiAssistantOpen(false)} />
 
 
@@ -1238,11 +1597,11 @@ const handleSendKot = useCallback(async () => {
                 currentOutlet={singleActiveOutlet}
             />
 
-            <CartItems items={currentOrderItems} onUpdateQuantity={handleUpdateQuantity} onEditItemNote={handleEditItemNote} onUpdateDiscount={handleUpdateItemDiscount} />
+            <CartItems items={currentOrderItems} onUpdateQuantity={handleUpdateQuantity} onEditItemNote={handleEditItemNote} onUpdateDiscount={handleUpdateItemDiscount} onEditExtras={handleEditExtras} onRemoveExtra={handleRemoveExtra} />
 
             <div className="flex-shrink-0">
                 <CartSummary subTotal={subTotal} discountValue={discountValue} taxes={taxes} grandTotal={grandTotal} onDiscountClick={handleOpenDiscountModal} />
-                <CartActions onGoToPayment={handleOpenPaymentModal} onSendKot={handleSendKot} isCartEmpty={currentOrderItems.length === 0} hasNewItems={hasNewItems} />
+                <CartActions onGoToPayment={handleOpenPaymentModal} onSendKot={handleSendKot} isCartEmpty={currentOrderItems.length === 0} hasNewItems={hasNewItems} hasModifiedItems={hasModifiedItems} />
             </div>
         </aside>
       </div>
@@ -1292,7 +1651,7 @@ const handleSendKot = useCallback(async () => {
             <main className="rb-pos-mobile-grid">
               <div className="grid grid-cols-3 gap-2.5">
                 {filteredMenu.map(item => (
-                  <PosMenuItemCard key={item.id} item={item} onAddItem={(it) => { handleAddItem(it); vibrate(); }} stockStatus={stockStatusMap[item.id]} />
+                  <PosMenuItemCard key={item.id} item={item} onAddItem={handleAddItemWithVibrate} stockStatus={stockStatusMap[item.id]} />
                 ))}
               </div>
             </main>
@@ -1346,12 +1705,12 @@ const handleSendKot = useCallback(async () => {
                 />
 
                 <div className="rb-pos-cart-items">
-                  <CartItems items={currentOrderItems} onUpdateQuantity={handleUpdateQuantity} onEditItemNote={handleEditItemNote} onUpdateDiscount={handleUpdateItemDiscount} />
+                  <CartItems items={currentOrderItems} onUpdateQuantity={handleUpdateQuantity} onEditItemNote={handleEditItemNote} onUpdateDiscount={handleUpdateItemDiscount} onEditExtras={handleEditExtras} onRemoveExtra={handleRemoveExtra} />
                 </div>
 
                 <div className="rb-pos-cart-foot">
                   <CartSummary subTotal={subTotal} discountValue={discountValue} taxes={taxes} grandTotal={grandTotal} onDiscountClick={handleOpenDiscountModal} />
-                  <CartActions onGoToPayment={handleOpenPaymentModal} onSendKot={handleSendKot} isCartEmpty={currentOrderItems.length === 0} hasNewItems={hasNewItems} />
+                  <CartActions onGoToPayment={handleOpenPaymentModal} onSendKot={handleSendKot} isCartEmpty={currentOrderItems.length === 0} hasNewItems={hasNewItems} hasModifiedItems={hasModifiedItems} />
                 </div>
               </div>
             </div>

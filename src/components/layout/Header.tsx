@@ -6,7 +6,7 @@ import {
     FiShoppingCart, FiGrid, FiMonitor, FiCalendar, FiMenu, FiChevronLeft, FiGlobe
 } from 'react-icons/fi';
 import { useAuth } from '../../hooks/useAuth';
-import { useRestaurantData } from '../../hooks/useRestaurantData';
+import { useRestaurantDataFields } from '../../hooks/useRestaurantData';
 import { Outlet } from '../../types';
 import Button from '../common/Button';
 import OutletSelector from '../common/OutletSelector';
@@ -79,9 +79,9 @@ interface HeaderProps {
 const Header: React.FC<HeaderProps> = ({ title, onToggleSidebar, isSidebarCollapsed }) => {
     const navigate = useNavigate();
     const location = useLocation();
-    const { getSingleActiveOutlet } = useRestaurantData();
+    const { outlets, activeOutletIds } = useRestaurantDataFields(['outlets', 'activeOutletIds'] as const);
 
-    const outlet = getSingleActiveOutlet();
+    const outlet = activeOutletIds.length === 1 ? outlets.find(o => o.id === activeOutletIds[0]) : undefined;
     const isCloudKitchen = outlet?.outletType === 'CloudKitchen';
     const isAggregateView = !outlet;
     const showOutletSelectorInHeader = !location.pathname.startsWith('/app/dashboard');

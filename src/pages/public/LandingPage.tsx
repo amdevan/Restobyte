@@ -995,7 +995,7 @@ const LandingPage: React.FC = () => {
                 size={authModal === 'register' ? 'lg' : 'md'}
             >
                 <React.Suspense fallback={<div className="p-6 flex justify-center"><FiClock className="animate-spin text-[#8b2d1d]" size={32} /></div>}>
-                    {authModal === 'login' && <LoginPage onSwitchToRegister={() => setAuthModal('register')} />}
+                    {authModal === 'login' && <LoginPage onSwitchToRegister={() => setAuthModal('register')} variant="modal" />}
                     {authModal === 'register' && (
                         <RegisterPage
                             onSwitchToLogin={() => setAuthModal('login')}

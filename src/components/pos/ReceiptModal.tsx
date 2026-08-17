@@ -2,7 +2,8 @@ import React, { useRef } from 'react';
 import { Sale, SaleItem, Customer, PrinterType } from '../../types';
 import Button from '../common/Button';
 import { FiPrinter, FiXCircle, FiDownload } from 'react-icons/fi';
-import { useRestaurantData } from '../../hooks/useRestaurantData';
+import { useRestaurantDataFields } from '../../hooks/useRestaurantData';
+import { calcItemLineTotal, calcItemDiscountTotal } from '../../utils/calcOrderTotals';
 import html2pdf from 'html2pdf.js';
 import { QRCodeSVG } from 'qrcode.react';
 import { applyLeftMarginToText, escPosCenterText, getConfiguredLineWidth, getDividerLine, getEscPosBottomFeed, getEscPosQrCode, getMarginSpaces } from '../../utils/printSettings';
@@ -13,7 +14,7 @@ interface ReceiptModalProps {
 }
 
 const ReceiptModal: React.FC<ReceiptModalProps> = ({ onClose, sale }) => {
-  const { websiteSettings, getSingleActiveOutlet, applicationSettings, customers, printers, printInvoice } = useRestaurantData();
+  const { websiteSettings, getSingleActiveOutlet, applicationSettings, customers, printers, printInvoice } = useRestaurantDataFields(['websiteSettings','getSingleActiveOutlet','applicationSettings','customers','printers','printInvoice'] as const);
   const currentOutlet = getSingleActiveOutlet();
   const receiptRef = useRef<HTMLDivElement>(null);
 
@@ -79,11 +80,15 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ onClose, sale }) => {
       const name = item.name.substring(0, itemNameWidth).padEnd(itemNameWidth);
       const qty = item.quantity.toString().padStart(3);
       const rate = item.price.toFixed(2).padStart(6);
-      const amount = (item.price * item.quantity).toFixed(2).padStart(8);
+      const amount = calcItemLineTotal(item).toFixed(2).padStart(8);
       invoiceText += `${name}${qty} ${rate} ${amount}\n`;
     });
     invoiceText += `${divider}\n`;
     invoiceText += `Items: ${sale.items.length}     Sub Total: ${sale.subTotal.toFixed(2)}\n`;
+    const itemDiscountTotal = calcItemDiscountTotal(sale.items);
+    if (itemDiscountTotal > 0) {
+      invoiceText += `Item Discounts: -${itemDiscountTotal.toFixed(2)}\n`;
+    }
     let totalTax = 0;
     sale.taxDetails.forEach(tax => {
       totalTax += tax.amount;
@@ -395,7 +400,7 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ onClose, sale }) => {
                 <td className="py-1 text-lg">{item.name}</td>
                 <td className="text-center py-1 text-lg">{item.quantity}</td>
                 <td className="text-right py-1 text-lg">{item.price.toFixed(2)}</td>
-                <td className="text-right py-1 text-lg">{(item.price * item.quantity).toFixed(2)}</td>
+                <td className="text-right py-1 text-lg">{calcItemLineTotal(item).toFixed(2)}</td>
               </tr>
             ))}
           </tbody>
@@ -403,11 +408,17 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ onClose, sale }) => {
 
         {/* Summary Section */}
         <div className="space-y-1 mb-4">
-          <div className="flex justify-between items-center">
+          <div className="flex justify-between">
             <span className="text-lg font-bold text-gray-800">Items/{sale.items.length}</span>
             <span className="text-lg font-bold text-gray-800">Sub Total</span>
             <span className="text-lg font-bold text-gray-800">{sale.subTotal.toFixed(2)}</span>
           </div>
+          {calcItemDiscountTotal(sale.items) > 0 && (
+            <div className="flex justify-between">
+              <span className="text-lg text-gray-800">Item Discounts</span>
+              <span className="text-lg text-gray-800">-{calcItemDiscountTotal(sale.items).toFixed(2)}</span>
+            </div>
+          )}
           {applicationSettings.invoiceShowTaxBreakdown && taxRows}
           {sale.discountAmount && sale.discountAmount > 0 && (
             <div className="flex justify-between">

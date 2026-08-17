@@ -1,5 +1,5 @@
 import React, { useState, useMemo, memo } from 'react';
-import { useRestaurantData } from '../../hooks/useRestaurantData';
+import { useRestaurantDataFields } from '../../hooks/useRestaurantData';
 import { FiActivity, FiCalendar, FiBell, FiClock, FiGrid, FiUser, FiTrendingUp, FiArchive, FiSearch, FiBarChart2, FiMonitor, FiTv } from 'react-icons/fi';
 import { useNavigate, Link } from 'react-router-dom';
 import Button from '../common/Button';
@@ -9,6 +9,25 @@ import TodaySummaryModal from '../dashboard/TodaySummaryModal';
 import RegisterDetailsModal from '../dashboard/RegisterDetailsModal';
 import Money from '../common/Money';
 
+// #region debug-point D:running-order-click
+const DEBUG_RUNNING_ORDER_FLICKER_URL = 'http://127.0.0.1:7777/event';
+const DEBUG_RUNNING_ORDER_FLICKER_SESSION = 'running-order-flicker';
+const reportRunningOrderFlickerDebug = (hypothesisId: string, location: string, msg: string, data: Record<string, unknown> = {}) => {
+    fetch(DEBUG_RUNNING_ORDER_FLICKER_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            sessionId: DEBUG_RUNNING_ORDER_FLICKER_SESSION,
+            runId: 'pre-fix',
+            hypothesisId,
+            location,
+            msg: `[DEBUG] ${msg}`,
+            data,
+            ts: Date.now(),
+        }),
+    }).catch(() => {});
+};
+// #endregion
 
 const timeSince = (dateString?: string) => {
     if (!dateString) return '';
@@ -41,7 +60,7 @@ const openInNewTab = (url: string) => {
 const PosActionsPanel: React.FC<PosActionsPanelProps> = ({ searchTerm, onSearchChange }) => {
     const [activeModal, setActiveModal] = useState<string | null>(null);
     
-    const { sales, reservations, tables, resolveTableAssistance } = useRestaurantData();
+    const { sales, reservations, tables, resolveTableAssistance } = useRestaurantDataFields(['sales','reservations','tables','resolveTableAssistance'] as const);
     const navigate = useNavigate();
 
     const runningOrders = useMemo(() => sales.filter(s => s.assignedTableId && !(s.isClosed ?? s.isSettled)).sort((a,b) => new Date(b.saleDate).getTime() - new Date(a.saleDate).getTime()), [sales]);
@@ -77,7 +96,17 @@ const PosActionsPanel: React.FC<PosActionsPanelProps> = ({ searchTerm, onSearchC
                                 <li key={order.id}>
                                     <Link
                                         to={`/app/panel/pos/${order.assignedTableId}`}
-                                        onClick={() => setActiveModal(null)}
+                                        onClick={() => {
+                                            // #region debug-point D:running-order-click
+                                            reportRunningOrderFlickerDebug('D', 'PosActionsPanel:running-order-click', 'Clicked running order from modal', {
+                                                orderId: order.id,
+                                                assignedTableId: order.assignedTableId,
+                                                assignedTableName: order.assignedTableName,
+                                                totalAmount: order.totalAmount,
+                                            });
+                                            // #endregion
+                                            setActiveModal(null);
+                                        }}
                                         className="block p-4 rounded-lg hover:bg-gray-100 transition-colors border"
                                     >
                                         <div className="flex justify-between items-center text-base">

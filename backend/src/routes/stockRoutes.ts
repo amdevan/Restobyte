@@ -12,6 +12,7 @@ import {
   deleteStockEntry,
   getStockAdjustments,
   createStockAdjustment,
+  deleteStockAdjustment,
   getSuppliers,
   createSupplier,
   updateSupplier,
@@ -28,7 +29,7 @@ router.use(authenticate);
 // Stock Items
 router.get('/items', requirePermission('inventory.view'), getStockItems);
 router.post('/items', requirePermission('inventory.create'), createStockItem);
-router.put('/items/bulk', bulkUpsertStockItems);
+router.put('/items/bulk', requirePermission('inventory.edit'), bulkUpsertStockItems);
 router.put('/items/:id', requirePermission('inventory.edit'), updateStockItem);
 router.delete('/items/:id', requirePermission('inventory.delete'), deleteStockItem);
 
@@ -40,6 +41,7 @@ router.delete('/entries/:id', requirePermission('inventory.delete'), deleteStock
 // Stock Adjustments
 router.get('/adjustments', requirePermission('inventory.view'), getStockAdjustments);
 router.post('/adjustments', requirePermission('inventory.edit'), createStockAdjustment);
+router.delete('/adjustments/:id', requirePermission('inventory.delete'), deleteStockAdjustment);
 
 // Suppliers
 router.get('/suppliers', requirePermission('inventory.view'), getSuppliers);

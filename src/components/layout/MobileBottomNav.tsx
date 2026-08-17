@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   FiHome, FiGrid, FiList, FiShoppingCart, FiMoreHorizontal,
@@ -9,50 +9,54 @@ import { App } from '@capacitor/app';
 import { isNative } from '../../utils/capacitorService';
 import { useMobile } from '../../hooks/useMobileApp';
 import { useAuth } from '../../hooks/useAuth';
-import { useRestaurantData } from '../../hooks/useRestaurantData';
+import { useRestaurantDataFields } from '../../hooks/useRestaurantData';
+import { hasPermission } from '../../utils/hasPermission';
 
 // Primary tabs always visible on the bar.
 // Note: the "Menu" tab is the POS (order-taking) screen. The food-menu
 // management list ("Order") lives in the More sheet's Item Management group.
 const PRIMARY_TABS = [
-  { key: 'home',       label: 'Home',        path: '/app/dashboard',     icon: FiHome },
-  { key: 'table',      label: 'Table',        path: '/app/tables',        icon: FiGrid },
-  { key: 'menu',       label: 'Menu',         path: '/app/panel/pos',     icon: FiShoppingCart },
-  { key: 'running',    label: 'Running',      path: '/app/running-orders', icon: FiActivity },
+  { key: 'home',       label: 'Home',        path: '/app/dashboard',     icon: FiHome, requiredPermissions: ['dashboard.view'] },
+  { key: 'table',      label: 'Table',        path: '/app/tables',        icon: FiGrid, requiredPermissions: ['tables.view'] },
+  { key: 'menu',       label: 'Menu',         path: '/app/panel/pos',     icon: FiShoppingCart, requiredPermissions: ['pos.view'] },
+  { key: 'running',    label: 'Running',      path: '/app/running-orders', icon: FiActivity, requiredPermissions: ['orders.view'] },
 ] as const;
 
-// Secondary items shown when the "More" sheet is open.
-// "Item Management" carries nested sub-items (Food Menu and friends) so the
-// food-management screens are grouped together instead of scattered as tiles.
 const MORE_ITEMS = [
-  { label: 'Reports',      path: '/app/report',                  icon: FiFileText },
-  { label: 'Sale History', path: '/app/sale',                     icon: FiCreditCard },
-  { label: 'Customers',    path: '/app/customer',                 icon: FiUsers },
-  { label: 'Stock',        path: '/app/stock/levels',             icon: FiDatabase },
-  { label: 'Purchase',     path: '/app/purchase',                icon: FiShoppingCart },
-  { label: 'Employees',    path: '/app/employees',               icon: FiUsers },
+  { label: 'Reports',      path: '/app/report',                  icon: FiFileText, requiredPermissions: ['reports.view'] },
+  { label: 'Sale History', path: '/app/sale',                     icon: FiCreditCard, requiredPermissions: ['sales.view'] },
+  { label: 'Customers',    path: '/app/customer',                 icon: FiUsers, requiredPermissions: ['customers.view'] },
+  { label: 'Stock',        path: '/app/stock/levels',             icon: FiDatabase, requiredPermissions: ['inventory.view'] },
+  { label: 'Purchase',     path: '/app/purchase',                icon: FiShoppingCart, requiredPermissions: ['purchase.view'] },
+  { label: 'Employees',    path: '/app/employees',               icon: FiUsers, requiredPermissions: ['users.view'] },
   {
     label: 'Item Management',
     path: '/app/item/list-food-menu-category',
     icon: FiList,
+    requiredPermissions: ['menu.view'],
     items: [
-      { label: 'Food Menu',        path: '/app/menu',                                icon: FiList },
-      { label: 'Food Categories',  path: '/app/item/list-food-menu-category',        icon: FiClipboard },
-      { label: 'Pre-Made Food',    path: '/app/item/list-pre-made-food',             icon: FiBox },
-      { label: 'Manage Add-ons',   path: '/app/item/manage-addons',                  icon: FiPlusCircle },
+      { label: 'Food Menu',        path: '/app/menu',                                icon: FiList, requiredPermissions: ['menu.view'] },
+      { label: 'Food Categories',  path: '/app/item/list-food-menu-category',        icon: FiClipboard, requiredPermissions: ['menu.view'] },
+      { label: 'Pre-Made Food',    path: '/app/item/list-pre-made-food',             icon: FiBox, requiredPermissions: ['menu.view'] },
+      { label: 'Manage Add-ons',   path: '/app/item/manage-addons',                  icon: FiPlusCircle, requiredPermissions: ['menu.view'] },
     ],
   },
-  { label: 'Waiter Calls', path: '/app/panel/pos',                icon: FiBell },
-  { label: 'Settings',     path: '/app/settings/app-settings',   icon: FiSettings },
-  { label: 'Outlet',       path: '/app/outlet-setting',          icon: FiTool },
-  { label: 'Subscription', path: '/app/subscription',            icon: FiCreditCard },
+  { label: 'Waiter Calls', path: '/app/panel/pos',                icon: FiBell, requiredPermissions: ['pos.view'] },
+  { label: 'Settings',     path: '/app/settings/app-settings',   icon: FiSettings, requiredPermissions: ['settings.view'] },
+  { label: 'Outlet',       path: '/app/outlet-setting',          icon: FiTool, requiredPermissions: ['settings.view'] },
+  { label: 'Subscription', path: '/app/subscription',            icon: FiCreditCard, requiredPermissions: [] as const },
 ] as const;
 
 const MoreSheet: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const sheetRef = useRef<HTMLDivElement>(null);
-  const { sales, tables, reservations } = useRestaurantData();
+  const { sales, tables, reservations, roles } = useRestaurantDataFields(['sales', 'tables', 'reservations', 'roles'] as const);
+
+  const userCan = useCallback((perms?: readonly string[]) => {
+    if (!perms || perms.length === 0) return true;
+    return hasPermission([...perms], user?.permissions || [], roles, user?.roleId);
+  }, [user, roles]);
 
   // Live notification counts for the More-sheet tiles.
   const runningCount = (sales || []).filter((s: any) => s.assignedTableId && !(s.isClosed ?? s.isSettled)).length;
@@ -112,7 +116,7 @@ const MoreSheet: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onC
         </div>
         <div className="rb-bottom-sheet-body">
           <div className="grid grid-cols-3 gap-2">
-            {MORE_ITEMS.map((item) => {
+            {MORE_ITEMS.filter(item => userCan(item.requiredPermissions as any)).map((item) => {
               const Icon = item.icon;
               const hasSub = (item as any).items?.length;
               const badge = tileBadges[item.path];
@@ -144,7 +148,7 @@ const MoreSheet: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onC
                     <span className="rb-more-tile-label">{item.label}</span>
                   </button>
                   <div className="rb-more-subgrid">
-                    {(item as any).items.map((sub: any) => {
+                    {(item as any).items.filter((sub: any) => userCan(sub.requiredPermissions)).map((sub: any) => {
                       const SubIcon = sub.icon;
                       return (
                         <button
@@ -194,6 +198,15 @@ const MobileBottomNav: React.FC = () => {
   const navigate = useNavigate();
   const { haptic } = useMobile();
   const [moreOpen, setMoreOpen] = useState(false);
+  const { user } = useAuth();
+  const { roles } = useRestaurantDataFields(['roles'] as const);
+
+  const userCan = useCallback((perms?: readonly string[]) => {
+    if (!perms || perms.length === 0) return true;
+    return hasPermission([...perms], user?.permissions || [], roles, user?.roleId);
+  }, [user, roles]);
+
+  const visibleTabs = PRIMARY_TABS.filter(tab => userCan(tab.requiredPermissions as any));
 
   // Determine which primary tab is active (by prefix match so sub-routes highlight the parent).
   const activeKey = (() => {
@@ -225,7 +238,7 @@ const MobileBottomNav: React.FC = () => {
     <>
       <nav className="rb-bottom-nav" role="navigation" aria-label="Primary">
         <div className="rb-bottom-nav-inner">
-          {PRIMARY_TABS.map((tab) => {
+          {visibleTabs.map((tab) => {
             const Icon = tab.icon;
             const active = activeKey === tab.key;
             return (

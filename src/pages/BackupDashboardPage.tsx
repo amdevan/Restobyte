@@ -2,8 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { FiDownload, FiUpload, FiClock, FiCheckCircle, FiAlertTriangle, FiDatabase, FiHardDrive, FiTrash2, FiRefreshCw, FiShield, FiArchive, FiCloud, FiPlay, FiSettings } from 'react-icons/fi';
 import Button from '@/components/common/Button';
 import Card from '@/components/common/Card';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+import { API_BASE_URL } from '@/config';
 
 interface BackupRecord {
   id: string;

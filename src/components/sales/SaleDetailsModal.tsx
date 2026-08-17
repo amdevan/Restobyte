@@ -2,6 +2,7 @@ import React from 'react';
 import { Sale, Customer, PrinterType } from '../../types';
 import Button from '../common/Button';
 import { FiXCircle, FiPrinter, FiDownload } from 'react-icons/fi';
+import { calcItemLineTotal, calcItemDiscountTotal } from '../../utils/calcOrderTotals';
 import html2pdf from 'html2pdf.js';
 import { useRestaurantData } from '../../hooks/useRestaurantData';
 import { QRCodeSVG } from 'qrcode.react';
@@ -123,12 +124,22 @@ const SaleDetailsModal: React.FC<SaleDetailsModalProps> = ({ isOpen, onClose, sa
       const name = item.name.substring(0, itemNameWidth).padEnd(itemNameWidth);
       const qty = item.quantity.toString().padStart(4);
       const rate = item.price.toFixed(2).padStart(6);
-      const amount = (item.price * item.quantity).toFixed(2).padStart(7);
+      const amount = calcItemLineTotal(item).toFixed(2).padStart(7);
       invoiceText += `${name}${qty} ${rate} ${amount}\n`;
+      (item.extras || []).forEach((extra) => {
+        const qtyStr = extra.quantity && extra.quantity > 1 ? ` x ${extra.quantity}` : '';
+        const extraLineStart = `  + ${extra.name}${qtyStr} ($${extra.price.toFixed(2)})`;
+        const extraLine = extraLineStart.substring(0, itemNameWidth).padEnd(itemNameWidth);
+        invoiceText += `${extraLine}${' '.repeat(4)} ${' '.repeat(6)} ${' '.repeat(7)}\n`;
+      });
     });
 
     invoiceText += `${divider}\n`;
     invoiceText += formatItemsSummary(sale.items.length, sale.subTotal);
+    const itemDiscountTotal = calcItemDiscountTotal(sale.items);
+    if (itemDiscountTotal > 0) {
+      invoiceText += `  Item Discounts: -${itemDiscountTotal.toFixed(2)}\n`;
+    }
 
     if (applicationSettings.invoiceShowTaxBreakdown) {
       sale.taxDetails.forEach((tax) => {
@@ -414,12 +425,24 @@ const SaleDetailsModal: React.FC<SaleDetailsModalProps> = ({ isOpen, onClose, sa
           </thead>
           <tbody>
             {sale.items.map((item, index) => (
-              <tr key={`${item.id}-${index}`}>
-                <td className="py-1 text-lg">{item.name}</td>
-                <td className="text-center py-1 text-lg">{item.quantity}</td>
-                <td className="text-right py-1 text-lg">{item.price.toFixed(2)}</td>
-                <td className="text-right py-1 text-lg">{(item.price * item.quantity).toFixed(2)}</td>
-              </tr>
+              <React.Fragment key={`${item.id}-${index}`}>
+                <tr>
+                  <td className="py-1 text-lg">{item.name}</td>
+                  <td className="text-center py-1 text-lg">{item.quantity}</td>
+                  <td className="text-right py-1 text-lg">{item.price.toFixed(2)}</td>
+                  <td className="text-right py-1 text-lg">{calcItemLineTotal(item).toFixed(2)}</td>
+                </tr>
+                {item.extras && item.extras.length > 0 && item.extras.map((extra, eIdx) => (
+                  <tr key={`${item.id}-${index}-extra-${eIdx}`}>
+                    <td className="py-0.5 pl-6 text-sm text-gray-500">
+                      + {extra.name}{extra.quantity && extra.quantity > 1 ? ` x ${extra.quantity}` : ''} ({extra.price.toFixed(2)})
+                    </td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                  </tr>
+                ))}
+              </React.Fragment>
             ))}
           </tbody>
         </table>
@@ -431,6 +454,12 @@ const SaleDetailsModal: React.FC<SaleDetailsModalProps> = ({ isOpen, onClose, sa
             <span className="text-lg font-bold text-gray-800">Sub Total</span>
             <span className="text-lg font-bold text-gray-800">{sale.subTotal.toFixed(2)}</span>
           </div>
+          {calcItemDiscountTotal(sale.items) > 0 && (
+            <div className="flex justify-between">
+              <span className="text-lg text-gray-800">Item Discounts</span>
+              <span className="text-lg text-gray-800">-{calcItemDiscountTotal(sale.items).toFixed(2)}</span>
+            </div>
+          )}
           {applicationSettings.invoiceShowTaxBreakdown && taxRows}
           {sale.discountAmount && sale.discountAmount > 0 && (
             <div className="flex justify-between">

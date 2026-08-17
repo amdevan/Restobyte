@@ -1,11 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { FiHome, FiChevronDown } from 'react-icons/fi';
 import { useLocation } from 'react-router-dom';
-import { useRestaurantData } from '../../hooks/useRestaurantData';
+import { useRestaurantDataFields } from '../../hooks/useRestaurantData';
 import { useAuth } from '../../hooks/useAuth';
 
 const OutletSelector: React.FC = () => {
-    const { outlets, activeOutletIds, setActiveOutletIds } = useRestaurantData();
+    const { outlets, activeOutletIds, setActiveOutletIds } = useRestaurantDataFields(['outlets', 'activeOutletIds', 'setActiveOutletIds'] as const);
     const { user, isAuthenticated } = useAuth();
     const [isOpen, setIsOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { MenuItem, Variation, Addon, SaleItem, AddonGroup } from '../../types';
-import { useRestaurantData } from '../../hooks/useRestaurantData';
+import { MenuItem, Variation, Addon, SaleItem, AddonGroup, SaleItemExtra } from '../../types';
+import { useRestaurantDataFields } from '../../hooks/useRestaurantData';
 import Modal from '../common/Modal';
 import Button from '../common/Button';
 import { FiPlus, FiCheck } from 'react-icons/fi';
@@ -11,10 +11,12 @@ interface ItemCustomizationModalProps {
   onClose: () => void;
   item: MenuItem;
   onSave: (configuredItem: SaleItem) => void;
+  existingExtras?: SaleItemExtra[];
+  existingVariationName?: string;
 }
 
-const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({ isOpen, onClose, item, onSave }) => {
-  const { addonGroups: allAddonGroups, currencies, applicationSettings } = useRestaurantData();
+const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({ isOpen, onClose, item, onSave, existingExtras, existingVariationName }) => {
+  const { addonGroups: allAddonGroups, currencies, applicationSettings } = useRestaurantDataFields(['addonGroups','currencies','applicationSettings'] as const);
   const defaultCurrency = useMemo(() => getDefaultCurrency(currencies), [currencies]);
   
   const [selectedVariation, setSelectedVariation] = useState<Variation | null>(null);
@@ -31,12 +33,35 @@ const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({ isOpen,
 
   useEffect(() => {
     if (isOpen && item) {
-      // Set default variation
-      setSelectedVariation(item.variations?.[0] || null);
-      // Reset selected addons
-      setSelectedAddons({});
+      // Set variation: prefer existingVariationName if available, else default
+      let initialVariation: Variation | null = null;
+      if (existingVariationName && item.variations?.length) {
+        initialVariation = item.variations.find(v => v.name === existingVariationName) || null;
+      }
+      if (!initialVariation) {
+        initialVariation = item.variations?.[0] || null;
+      }
+      setSelectedVariation(initialVariation);
+
+      // Prefill selected addons from existingExtras if provided
+      const prefilled: Record<string, Addon[]> = {};
+      if (existingExtras && existingExtras.length > 0) {
+        const allGroups = (item.addonGroupIds || [])
+          .map(id => allAddonGroups.find(g => g.id === id))
+          .filter((g): g is AddonGroup => !!g);
+        allGroups.forEach(group => {
+          group.addons.forEach(addon => {
+            const extra = existingExtras.find(e => e.id === addon.id || e.name === addon.name);
+            if (extra) {
+              if (!prefilled[group.id]) prefilled[group.id] = [];
+              prefilled[group.id].push(addon);
+            }
+          });
+        });
+      }
+      setSelectedAddons(prefilled);
     }
-  }, [isOpen, item]);
+  }, [isOpen, item, existingExtras, existingVariationName, allAddonGroups]);
 
   const itemAddonGroups = useMemo(() => {
     return (item.addonGroupIds || [])
@@ -80,7 +105,14 @@ const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({ isOpen,
       itemName += ` (${selectedVariation.name})`;
     }
     
-    // Create a detailed note from addons
+    // Create structured extras and detailed notes string for KOT backward compatibility
+    const extras: SaleItemExtra[] = addons.map(a => ({
+      id: a.id,
+      name: a.name,
+      price: a.price,
+      quantity: 1,
+    }));
+    
     const addonNotes = addons.map(a => `+ ${a.name} (${format(a.price)})`).join('\n');
     
     const configuredItem: SaleItem = {
@@ -92,6 +124,7 @@ const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({ isOpen,
       isVeg: item.isVegetarian,
       notes: addonNotes,
       variationName: item.variations.length > 1 ? selectedVariation.name : undefined,
+      extras,
     };
 
     onSave(configuredItem);
@@ -99,8 +132,10 @@ const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({ isOpen,
   
   if (!item) return null;
 
+  const isEditMode = !!existingExtras;
+
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={`Customize ${item.name}`} size="lg">
+    <Modal isOpen={isOpen} onClose={onClose} title={isEditMode ? `Edit Extras for ${item.name}` : `Customize ${item.name}`} size="lg">
       <div className="space-y-6">
         {/* Variations */}
         {item.variations && item.variations.length > 1 && (
@@ -159,7 +194,7 @@ const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({ isOpen,
             <p className="text-3xl font-bold text-sky-700">{format(totalItemPrice)}</p>
           </div>
           <Button onClick={handleSaveClick} size="lg" className="!text-base" leftIcon={<FiPlus />}>
-            Add to Order
+            {isEditMode ? 'Update Extras' : 'Add to Order'}
           </Button>
         </div>
       </div>

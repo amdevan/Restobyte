@@ -112,12 +112,13 @@ const PublicMenuPage: React.FC = () => {
                     filteredItems.map(item => (
                         <div key={item.id} className="bg-white rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-300 group text-center border border-gray-100 relative flex flex-col items-center">
                             <div className="relative mb-3 overflow-hidden rounded-xl mx-auto w-36 h-36 md:w-40 md:h-40 shadow-sm group-hover:scale-[1.02] transition-transform duration-300">
-                                <img 
-                                    src={item.imageUrl || `https://picsum.photos/seed/${item.id}/400/400`} 
-                                    alt={item.name} 
-                                    className="w-full h-full object-cover"
-                                    crossOrigin="anonymous"
-                                />
+                                {item.imageUrl ? (
+                                    <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" crossOrigin="anonymous" />
+                                ) : (
+                                    <div className="w-full h-full bg-gray-100 flex items-center justify-center">
+                                        <FiStar size={24} className="text-gray-300" />
+                                    </div>
+                                )}
                             </div>
                             
                             <h3 className="font-bold text-gray-900 text-sm mb-1 truncate w-full px-1">{item.name}</h3>

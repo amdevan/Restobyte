@@ -4,6 +4,7 @@ import Button from '@/components/common/Button';
 import Input from '@/components/common/Input';
 import { FiSave, FiXCircle } from 'react-icons/fi';
 import { useRestaurantData } from '@/hooks/useRestaurantData';
+import { calcSubTotal } from '@/utils/calcOrderTotals';
 import Money from '@/components/common/Money';
 
 interface EditSaleModalProps {
@@ -76,12 +77,26 @@ const EditSaleModal: React.FC<EditSaleModalProps> = ({ isOpen, onClose, sale, on
         return item;
       });
 
-      const newSubTotal = updatedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+      const newSubTotal = calcSubTotal(updatedItems);
+
+      // Recalculate tax based on existing tax rates
+      const discountValue = sale.discountType === 'percentage'
+        ? (newSubTotal * (sale.discountAmount || 0)) / 100
+        : (sale.discountType === 'fixed' ? (sale.discountAmount || 0) : 0);
+      const totalAfterDiscount = newSubTotal - discountValue;
+      const newTaxDetails = (sale.taxDetails || []).map(tax => ({
+        ...tax,
+        amount: parseFloat(((totalAfterDiscount * tax.rate) / 100).toFixed(2)),
+      }));
+      const newTotalTax = newTaxDetails.reduce((sum, t) => sum + t.amount, 0);
+      const newTotalAmount = totalAfterDiscount + newTotalTax;
 
       const updatedSale: Sale = {
         ...sale,
         items: updatedItems,
         subTotal: newSubTotal,
+        taxDetails: newTaxDetails,
+        totalAmount: newTotalAmount,
         customerId: customerId !== '' ? customerId : sale.customerId,
         customerName: customerName || sale.customerName,
         waiterName: waiterName || sale.waiterName,

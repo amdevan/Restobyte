@@ -97,35 +97,48 @@ export const bulkUpsertStockItems = async (req: Request, res: Response) => {
   if (!user) { res.status(403).json({ message: 'Unauthorized' }); return; }
 
   const { outletId, items } = req.body;
-  if (!outletId) { res.status(400).json({ message: 'outletId is required' }); return; }
+  const resolvedOutletId = outletId || user.outletId;
+  if (!resolvedOutletId) { res.status(400).json({ message: 'outletId is required' }); return; }
   if (!Array.isArray(items)) { res.status(400).json({ message: 'items array is required' }); return; }
-  if (!await validateOutletAccess(user, String(outletId))) { res.status(403).json({ message: 'Unauthorized' }); return; }
+  if (!await validateOutletAccess(user, String(resolvedOutletId))) { res.status(403).json({ message: 'Unauthorized' }); return; }
 
-  const results = await Promise.all(
-    items.map((item: any) =>
-      prisma.stockItem.upsert({
-        where: { id: item.id || `temp-${Date.now()}` },
-        update: {
-          name: item.name,
-          category: item.category,
-          quantity: Number(item.quantity) || 0,
-          unit: item.unit,
-          lowStockThreshold: Number(item.lowStockThreshold) || 0,
-          costPerUnit: Number(item.costPerUnit) || 0,
-        },
-        create: {
-          id: item.id,
-          outletId: String(outletId),
-          name: item.name,
-          category: item.category || '',
-          quantity: Number(item.quantity) || 0,
-          unit: item.unit || 'unit',
-          lowStockThreshold: Number(item.lowStockThreshold) || 0,
-          costPerUnit: Number(item.costPerUnit) || 0,
-        },
-      })
-    )
-  );
+  for (const item of items) {
+    if (item?.id) {
+      const existing = await prisma.stockItem.findUnique({ where: { id: String(item.id) }, select: { outletId: true } });
+      if (existing && existing.outletId !== String(resolvedOutletId)) {
+        res.status(403).json({ message: 'Unauthorized: cross-outlet bulk update blocked' });
+        return;
+      }
+    }
+  }
+
+  const results = await prisma.$transaction(async (tx) => {
+    return Promise.all(
+      items.map((item: any) =>
+        tx.stockItem.upsert({
+          where: { id: item.id || `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}` },
+          update: {
+            name: item.name,
+            category: item.category,
+            quantity: Number(item.quantity) || 0,
+            unit: item.unit,
+            lowStockThreshold: Number(item.lowStockThreshold) || 0,
+            costPerUnit: Number(item.costPerUnit) || 0,
+          },
+          create: {
+            id: item.id,
+            outletId: String(resolvedOutletId),
+            name: item.name,
+            category: item.category || '',
+            quantity: Number(item.quantity) || 0,
+            unit: item.unit || 'unit',
+            lowStockThreshold: Number(item.lowStockThreshold) || 0,
+            costPerUnit: Number(item.costPerUnit) || 0,
+          },
+        })
+      )
+    );
+  });
   res.json(results);
 };
 
@@ -265,6 +278,31 @@ export const createStockAdjustment = async (req: Request, res: Response) => {
   }
 
   res.status(201).json(adjustment);
+};
+
+export const deleteStockAdjustment = async (req: Request, res: Response) => {
+  const user = (req as AuthRequest).user;
+  if (!user) { res.status(403).json({ message: 'Unauthorized' }); return; }
+
+  const id = req.params.id as string;
+  const existing = await prisma.stockAdjustment.findUnique({ where: { id }, include: { items: true } });
+  if (!existing) { res.status(404).json({ message: 'Stock adjustment not found' }); return; }
+  if (!await validateOutletAccess(user, existing.outletId)) { res.status(403).json({ message: 'Unauthorized' }); return; }
+
+  // Reverse adjustments before deleting
+  for (const item of existing.items) {
+    const qty = Number(item.quantity);
+    if (item.adjustmentType === 'Increase') {
+      await prisma.stockItem.update({ where: { id: item.stockItemId }, data: { quantity: { decrement: qty } } });
+    } else if (item.adjustmentType === 'Decrease') {
+      await prisma.stockItem.update({ where: { id: item.stockItemId }, data: { quantity: { increment: qty } } });
+    } else if (item.adjustmentType === 'SetTo') {
+      // For SetTo, we can't perfectly reverse without knowing previous value, so we just delete
+    }
+  }
+
+  await prisma.stockAdjustment.delete({ where: { id } });
+  res.status(204).send();
 };
 
 // ==================== Suppliers ====================

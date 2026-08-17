@@ -25,17 +25,22 @@ const EqualSplitView: React.FC<EqualSplitViewProps> = ({ grandTotal, onFinalize,
             return;
         }
 
-        const amountPerSplit = grandTotal / numSplits;
-        const newSplits: Split[] = Array.from({ length: numSplits }, (_, i) => ({
-            id: `equal-${Date.now()}-${i}`,
-            description: `Equal Share (1 of ${numSplits})`,
-            subTotal: amountPerSplit, // For simplicity, we can treat the whole amount as subtotal for this view
-            taxAmount: 0, // Tax is included in the equal split amount
-            totalAmount: amountPerSplit,
-            isPaid: false,
-            payments: [],
-            tipAmount: 0
-        }));
+        const amountPerSplit = Math.floor((grandTotal / numSplits) * 100) / 100;
+        const newSplits: Split[] = Array.from({ length: numSplits }, (_, i) => {
+            // Last split absorbs rounding difference so total matches exactly
+            const isLast = i === numSplits - 1;
+            const amount = isLast ? grandTotal - amountPerSplit * (numSplits - 1) : amountPerSplit;
+            return {
+                id: `equal-${Date.now()}-${i}`,
+                description: `Equal Share (${i + 1} of ${numSplits})`,
+                subTotal: amount,
+                taxAmount: 0,
+                totalAmount: amount,
+                isPaid: false,
+                payments: [],
+                tipAmount: 0
+            };
+        });
         setSplits(newSplits);
     };
 

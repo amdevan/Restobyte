@@ -80,6 +80,11 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({ orderItems, gran
         finalPayments.push({ method: paymentMethod, amount: toBase(numericAmountSelected, selectedCurrency) });
     }
 
+    // For "Due" payment method, record the due amount as a payment so split aggregation tracks it
+    if (paymentMethod === 'Due') {
+      finalPayments.push({ method: 'Due', amount: grandTotal - finalPayments.reduce((sum, p) => sum + p.amount, 0) });
+    }
+
     const finalTotalPaidBase = finalPayments.reduce((sum, p) => sum + p.amount, 0);
     const epsilon = 0.001;
     const calculatedReturnAmount = Math.max(0, finalTotalPaidBase - grandTotal);
@@ -90,7 +95,7 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({ orderItems, gran
        if(paymentMethod !== 'Due' && !window.confirm(`Amount paid (${paidFormatted}) is less than total (${totalFormatted}). Mark remaining as due?`)) {
           return;
       }
-      onFinalize(finalPayments, false, finalTotalPaidBase, 0);
+      onFinalize(finalPayments, paymentMethod === 'Due' ? false : false, finalTotalPaidBase, 0);
     } else {
       onFinalize(finalPayments, true, finalTotalPaidBase, calculatedReturnAmount);
     }

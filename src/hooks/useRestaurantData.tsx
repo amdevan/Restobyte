@@ -1416,6 +1416,8 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
     const outletAppDataReadyRef = useRef<Record<string, boolean>>({});
     const outletAppDataSerializedRef = useRef<Record<string, string>>({});
     const outletAppDataMutationVersionRef = useRef<Record<string, number>>({});
+    const pendingOutletSavesRef = useRef<Array<{ key: string; outletId: string; data: unknown }>>([]);
+    const failedOutletSavesRef = useRef<Array<{ key: string; outletId: string; data: unknown }>>([]);
     const userAppDataReadyRef = useRef<Record<string, boolean>>({});
     const userAppDataSerializedRef = useRef<Record<string, string>>({});
     const globalAppDataReadyRef = useRef<Record<string, boolean>>({});
@@ -1478,9 +1480,11 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             if (!res.ok) {
                 const err = await res.json().catch(() => null);
                 console.error(`Failed to persist app data for ${key}:`, err?.message || res.statusText);
+                failedOutletSavesRef.current.push({ key, outletId, data });
             }
         } catch (err) {
             console.error(`Failed to persist app data for ${key}:`, err);
+            failedOutletSavesRef.current.push({ key, outletId, data });
         }
     }, [isAuthenticated, logout]);
 
@@ -2710,6 +2714,31 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         const firstOutletId = String(outlets[0]!.id);
         setActiveOutletIds([firstOutletId]);
     }, [isAuthenticated, outlets, activeOutletIds, setActiveOutletIds]);
+
+    // Flush pending outlet app-data saves once selectedDataOutletId becomes available
+    useEffect(() => {
+        if (!selectedDataOutletId || pendingOutletSavesRef.current.length === 0) return;
+        const pending = [...pendingOutletSavesRef.current];
+        pendingOutletSavesRef.current = [];
+        for (const save of pending) {
+            const outletId = selectedDataOutletId;
+            persistOutletCollectionImmediately(save.key, outletId, save.data);
+        }
+    }, [selectedDataOutletId, persistOutletCollectionImmediately]);
+
+    // Retry failed outlet app-data saves periodically
+    useEffect(() => {
+        if (!isAuthenticated || failedOutletSavesRef.current.length === 0) return;
+        const interval = setInterval(() => {
+            if (failedOutletSavesRef.current.length === 0) return;
+            const failed = [...failedOutletSavesRef.current];
+            failedOutletSavesRef.current = [];
+            for (const save of failed) {
+                void persistOutletAppData(save.key, save.outletId, save.data);
+            }
+        }, 30000);
+        return () => clearInterval(interval);
+    }, [isAuthenticated, persistOutletAppData]);
 
     const generateId = () => {
         if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
@@ -5049,6 +5078,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             paymentMethodsRef.current = next;
             setPaymentMethods(next);
             if (outletId) { markOutletAppDataMutated('paymentMethods', outletId); persistOutletCollectionImmediately('paymentMethods', outletId, next); }
+            else { pendingOutletSavesRef.current.push({ key: 'paymentMethods', outletId: 'pending', data: next }); }
         },
         addPaymentMethod: (name: string) => {
             const outletId = selectedDataOutletId;
@@ -5057,6 +5087,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             paymentMethodsRef.current = next;
             setPaymentMethods(next);
             if (outletId) { markOutletAppDataMutated('paymentMethods', outletId); persistOutletCollectionImmediately('paymentMethods', outletId, next); }
+            else { pendingOutletSavesRef.current.push({ key: 'paymentMethods', outletId: 'pending', data: next }); }
             return newMethod;
         },
         removePaymentMethod: (id: string) => {
@@ -5067,6 +5098,8 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             if (outletId) {
                 markOutletAppDataMutated('paymentMethods', outletId);
                 persistOutletCollectionImmediately('paymentMethods', outletId, next);
+            } else {
+                pendingOutletSavesRef.current.push({ key: 'paymentMethods', outletId: 'pending', data: next });
             }
         },
 
@@ -5132,6 +5165,8 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             if (outletId) {
                 markOutletAppDataMutated('applicationSettings', outletId);
                 persistOutletCollectionImmediately('applicationSettings', outletId, next);
+            } else {
+                pendingOutletSavesRef.current.push({ key: 'applicationSettings', outletId: 'pending', data: next });
             }
         },
         soundSettings,

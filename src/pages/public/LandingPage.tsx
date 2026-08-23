@@ -11,7 +11,7 @@ import {
 
 import { SaaSHeader } from '@/components/public/SaaSHeader';
 import { SaaSFooter } from '@/components/public/SaaSFooter';
-import { useRestaurantData } from '@/hooks/useRestaurantData';
+import { usePublicSaasContent } from '@/hooks/usePublicSaasContent';
 
 const LoginPage = React.lazy(() => import('../auth/LoginPage'));
 const RegisterPage = React.lazy(() => import('../auth/RegisterPage'));
@@ -78,13 +78,12 @@ const useParallax = () => {
 const LandingPage: React.FC = () => {
     useScrollReveal();
     useParallax();
-    const { saasWebsiteContent } = useRestaurantData();
+    const content = usePublicSaasContent();
     const [authModal, setAuthModal] = useState<'login' | 'register' | 'demo' | null>(null);
     const [searchParams, setSearchParams] = useSearchParams();
     const [openFaq, setOpenFaq] = useState<number | null>(0);
     const [currentSlide, setCurrentSlide] = useState(0);
     const [showBackToTop, setShowBackToTop] = useState(false);
-    const content = saasWebsiteContent;
 
     useEffect(() => {
         const handleScroll = () => {

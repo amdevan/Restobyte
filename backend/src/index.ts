@@ -193,6 +193,22 @@ async function start() {
     process.exit(1);
   }
 
+  // Auto-add missing columns to keep schema in sync with code
+  try {
+    const migrations = [
+      `ALTER TABLE "Recipe" ADD COLUMN IF NOT EXISTS "yieldUnit" TEXT`,
+      `ALTER TABLE "Recipe" ADD COLUMN IF NOT EXISTS "notes" TEXT`,
+      `ALTER TABLE "StockAdjustmentItem" ADD COLUMN IF NOT EXISTS "previousQuantity" DOUBLE PRECISION`,
+      `ALTER TABLE "Employee" ADD COLUMN IF NOT EXISTS "employeeId" TEXT`,
+    ];
+    for (const sql of migrations) {
+      await prisma.$executeRawUnsafe(sql);
+    }
+    console.log('[bootstrap]: Schema columns synced');
+  } catch (error) {
+    console.error('[bootstrap]: Schema sync warning (non-critical):', (error as Error).message);
+  }
+
   if (typeof process.env.RESET_SUPERADMIN_PASSWORD === 'string' && process.env.RESET_SUPERADMIN_PASSWORD.trim()) {
     const username = typeof process.env.RESET_SUPERADMIN_USERNAME === 'string' && process.env.RESET_SUPERADMIN_USERNAME.trim()
       ? process.env.RESET_SUPERADMIN_USERNAME.trim()

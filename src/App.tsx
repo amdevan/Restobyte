@@ -472,14 +472,14 @@ const AppContent: React.FC = () => {
     <React.Suspense fallback={<div className="flex h-screen w-screen items-center justify-center bg-gray-100"><Spinner size="lg" /></div>}>
         <Routes>
             <Route path="/" element={<AuthAwareLanding />} />
-            <Route path="/blogs" element={<SaaSBlogsPage />} />
-            <Route path="/career" element={<DynamicSaaSPage />} />
-            <Route path="/contact" element={<SaaSContactPage />} />
-            <Route path="/features" element={<SaaSFeaturesPage />} />
-            <Route path="/pricing" element={<SaaSPricingPage />} />
-            <Route path="/products" element={<SaaSProductsShopPage />} />
-            <Route path="/privacy-policy" element={<DynamicSaaSPage />} />
-            <Route path="/terms-of-service" element={<DynamicSaaSPage />} />
+            <Route path="/blogs" element={<RestaurantDataProvider><SaaSBlogsPage /></RestaurantDataProvider>} />
+            <Route path="/career" element={<RestaurantDataProvider><DynamicSaaSPage /></RestaurantDataProvider>} />
+            <Route path="/contact" element={<RestaurantDataProvider><SaaSContactPage /></RestaurantDataProvider>} />
+            <Route path="/features" element={<RestaurantDataProvider><SaaSFeaturesPage /></RestaurantDataProvider>} />
+            <Route path="/pricing" element={<RestaurantDataProvider><SaaSPricingPage /></RestaurantDataProvider>} />
+            <Route path="/products" element={<RestaurantDataProvider><SaaSProductsShopPage /></RestaurantDataProvider>} />
+            <Route path="/privacy-policy" element={<RestaurantDataProvider><DynamicSaaSPage /></RestaurantDataProvider>} />
+            <Route path="/terms-of-service" element={<RestaurantDataProvider><DynamicSaaSPage /></RestaurantDataProvider>} />
             
             {/* Public Restaurant Website Routes */}
             <Route path="/public" element={<Outlet />}>
@@ -487,14 +487,14 @@ const AppContent: React.FC = () => {
                 <Route path="register" element={<PublicRegisterPage />} />
             </Route>
 
-            <Route path="/public/restaurant" element={<PublicLayout />}>
+            <Route path="/public/restaurant" element={<RestaurantDataProvider><PublicLayout /></RestaurantDataProvider>}>
               <Route index element={<PublicHomePage />} />
               <Route path="menu" element={<PublicMenuPage />} />
               <Route path="about" element={<PublicAboutPage />} />
               <Route path="contact" element={<PublicContactPage />} />
             </Route>
 
-            <Route path="/website/:slug" element={<PublicLayout />}>
+            <Route path="/website/:slug" element={<RestaurantDataProvider><PublicLayout /></RestaurantDataProvider>}>
               <Route index element={<PublicHomePage />} />
               <Route path="menu" element={<PublicMenuPage />} />
               <Route path="about" element={<PublicAboutPage />} />
@@ -508,7 +508,7 @@ const AppContent: React.FC = () => {
             <Route path="/qr-menu/:tableId" element={<React.Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="w-10 h-10 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" /></div>}><PublicQrMenuPage /></React.Suspense>} />
 
             {/* Customer Panel Routes */}
-            <Route path="/customer" element={isAuthenticated && user?.roleId === 'role-customer' ? <CustomerLayout /> : <Navigate to="/public/login" replace />}>
+            <Route path="/customer" element={<RestaurantDataProvider>{isAuthenticated && user?.roleId === 'role-customer' ? <CustomerLayout /> : <Navigate to="/public/login" replace />}</RestaurantDataProvider>}>
                 <Route index element={<Navigate to="dashboard" replace />} />
                 <Route path="dashboard" element={<CustomerDashboardPage />} />
                 <Route path="profile" element={<CustomerProfilePage />} />
@@ -535,7 +535,7 @@ const AppContent: React.FC = () => {
                 path="/saas/*" 
                 element={
                     isAuthenticated && user?.isSuperAdmin 
-                    ? <SaaSPanelRoutes /> 
+                    ? <RestaurantDataProvider><SaaSPanelRoutes /></RestaurantDataProvider>
                     : <Navigate to="/saas/login" replace />
                 } 
             />
@@ -545,13 +545,13 @@ const AppContent: React.FC = () => {
                 path="/app/*" 
                 element={
                     isAuthenticated 
-                    ? <RestaurantPanelRoutes /> 
+                    ? <RestaurantDataProvider><RestaurantPanelRoutes /></RestaurantDataProvider>
                     : <Navigate to="/login" replace />
                 } 
             />
             
             {/* Dynamic Slug Page - last to catch all */}
-            <Route path="/:slug" element={<DynamicSaaSPage />} />
+            <Route path="/:slug" element={<RestaurantDataProvider><DynamicSaaSPage /></RestaurantDataProvider>} />
         </Routes>
     </React.Suspense>
   );
@@ -615,11 +615,9 @@ const App: React.FC = () => {
     <BrowserRouter>
       <ScrollPositionManager />
       <AuthProvider>
-        <RestaurantDataProvider>
-          <MobileProvider>
-            <AppContent />
-          </MobileProvider>
-        </RestaurantDataProvider>
+        <MobileProvider>
+          <AppContent />
+        </MobileProvider>
       </AuthProvider>
     </BrowserRouter>
   );

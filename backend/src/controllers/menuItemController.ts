@@ -34,11 +34,14 @@ export const getMenuItems = async (req: Request, res: Response) => {
       }
     }
 
+    // Support filtering by availability (QR menu hides unavailable items, POS shows all)
+    const availableOnly = req.query.availableOnly === 'true';
     const items = await prisma.menuItem.findMany({
       where: {
         category: {
           outletId: outletId,
         },
+        ...(availableOnly ? { isAvailable: true } : {}),
       },
       include: { category: true, variations: true },
     });

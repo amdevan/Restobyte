@@ -20,6 +20,7 @@ import {
   getRecipes,
   upsertRecipe,
   deleteRecipe,
+  deductWasteStock,
 } from '../controllers/stockController.js';
 
 const router = Router();
@@ -53,5 +54,8 @@ router.delete('/suppliers/:id', requirePermission('inventory.delete'), deleteSup
 router.get('/recipes', requirePermission('inventory.view'), getRecipes);
 router.post('/recipes', requirePermission('inventory.create'), upsertRecipe);
 router.delete('/recipes/:id', requirePermission('inventory.delete'), deleteRecipe);
+
+// Waste Stock Deduction
+router.post('/deduct-waste', requirePermission('inventory.edit'), deductWasteStock);
 
 export default router;

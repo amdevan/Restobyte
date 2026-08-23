@@ -171,33 +171,38 @@ export const createStockEntry = async (req: Request, res: Response) => {
 
   const totalCost = items.reduce((sum: number, item: any) => sum + (Number(item.quantityAdded) * Number(item.costPerUnit)), 0);
 
-  const entry = await prisma.stockEntry.create({
-    data: {
-      outletId: String(outletId),
-      supplierId: supplierId || null,
-      notes: notes || null,
-      totalCost,
-      items: {
-        create: items.map((item: any) => ({
-          stockItemId: item.stockItemId,
-          quantityAdded: Number(item.quantityAdded),
-          costPerUnit: Number(item.costPerUnit) || 0,
-        })),
-      },
-    },
-    include: { items: true },
-  });
-
-  // Update stock quantities
-  for (const item of items) {
-    await prisma.stockItem.update({
-      where: { id: item.stockItemId },
+  // Wrap in transaction so entry creation and stock quantity updates are atomic
+  const entry = await prisma.$transaction(async (tx) => {
+    const created = await tx.stockEntry.create({
       data: {
-        quantity: { increment: Number(item.quantityAdded) },
-        ...(item.costPerUnit ? { costPerUnit: Number(item.costPerUnit) } : {}),
+        outletId: String(outletId),
+        supplierId: supplierId || null,
+        notes: notes || null,
+        totalCost,
+        items: {
+          create: items.map((item: any) => ({
+            stockItemId: item.stockItemId,
+            quantityAdded: Number(item.quantityAdded),
+            costPerUnit: Number(item.costPerUnit) || 0,
+          })),
+        },
       },
+      include: { items: true },
     });
-  }
+
+    // Update stock quantities inside the same transaction
+    for (const item of items) {
+      await tx.stockItem.update({
+        where: { id: item.stockItemId },
+        data: {
+          quantity: { increment: Number(item.quantityAdded) },
+          ...(item.costPerUnit ? { costPerUnit: Number(item.costPerUnit) } : {}),
+        },
+      });
+    }
+
+    return created;
+  });
 
   res.status(201).json(entry);
 };
@@ -211,15 +216,17 @@ export const deleteStockEntry = async (req: Request, res: Response) => {
   if (!existing) { res.status(404).json({ message: 'Stock entry not found' }); return; }
   if (!await validateOutletAccess(user, existing.outletId)) { res.status(403).json({ message: 'Unauthorized' }); return; }
 
-  // Reverse stock quantities before deleting
-  for (const item of existing.items) {
-    await prisma.stockItem.update({
-      where: { id: item.stockItemId },
-      data: { quantity: { decrement: item.quantityAdded } },
-    });
-  }
+  // Reverse stock quantities and delete entry atomically
+  await prisma.$transaction(async (tx) => {
+    for (const item of existing.items) {
+      await tx.stockItem.update({
+        where: { id: item.stockItemId },
+        data: { quantity: { decrement: item.quantityAdded } },
+      });
+    }
+    await tx.stockEntry.delete({ where: { id } });
+  });
 
-  await prisma.stockEntry.delete({ where: { id } });
   res.status(204).send();
 };
 
@@ -250,32 +257,48 @@ export const createStockAdjustment = async (req: Request, res: Response) => {
   if (!Array.isArray(items) || items.length === 0) { res.status(400).json({ message: 'items array is required' }); return; }
   if (!await validateOutletAccess(user, String(outletId))) { res.status(403).json({ message: 'Unauthorized' }); return; }
 
-  const adjustment = await prisma.stockAdjustment.create({
-    data: {
-      outletId: String(outletId),
-      reason: reason || null,
-      items: {
-        create: items.map((item: any) => ({
-          stockItemId: item.stockItemId,
-          quantity: Number(item.quantity),
-          adjustmentType: item.adjustmentType,
-        })),
-      },
-    },
-    include: { items: true },
-  });
+  // Wrap in transaction: capture previous quantities, create adjustment, and apply atomically
+  const adjustment = await prisma.$transaction(async (tx) => {
+    // Fetch current quantities for SetTo reversal support
+    const stockItemIds = items.map((item: any) => String(item.stockItemId));
+    const stockItems = await tx.stockItem.findMany({
+      where: { id: { in: stockItemIds } },
+      select: { id: true, quantity: true },
+    });
+    const quantityMap = new Map(stockItems.map(si => [si.id, si.quantity]));
 
-  // Apply adjustments to stock quantities
-  for (const item of items) {
-    const qty = Number(item.quantity);
-    if (item.adjustmentType === 'Increase') {
-      await prisma.stockItem.update({ where: { id: item.stockItemId }, data: { quantity: { increment: qty } } });
-    } else if (item.adjustmentType === 'Decrease') {
-      await prisma.stockItem.update({ where: { id: item.stockItemId }, data: { quantity: { decrement: qty } } });
-    } else if (item.adjustmentType === 'SetTo') {
-      await prisma.stockItem.update({ where: { id: item.stockItemId }, data: { quantity: qty } });
+    const created = await tx.stockAdjustment.create({
+      data: {
+        outletId: String(outletId),
+        reason: reason || null,
+        items: {
+          create: items.map((item: any) => ({
+            stockItemId: item.stockItemId,
+            quantity: Number(item.quantity),
+            adjustmentType: item.adjustmentType,
+            previousQuantity: item.adjustmentType === 'SetTo'
+              ? (quantityMap.get(String(item.stockItemId)) ?? null)
+              : null,
+          })),
+        },
+      },
+      include: { items: true },
+    });
+
+    // Apply adjustments to stock quantities
+    for (const item of items) {
+      const qty = Number(item.quantity);
+      if (item.adjustmentType === 'Increase') {
+        await tx.stockItem.update({ where: { id: item.stockItemId }, data: { quantity: { increment: qty } } });
+      } else if (item.adjustmentType === 'Decrease') {
+        await tx.stockItem.update({ where: { id: item.stockItemId }, data: { quantity: { decrement: qty } } });
+      } else if (item.adjustmentType === 'SetTo') {
+        await tx.stockItem.update({ where: { id: item.stockItemId }, data: { quantity: qty } });
+      }
     }
-  }
+
+    return created;
+  });
 
   res.status(201).json(adjustment);
 };
@@ -289,19 +312,24 @@ export const deleteStockAdjustment = async (req: Request, res: Response) => {
   if (!existing) { res.status(404).json({ message: 'Stock adjustment not found' }); return; }
   if (!await validateOutletAccess(user, existing.outletId)) { res.status(403).json({ message: 'Unauthorized' }); return; }
 
-  // Reverse adjustments before deleting
-  for (const item of existing.items) {
-    const qty = Number(item.quantity);
-    if (item.adjustmentType === 'Increase') {
-      await prisma.stockItem.update({ where: { id: item.stockItemId }, data: { quantity: { decrement: qty } } });
-    } else if (item.adjustmentType === 'Decrease') {
-      await prisma.stockItem.update({ where: { id: item.stockItemId }, data: { quantity: { increment: qty } } });
-    } else if (item.adjustmentType === 'SetTo') {
-      // For SetTo, we can't perfectly reverse without knowing previous value, so we just delete
+  // Reverse adjustments and delete atomically
+  await prisma.$transaction(async (tx) => {
+    for (const item of existing.items) {
+      const qty = Number(item.quantity);
+      if (item.adjustmentType === 'Increase') {
+        await tx.stockItem.update({ where: { id: item.stockItemId }, data: { quantity: { decrement: qty } } });
+      } else if (item.adjustmentType === 'Decrease') {
+        await tx.stockItem.update({ where: { id: item.stockItemId }, data: { quantity: { increment: qty } } });
+      } else if (item.adjustmentType === 'SetTo') {
+        // Restore to the quantity before the SetTo was applied
+        if (item.previousQuantity != null) {
+          await tx.stockItem.update({ where: { id: item.stockItemId }, data: { quantity: item.previousQuantity } });
+        }
+      }
     }
-  }
+    await tx.stockAdjustment.delete({ where: { id } });
+  });
 
-  await prisma.stockAdjustment.delete({ where: { id } });
   res.status(204).send();
 };
 
@@ -402,7 +430,7 @@ export const upsertRecipe = async (req: Request, res: Response) => {
   const user = (req as AuthRequest).user;
   if (!user) { res.status(403).json({ message: 'Unauthorized' }); return; }
 
-  const { outletId, menuItemId, variationName, yieldQuantity, ingredients } = req.body;
+  const { outletId, menuItemId, variationName, yieldQuantity, yieldUnit, notes, ingredients } = req.body;
   if (!outletId || !menuItemId) { res.status(400).json({ message: 'outletId and menuItemId are required' }); return; }
   if (!await validateOutletAccess(user, String(outletId))) { res.status(403).json({ message: 'Unauthorized' }); return; }
 
@@ -416,12 +444,16 @@ export const upsertRecipe = async (req: Request, res: Response) => {
     },
     update: {
       yieldQuantity: Number(yieldQuantity) || 1,
+      yieldUnit: yieldUnit || null,
+      notes: notes || null,
     },
     create: {
       outletId: String(outletId),
       menuItemId,
       variationName: variationName || '',
       yieldQuantity: Number(yieldQuantity) || 1,
+      yieldUnit: yieldUnit || null,
+      notes: notes || null,
     },
   });
 
@@ -457,4 +489,31 @@ export const deleteRecipe = async (req: Request, res: Response) => {
 
   await prisma.recipe.delete({ where: { id } });
   res.status(204).send();
+};
+
+// ==================== Waste Stock Deduction ====================
+
+export const deductWasteStock = async (req: Request, res: Response) => {
+  const user = (req as AuthRequest).user;
+  if (!user) { res.status(403).json({ message: 'Unauthorized' }); return; }
+
+  const { outletId, items } = req.body;
+  if (!outletId) { res.status(400).json({ message: 'outletId is required' }); return; }
+  if (!Array.isArray(items) || items.length === 0) { res.status(400).json({ message: 'items array is required' }); return; }
+  if (!await validateOutletAccess(user, String(outletId))) { res.status(403).json({ message: 'Unauthorized' }); return; }
+
+  // Deduct stock atomically
+  await prisma.$transaction(async (tx) => {
+    for (const item of items) {
+      const qty = Number(item.quantityWasted);
+      if (qty > 0) {
+        await tx.stockItem.update({
+          where: { id: item.stockItemId },
+          data: { quantity: { decrement: qty } },
+        });
+      }
+    }
+  });
+
+  res.json({ success: true });
 };

@@ -8,6 +8,7 @@ import CartDrawer from './CartDrawer';
 import { FiFacebook, FiTwitter, FiInstagram, FiLinkedin, FiYoutube, FiShoppingBag, FiMapPin, FiPhone, FiMail } from 'react-icons/fi';
 import type { WebsiteSettings } from '@/types';
 import { getDefaultCurrency } from '@/utils/currency';
+import { getOutletOrderEnabled } from '@/services/api';
 
 const PublicLayout: React.FC = () => {
   const navigate = useNavigate();
@@ -58,6 +59,13 @@ const PublicLayout: React.FC = () => {
 
   const outletApplicationSettingsKey = outlet?.id ? `applicationSettings_${outlet.id}` : undefined;
   const [effectiveApplicationSettings, setEffectiveApplicationSettings] = useState(applicationSettings);
+
+  const [orderEnabled, setOrderEnabled] = useState(true);
+
+  useEffect(() => {
+    if (!outlet?.id) return;
+    getOutletOrderEnabled(outlet.id).then(setOrderEnabled);
+  }, [outlet?.id]);
 
   useEffect(() => {
     if (!outletWebsiteSettingsKey) {
@@ -185,11 +193,12 @@ const PublicLayout: React.FC = () => {
         cartTotal={cartTotal}
         currency={defaultCurrency}
         applicationSettings={effectiveApplicationSettings}
-        onCheckout={handleCheckout}
+        onCheckout={orderEnabled ? handleCheckout : undefined}
+        orderDisabled={!orderEnabled}
       />
 
       <main className="flex-grow">
-        <Outlet context={{ outlet, baseUrl, addToCart, websiteSettings: effectiveWebsiteSettings, applicationSettings: effectiveApplicationSettings }} />
+        <Outlet context={{ outlet, baseUrl, addToCart, websiteSettings: effectiveWebsiteSettings, applicationSettings: effectiveApplicationSettings, orderEnabled }} />
       </main>
 
       {/* Custom Footer */}

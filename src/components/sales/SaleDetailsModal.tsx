@@ -3,7 +3,6 @@ import { Sale, Customer, PrinterType } from '../../types';
 import Button from '../common/Button';
 import { FiXCircle, FiPrinter, FiDownload } from 'react-icons/fi';
 import { calcItemLineTotal, calcItemDiscountTotal } from '../../utils/calcOrderTotals';
-import html2pdf from 'html2pdf.js';
 import { useRestaurantData } from '../../hooks/useRestaurantData';
 import { QRCodeSVG } from 'qrcode.react';
 import { applyLeftMarginToText, escPosCenterText, getConfiguredLineWidth, getDividerLine, getEscPosBottomFeed, getEscPosEmphasizedTitle, getEscPosQrCode, getMarginSpaces } from '../../utils/printSettings';
@@ -276,7 +275,7 @@ const SaleDetailsModal: React.FC<SaleDetailsModalProps> = ({ isOpen, onClose, sa
         setTimeout(() => reject(new Error('PDF generation timed out')), 15000)
       );
       await Promise.race([
-        html2pdf().set(options).from(contentElement).save(),
+        (await import('html2pdf.js')).default().set(options).from(contentElement).save(),
         timeoutPromise
       ]);
     } catch (err) {

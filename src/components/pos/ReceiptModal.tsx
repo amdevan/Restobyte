@@ -247,7 +247,7 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ onClose, sale }) => {
         setTimeout(() => reject(new Error('PDF generation timed out')), 15000)
       );
       await Promise.race([
-        html2pdf().set(options).from(receiptElement).save(),
+        (await import('html2pdf.js')).default().set(options).from(receiptElement).save(),
         timeoutPromise
       ]);
     } catch (err) {

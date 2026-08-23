@@ -2,7 +2,7 @@
 import React from 'react';
 import { Employee } from '../../types';
 import Button from '../common/Button';
-import { FiXCircle, FiUser, FiPhone, FiMail, FiMapPin, FiCalendar, FiDollarSign, FiBriefcase, FiShield, FiCheckSquare, FiImage, FiCoffee } from 'react-icons/fi';
+import { FiXCircle, FiUser, FiPhone, FiMail, FiMapPin, FiCalendar, FiDollarSign, FiBriefcase, FiShield, FiCheckSquare, FiCoffee } from 'react-icons/fi';
 import { IconBaseProps } from 'react-icons'; // Import IconBaseProps
 
 interface EmployeeDetailsModalProps {

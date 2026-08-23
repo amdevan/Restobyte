@@ -120,7 +120,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           } else {
             navigate('/public/restaurant');
           }
-        } else if (authUser.isSuperAdmin) {
+        } else if (authUser.isSuperAdmin && isSaaSDomain()) {
           navigate('/saas/dashboard');
         } else {
           navigate('/app/dashboard');
@@ -217,12 +217,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setIsAuthenticated(false);
     const path = location.pathname || '/';
     if (isSaaSDomain()) {
-      navigate('/login', { replace: true });
-      return;
+        navigate('/login', { replace: true });
+        return;
     }
     if (path.startsWith('/saas')) {
-      navigate('/saas/login', { replace: true });
-      return;
+        navigate('/login', { replace: true });
+        return;
     }
     if (path.startsWith('/customer')) {
       navigate('/public/login', { replace: true });

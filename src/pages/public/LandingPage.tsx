@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import Button from '@/components/common/Button';
 import Modal from '@/components/common/Modal';
@@ -54,16 +54,23 @@ const useScrollReveal = () => {
 
 const useParallax = () => {
     useEffect(() => {
+        let ticking = false;
         const handleScroll = () => {
-            const scrolled = window.pageYOffset;
-            const parallaxElements = document.querySelectorAll('.parallax-bg');
-            parallaxElements.forEach((el: any) => {
-                const speed = el.dataset.speed || 0.5;
-                el.style.transform = `translateY(${scrolled * speed}px)`;
-            });
+            if (!ticking) {
+                requestAnimationFrame(() => {
+                    const scrolled = window.pageYOffset;
+                    const parallaxElements = document.querySelectorAll('.parallax-bg');
+                    parallaxElements.forEach((el: any) => {
+                        const speed = el.dataset.speed || 0.5;
+                        el.style.transform = `translateY(${scrolled * speed}px)`;
+                    });
+                    ticking = false;
+                });
+                ticking = true;
+            }
         };
 
-        window.addEventListener('scroll', handleScroll);
+        window.addEventListener('scroll', handleScroll, { passive: true });
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 };
@@ -269,28 +276,26 @@ const LandingPage: React.FC = () => {
         </form>
     );
 
-    const faqItems = [
-        {
-            question: "How long does setup take?",
-            answer: "Manage orders, reservations, and more with our integrated system. Most restaurants are up and running within 24-48 hours with our guided onboarding process."
-        },
-        {
-            question: "Do you provide customer support?",
-            answer: "Yes, we offer 24/7 dedicated support via chat, email, and phone for all our plans."
-        },
-        {
-            question: "Can I manage multiple restaurant locations?",
-            answer: "Absolutely. Our Growth and Enterprise plans are designed for multi-location management with centralized reporting."
-        },
-        {
-            question: "Is there a free trial?",
-            answer: "Yes, we offer a 14-day free trial on our Essential and Growth plans so you can explore all features before committing."
-        },
-        {
-            question: "Is there a free trial setup within 24 hours?",
-            answer: "Yes! Our team works quickly to get your basic setup ready so you can start testing the platform almost immediately."
-        }
-    ];
+    const faqItems = content?.faq && content.faq.length > 0
+        ? content.faq.map(f => ({ question: f.question, answer: f.answer }))
+        : [
+            {
+                question: "How long does setup take?",
+                answer: "Manage orders, reservations, and more with our integrated system. Most restaurants are up and running within 24-48 hours with our guided onboarding process."
+            },
+            {
+                question: "Do you provide customer support?",
+                answer: "Yes, we offer 24/7 dedicated support via chat, email, and phone for all our plans."
+            },
+            {
+                question: "Can I manage multiple restaurant locations?",
+                answer: "Absolutely. Our Growth and Enterprise plans are designed for multi-location management with centralized reporting."
+            },
+            {
+                question: "Is there a free trial?",
+                answer: "Yes, we offer a 14-day free trial on our Essential and Growth plans so you can explore all features before committing."
+            },
+        ];
 
     const getFeatures = () => {
         if (!content || !content.features || content.features.length === 0) {
@@ -323,7 +328,7 @@ const LandingPage: React.FC = () => {
         }));
     };
 
-    const features = getFeatures();
+    const features = useMemo(() => getFeatures(), [content?.features]);
 
     return (
         <div className="bg-[#fffcfb] font-sans text-[#2d1510] selection:bg-[#8b2d1d] selection:text-white relative">
@@ -381,7 +386,7 @@ const LandingPage: React.FC = () => {
                                             <div className="flex -space-x-3">
                                                 {[1,2,3,4].map(i => (
                                                     <div key={i} className="w-10 h-10 rounded-full border-2 border-white bg-gray-200 overflow-hidden">
-                                                        <img src={`https://i.pravatar.cc/100?img=${i+index*5+10}`} alt="User" />
+                                                        <img src={`https://i.pravatar.cc/100?img=${i+index*5+10}`} alt="User" loading="lazy" width="40" height="40" />
                                                     </div>
                                                 ))}
                                             </div>
@@ -401,7 +406,6 @@ const LandingPage: React.FC = () => {
                                                     src={slide.image} 
                                                     alt="Dashboard" 
                                                     className="rounded-[1.5rem] w-full shadow-2xl h-[400px] object-cover"
-                                                    crossOrigin="anonymous"
                                                 />
                                             </div>
                                             
@@ -492,7 +496,7 @@ const LandingPage: React.FC = () => {
                                             src={logo.logoUrl}
                                             alt={logo.name || 'Partner Logo'}
                                             className="h-12 w-auto object-contain"
-                                            crossOrigin="anonymous"
+                                            loading="lazy"
                                         />
                                     ) : (
                                         <div
@@ -541,10 +545,9 @@ const LandingPage: React.FC = () => {
                                 <div className="relative">
                                     <div className="relative z-10 rounded-[2.5rem] overflow-hidden shadow-[0_50px_100px_-20px_rgba(0,0,0,0.15)] transform lg:-rotate-2 transition-transform hover:rotate-0 duration-700">
                                         <img 
-                                            src="https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&q=80&w=1000" 
+                                            src={content?.showcase?.imageUrl || "https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&q=80&w=1000"} 
                                             alt="Chef using dashboard" 
                                             className="w-full h-auto"
-                                            crossOrigin="anonymous"
                                         />
                                         <div className="absolute inset-0 bg-gradient-to-t from-[#2d1510]/60 to-transparent"></div>
                                         <div className="absolute bottom-10 left-10 text-white">
@@ -585,28 +588,31 @@ const LandingPage: React.FC = () => {
                                 </div>
                             </div>
                             <div className="lg:w-1/2 reveal-right">
-                                <div className="inline-block px-4 py-2 rounded-full bg-[#8b2d1d]/5 text-[#8b2d1d] text-xs font-bold uppercase tracking-widest mb-6">Efficiency First</div>
+                                <div className="inline-block px-4 py-2 rounded-full bg-[#8b2d1d]/5 text-[#8b2d1d] text-xs font-bold uppercase tracking-widest mb-6">{content?.showcase?.badge || 'Efficiency First'}</div>
                                 <h2 className="text-4xl md:text-5xl lg:text-6xl font-black mb-8 leading-tight text-[#2d1510]">
-                                    Engineered for the <span className="text-[#8b2d1d]">Rush Hour</span>
+                                    {(content?.showcase?.title || 'Engineered for the Rush Hour').split(' ').map((word, i, arr) => {
+                                        const lastTwo = arr.slice(-2).join(' ');
+                                        if (i === arr.length - 2) return <span key={i} className="text-[#8b2d1d]">{word} </span>;
+                                        if (i === arr.length - 1) return <span key={i} className="text-[#8b2d1d]">{word}</span>;
+                                        return <span key={i}>{word} </span>;
+                                    })}
                                 </h2>
                                 <p className="text-lg text-[#5a4039] mb-10 leading-relaxed">
-                                    Stop wrestling with legacy systems that slow you down when it matters most. RestoByte's zero-latency interface ensures that from the moment an order is placed to the moment it hits the table, every second is optimized.
+                                    {content?.showcase?.subtitle || 'Stop wrestling with legacy systems that slow you down when it matters most.'}
                                 </p>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 mb-10">
-                                    <div className="flex flex-col gap-3">
-                                        <div className="w-10 h-10 bg-[#8b2d1d] rounded-xl flex items-center justify-center text-white shadow-lg shadow-[#8b2d1d]/30">
-                                            <FiClock size={20} />
+                                    {(content?.showcase?.features && content.showcase.features.length > 0 ? content.showcase.features : [
+                                        { id: '1', title: '4x Faster Checkout', description: 'Proprietary "One-Tap" billing flow reduces table turnaround time by 25%.' },
+                                        { id: '2', title: 'Offline Mode', description: 'Internet down? No problem. Keep taking orders and sync automatically when you\'re back.' },
+                                    ]).map((feature, i) => (
+                                        <div key={feature.id} className="flex flex-col gap-3">
+                                            <div className={`w-10 h-10 ${i % 2 === 0 ? 'bg-[#8b2d1d]' : 'bg-[#2d1510]'} rounded-xl flex items-center justify-center text-white shadow-lg`}>
+                                                {i % 2 === 0 ? <FiClock size={20} /> : <FiMonitor size={20} />}
+                                            </div>
+                                            <h4 className="text-xl font-bold text-[#2d1510]">{feature.title}</h4>
+                                            <p className="text-sm text-[#5a4039]">{feature.description}</p>
                                         </div>
-                                        <h4 className="text-xl font-bold text-[#2d1510]">4x Faster Checkout</h4>
-                                        <p className="text-sm text-[#5a4039]">Proprietary "One-Tap" billing flow reduces table turnaround time by 25%.</p>
-                                    </div>
-                                    <div className="flex flex-col gap-3">
-                                        <div className="w-10 h-10 bg-[#2d1510] rounded-xl flex items-center justify-center text-white shadow-lg shadow-[#2d1510]/30">
-                                            <FiMonitor size={20} />
-                                        </div>
-                                        <h4 className="text-xl font-bold text-[#2d1510]">Offline Mode</h4>
-                                        <p className="text-sm text-[#5a4039]">Internet down? No problem. Keep taking orders and sync automatically when you're back.</p>
-                                    </div>
+                                    ))}
                                 </div>
                                 <Button onClick={openRegisterModal} className="!bg-[#2d1510] !text-white hover:bg-black rounded-xl px-8 py-4 font-bold border-none">
                                     Explore the Dashboard
@@ -647,13 +653,13 @@ const LandingPage: React.FC = () => {
                                     </p>
                                     {feature.image && (
                                         <div className="overflow-hidden rounded-2xl h-40">
-                                            <img src={feature.image} alt={feature.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" crossOrigin="anonymous" />
+                                            <img src={feature.image} alt={feature.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" loading="lazy" />
                                         </div>
                                     )}
                                     {feature.id === '4' && ( // Staff Management special decoration
                                         <div className="flex -space-x-4 mb-2 overflow-hidden">
                                             {[1, 2, 3, 4].map(i => (
-                                                <img key={i} className="inline-block h-10 w-10 rounded-full ring-2 ring-white transition-transform duration-300 hover:scale-125 hover:z-10 cursor-pointer" src={`https://i.pravatar.cc/150?u=${i}`} alt="" />
+                                                <img key={i} className="inline-block h-10 w-10 rounded-full ring-2 ring-white transition-transform duration-300 hover:scale-125 hover:z-10 cursor-pointer" src={`https://i.pravatar.cc/150?u=${i}`} alt="" loading="lazy" width="40" height="40" />
                                             ))}
                                         </div>
                                     )}
@@ -675,15 +681,21 @@ const LandingPage: React.FC = () => {
                     <div className="container mx-auto px-6">
                         <div className="relative rounded-[40px] overflow-hidden group reveal">
                             <img 
-                                src="https://images.unsplash.com/photo-1590846406792-0adc7f938f1d?auto=format&fit=crop&q=80&w=2000" 
-                                alt="Restaurant Worker" 
+                                src={content?.videoSection?.imageUrl || "https://images.unsplash.com/photo-1590846406792-0adc7f938f1d?auto=format&fit=crop&q=80&w=2000"} 
+                                alt={content?.videoSection?.title || "Restaurant Worker"} 
                                 className="w-full h-[600px] object-cover transition-transform duration-[2000ms] group-hover:scale-105"
-                                crossOrigin="anonymous"
+                                loading="lazy"
                             />
                             <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors"></div>
-                            <button className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-24 h-24 bg-white/90 rounded-full flex items-center justify-center text-[#8b2d1d] shadow-2xl hover:scale-110 transition-transform z-10">
-                                <FiPlayCircle size={48} />
-                            </button>
+                            {content?.videoSection?.videoUrl ? (
+                                <a href={content.videoSection.videoUrl} target="_blank" rel="noopener noreferrer" className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-24 h-24 bg-white/90 rounded-full flex items-center justify-center text-[#8b2d1d] shadow-2xl hover:scale-110 transition-transform z-10">
+                                    <FiPlayCircle size={48} />
+                                </a>
+                            ) : (
+                                <button className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-24 h-24 bg-white/90 rounded-full flex items-center justify-center text-[#8b2d1d] shadow-2xl hover:scale-110 transition-transform z-10">
+                                    <FiPlayCircle size={48} />
+                                </button>
+                            )}
                         </div>
                     </div>
                 </section>
@@ -703,22 +715,26 @@ const LandingPage: React.FC = () => {
                                 </p>
                             </div>
                             <div className="lg:w-2/3 grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-16">
-                                {[
-                                    { icon: <FiCheckCircle />, title: "Reduce errors & miscommunication", desc: "Track management workflow with our intuitive and easy to use software systems." },
-                                    { icon: <FiGlobe />, title: "Centralized Control, Anywhere", desc: "Update menu, prices, and availability instantly across all channels." },
-                                    { icon: <FiClock />, title: "Save Time on Daily Operations", desc: "Automate repetitive tasks and focus on what matters: serving your guests." },
-                                    { icon: <FiBarChart2 />, title: "Increase Revenue with Insights", desc: "Use data-driven insights to optimize your menu and pricing strategy." }
-                                ].map((benefit, i) => (
-                                    <div key={i} className={`flex gap-6 reveal-right reveal-delay-${(i % 2) * 100 + Math.floor(i / 2) * 100}`}>
-                                        <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-[#8b2d1d] shadow-sm border border-[#f3e9e5] flex-shrink-0 transition-all hover:rotate-12 hover:scale-110 duration-300">
-                                            {benefit.icon}
+                                {(content?.benefits && content.benefits.length > 0 ? content.benefits : [
+                                    { id: '1', icon: 'FiCheckCircle', title: 'Reduce errors & miscommunication', description: 'Track management workflow with our intuitive and easy to use software systems.' },
+                                    { id: '2', icon: 'FiGlobe', title: 'Centralized Control, Anywhere', description: 'Update menu, prices, and availability instantly across all channels.' },
+                                    { id: '3', icon: 'FiClock', title: 'Save Time on Daily Operations', description: 'Automate repetitive tasks and focus on what matters: serving your guests.' },
+                                    { id: '4', icon: 'FiBarChart2', title: 'Increase Revenue with Insights', description: 'Use data-driven insights to optimize your menu and pricing strategy.' },
+                                ]).map((benefit, i) => {
+                                    const benefitIconMap: Record<string, any> = { FiCheckCircle, FiGlobe, FiClock, FiBarChart2, FiUsers, FiMonitor, FiShoppingCart, FiCalendar };
+                                    const Icon = benefitIconMap[benefit.icon] || FiCheckCircle;
+                                    return (
+                                        <div key={benefit.id} className={`flex gap-6 reveal-right reveal-delay-${(i % 2) * 100 + Math.floor(i / 2) * 100}`}>
+                                            <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-[#8b2d1d] shadow-sm border border-[#f3e9e5] flex-shrink-0 transition-all hover:rotate-12 hover:scale-110 duration-300">
+                                                <Icon />
+                                            </div>
+                                            <div>
+                                                <h3 className="text-xl font-bold mb-3">{benefit.title}</h3>
+                                                <p className="text-[#5a4039] leading-relaxed">{benefit.description}</p>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <h3 className="text-xl font-bold mb-3">{benefit.title}</h3>
-                                            <p className="text-[#5a4039] leading-relaxed">{benefit.desc}</p>
-                                        </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         </div>
                     </div>
@@ -965,7 +981,7 @@ const LandingPage: React.FC = () => {
                                         src="https://images.unsplash.com/photo-1577563908411-5077b6dc7624?auto=format&fit=crop&q=80&w=1000" 
                                         alt="Restaurant Manager" 
                                         className="rounded-[40px] w-full max-w-md h-[500px] object-cover shadow-2xl relative z-10 transition-transform duration-700 group-hover:scale-[1.02] hover-3d"
-                                        crossOrigin="anonymous"
+                                        loading="lazy"
                                     />
                                 </div>
                             </div>

@@ -502,6 +502,7 @@ model StockAdjustmentItem {
   stockItemId       String
   quantity          Float
   adjustmentType    String          // Increase, Decrease, SetTo
+  previousQuantity  Float?          // Stored so SetTo adjustments can be reversed
 
   stockAdjustment   StockAdjustment @relation(fields: [stockAdjustmentId], references: [id], onDelete: Cascade)
   stockItem         StockItem       @relation(fields: [stockItemId], references: [id], onDelete: Cascade)
@@ -617,8 +618,10 @@ model Recipe {
   id              String   @id @default(uuid())
   outletId        String
   menuItemId      String
-  variationName   String?
+  variationName   String   @default("")
   yieldQuantity   Float    @default(1)
+  yieldUnit       String?  // e.g. "portions", "plates"
+  notes           String?  // Recipe notes / instructions
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

@@ -8,7 +8,7 @@ import Modal from '@/components/common/Modal';
 import Input from '@/components/common/Input';
 import EmployeeForm from '@/components/employees/EmployeeForm';
 import EmployeeDetailsModal from '@/components/employees/EmployeeDetailsModal';
-import { FiPlusCircle, FiEdit, FiTrash2, FiUsers, FiSearch, FiFilter, FiEye, FiBriefcase, FiCheckCircle, FiXCircle as FiStatusX } from 'react-icons/fi';
+import { FiPlusCircle, FiEdit, FiTrash2, FiUsers, FiSearch, FiEye, FiBriefcase, FiCheckCircle, FiXCircle as FiStatusX } from 'react-icons/fi';
 
 const DESIGNATION_FILTER_OPTIONS = ["All", "Manager", "Chef", "Sous Chef", "Cook", "Waiter/Waitress", "Senior Waiter", "Captain", "Host/Hostess", "Bartender", "Cashier", "Cleaner", "Dishwasher", "Delivery Staff", "Accountant", "HR Specialist", "Other"];
 const STATUS_FILTER_OPTIONS = [

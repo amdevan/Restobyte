@@ -72,8 +72,11 @@ const extractVariationMap = (saleData: any): Map<string, string | null> => {
   if (saleData && Array.isArray(saleData.items)) {
     for (const it of saleData.items) {
       const menuItemId = typeof it?.menuItemId === 'string' ? it.menuItemId : typeof it?.id === 'string' ? it.id : null;
+      const vn = it?.variationName || null;
       if (menuItemId) {
-        map.set(menuItemId, it?.variationName || null);
+        // Use composite key to support same item with different variations
+        const key = `${menuItemId}__${vn || ''}`;
+        map.set(key, vn);
       }
     }
   }
@@ -206,6 +209,7 @@ export const getOrders = async (req: Request, res: Response) => {
         saleData: true,
         tableNumber: true,
         customer: { select: { name: true, id: true } },
+        items: { select: { menuItemId: true, quantity: true, unitPrice: true, menuItem: { select: { name: true } } } },
       },
       orderBy: { createdAt: 'desc' },
       take: 500,
@@ -243,13 +247,24 @@ export const getPublicOrder = async (req: Request, res: Response) => {
     const id = req.params.id as string;
     const order = await prisma.order.findFirst({
       where: { id },
-      include: { 
-        customer: true, 
-        items: { include: { menuItem: true } },
-        outlet: true
+      select: {
+        id: true,
+        status: true,
+        total: true,
+        createdAt: true,
+        saleData: true,
+        items: {
+          select: {
+            quantity: true,
+            unitPrice: true,
+            menuItem: { select: { name: true } },
+          },
+        },
       },
     });
     if (!order) return res.status(404).json({ error: 'Order not found' });
+    // Set short cache for polling responses
+    res.set('Cache-Control', 'private, max-age=5');
     res.json(order);
   } catch (error: any) {
     console.error('[orderController] getPublicOrder error:', error);
@@ -353,18 +368,26 @@ export const createOrder = async (req: Request, res: Response) => {
     const normalizedSaleData = normalizeSaleData(saleData, requestedOutletId, typeof customerId === 'string' ? customerId : undefined);
     const statusValue = deriveStatusValue(status, normalizedSaleData);
 
+    // Extract tableNumber from saleData for Dine In orders
+    const tableNumber = normalizedSaleData?.assignedTableId || normalizedSaleData?.tableId || null;
+
     const variationMap = extractVariationMap(normalizedSaleData || saleData);
-    const itemsForStock = normalizedItems.map((it) => ({
-      menuItemId: it.menuItemId,
-      quantity: it.quantity,
-      variationName: (variationMap.has(it.menuItemId) ? variationMap.get(it.menuItemId) : it.variationName) ?? null,
-    }));
+    const itemsForStock = normalizedItems.map((it) => {
+      const vn = it.variationName || null;
+      const mapKey = `${it.menuItemId}__${vn || ''}`;
+      return {
+        menuItemId: it.menuItemId,
+        quantity: it.quantity,
+        variationName: (variationMap.has(mapKey) ? variationMap.get(mapKey) : vn) ?? null,
+      };
+    });
 
     const order = await prisma.$transaction(async (tx) => {
       const created = await tx.order.create({
         data: {
           customerId,
           outletId: requestedOutletId,
+          tableNumber: tableNumber || null,
           status: statusValue as any,
           total: Number(total ?? normalizedSaleData?.totalAmount ?? 0),
           saleData: normalizedSaleData,
@@ -383,6 +406,18 @@ export const createOrder = async (req: Request, res: Response) => {
 
       return created;
     });
+
+    // Free table when order is created as COMPLETED
+    if (statusValue === 'COMPLETED' && tableNumber) {
+      try {
+        await prisma.table.update({
+          where: { id: tableNumber },
+          data: { status: 'Free', occupiedSince: null },
+        });
+      } catch (e) {
+        console.error('[orderController] failed to free table on order creation:', e);
+      }
+    }
 
     res.status(201).json(order);
   } catch (error: any) {
@@ -423,21 +458,31 @@ export const updateOrder = async (req: Request, res: Response) => {
     const outletId = String(existing.outletId);
 
     const oldItemMap = new Map<string, number>();
-    for (const it of existing.items) {
-      const key = `${it.menuItemId}__${(it as any).variationName || ''}`;
-      oldItemMap.set(key, (oldItemMap.get(key) || 0) + it.quantity);
+    // Build oldItemMap from saleData items (which have variationName) instead of OrderItem records
+    const oldSaleDataItems = Array.isArray((existing.saleData as any)?.items) ? (existing.saleData as any).items : [];
+    for (const sdItem of oldSaleDataItems) {
+      const miId = typeof sdItem?.menuItemId === 'string' ? sdItem.menuItemId : typeof sdItem?.id === 'string' ? sdItem.id : null;
+      if (!miId) continue;
+      const vn = sdItem?.variationName || null;
+      const key = `${miId}__${vn || ''}`;
+      const qty = Number(sdItem?.quantity || 0);
+      if (qty > 0) {
+        oldItemMap.set(key, (oldItemMap.get(key) || 0) + qty);
+      }
     }
 
     const newItemMap = new Map<string, { menuItemId: string; quantity: number; variationName: string | null }>();
     const variationMap = extractVariationMap(normalizedSaleData || saleData);
     for (const it of normalizedItems) {
-      const vn = (variationMap.has(it.menuItemId) ? variationMap.get(it.menuItemId) : (it.variationName || null)) ?? null;
-      const key = `${it.menuItemId}__${vn || ''}`;
+      const vn = it.variationName || null;
+      const mapKey = `${it.menuItemId}__${vn || ''}`;
+      const resolvedVn = (variationMap.has(mapKey) ? variationMap.get(mapKey) : vn) ?? null;
+      const key = `${it.menuItemId}__${resolvedVn || ''}`;
       const existingEntry = newItemMap.get(key);
       if (existingEntry) {
         existingEntry.quantity += it.quantity;
       } else {
-        newItemMap.set(key, { menuItemId: it.menuItemId, quantity: it.quantity, variationName: vn });
+        newItemMap.set(key, { menuItemId: it.menuItemId, quantity: it.quantity, variationName: resolvedVn });
       }
     }
 
@@ -506,6 +551,28 @@ export const updateOrder = async (req: Request, res: Response) => {
       return updated;
     });
 
+    // Free table when order is completed
+    if (statusValue === 'COMPLETED' && existing.tableNumber) {
+      try {
+        await prisma.table.update({
+          where: { id: existing.tableNumber },
+          data: { status: 'Free', occupiedSince: null },
+        });
+      } catch (e) {
+        console.error('[orderController] failed to free table on order completion:', e);
+      }
+    } else if (statusValue !== 'COMPLETED' && existing.status === 'COMPLETED' && existing.tableNumber) {
+      // Re-occupy table if order is reopened
+      try {
+        await prisma.table.update({
+          where: { id: existing.tableNumber },
+          data: { status: 'Occupied', occupiedSince: new Date() },
+        });
+      } catch (e) {
+        console.error('[orderController] failed to occupy table on order reopen:', e);
+      }
+    }
+
     res.json(order);
   } catch (error: any) {
     console.error('[orderController] updateOrder error:', error);
@@ -535,6 +602,28 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
 
     const statusValue = (req.body.status ? String(req.body.status).toUpperCase() : 'PENDING');
     const order = await prisma.order.update({ where: { id }, data: { status: statusValue as any } });
+
+    // Free table when order is completed
+    if (statusValue === 'COMPLETED' && existing.tableNumber) {
+      try {
+        await prisma.table.update({
+          where: { id: existing.tableNumber },
+          data: { status: 'Free', occupiedSince: null },
+        });
+      } catch (e) {
+        console.error('[orderController] failed to free table on status update:', e);
+      }
+    } else if (statusValue !== 'COMPLETED' && existing.status === 'COMPLETED' && existing.tableNumber) {
+      try {
+        await prisma.table.update({
+          where: { id: existing.tableNumber },
+          data: { status: 'Occupied', occupiedSince: new Date() },
+        });
+      } catch (e) {
+        console.error('[orderController] failed to occupy table on status revert:', e);
+      }
+    }
+
     res.json(order);
   } catch (error: any) {
     console.error('[orderController] updateOrderStatus error:', error);
@@ -647,12 +736,25 @@ export const deleteOrder = async (req: Request, res: Response) => {
     }
 
     const outletId = String(existing.outletId);
-    const variationMap = extractVariationMap(existing.saleData as any);
-    const itemsForRestore = existing.items.map((it) => ({
-      menuItemId: it.menuItemId,
-      quantity: it.quantity,
-      variationName: (variationMap.has(it.menuItemId) ? variationMap.get(it.menuItemId) : null) ?? null,
-    }));
+    // Use saleData items directly since OrderItem records don't store variationName
+    const saleDataItems = Array.isArray((existing.saleData as any)?.items) ? (existing.saleData as any).items : [];
+    const itemsForRestore: Array<{ menuItemId: string; quantity: number; variationName: string | null }> = [];
+    // Group OrderItem quantities by menuItemId to match with saleData
+    const orderItemQtyMap = new Map<string, number>();
+    for (const it of existing.items) {
+      orderItemQtyMap.set(it.menuItemId, (orderItemQtyMap.get(it.menuItemId) || 0) + it.quantity);
+    }
+    for (const sdItem of saleDataItems) {
+      const miId = typeof sdItem?.menuItemId === 'string' ? sdItem.menuItemId : typeof sdItem?.id === 'string' ? sdItem.id : null;
+      if (!miId) continue;
+      const qty = Number(sdItem?.quantity || orderItemQtyMap.get(miId) || 0);
+      if (qty <= 0) continue;
+      itemsForRestore.push({
+        menuItemId: miId,
+        quantity: qty,
+        variationName: sdItem?.variationName || null,
+      });
+    }
 
     await prisma.$transaction(async (tx) => {
       await deductStockForOrderItems(tx, outletId, itemsForRestore, 'restore');
@@ -667,6 +769,24 @@ export const deleteOrder = async (req: Request, res: Response) => {
       await tx.orderItem.deleteMany({ where: { orderId: id } });
       await tx.order.delete({ where: { id } });
     });
+
+    // Free table when order is deleted
+    if (existing.tableNumber) {
+      try {
+        // Check if other active orders exist for this table
+        const otherOrders = await prisma.order.count({
+          where: { tableNumber: existing.tableNumber, status: { notIn: ['COMPLETED', 'CANCELLED'] } },
+        });
+        if (otherOrders === 0) {
+          await prisma.table.update({
+            where: { id: existing.tableNumber },
+            data: { status: 'Free', occupiedSince: null },
+          });
+        }
+      } catch (e) {
+        console.error('[orderController] failed to free table on order deletion:', e);
+      }
+    }
 
     res.status(204).send();
   } catch (error: any) {

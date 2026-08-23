@@ -19,10 +19,10 @@ import FeatureDisabledPage from './components/common/FeatureDisabledPage';
 import NativeAuthScreen from './components/auth/NativeAuthScreen';
 import PublicLayout from '@/components/public/PublicLayout';
 import { isNative } from '@/utils/capacitorService';
-import PublicHomePage from '@/pages/public/PublicHomePage';
-import PublicMenuPage from '@/pages/public/PublicMenuPage';
-import PublicAboutPage from '@/pages/public/PublicAboutPage';
-import PublicInvoicePage from '@/pages/public/PublicInvoicePage';
+const PublicHomePage = React.lazy(() => import('@/pages/public/PublicHomePage'));
+const PublicMenuPage = React.lazy(() => import('@/pages/public/PublicMenuPage'));
+const PublicAboutPage = React.lazy(() => import('@/pages/public/PublicAboutPage'));
+const PublicInvoicePage = React.lazy(() => import('@/pages/public/PublicInvoicePage'));
 const PublicQrMenuPage = React.lazy(() => import('./pages/public/PublicQrMenuPage'));
 const PublicContactPage = React.lazy(() => import('./pages/public/PublicContactPage'));
 const SaaSBlogsPage = React.lazy(() => import('./pages/public/SaaSBlogsPage'));
@@ -32,7 +32,7 @@ const SaaSPricingPage = React.lazy(() => import('./pages/public/SaaSPricingPage'
 const SaaSProductsShopPage = React.lazy(() => import('./pages/public/SaaSProductsShopPage'));
 const DynamicSaaSPage = React.lazy(() => import('./pages/public/DynamicSaaSPage'));
 const PublicLoginPage = React.lazy(() => import('./pages/public/PublicLoginPage'));
-import PublicRegisterPage from '@/pages/public/PublicRegisterPage';
+const PublicRegisterPage = React.lazy(() => import('@/pages/public/PublicRegisterPage'));
 const CustomerLayout = React.lazy(() => import('./components/customer/CustomerLayout'));
 const CustomerDashboardPage = React.lazy(() => import('./pages/customer/CustomerDashboardPage'));
 const CustomerProfilePage = React.lazy(() => import('./pages/customer/CustomerProfilePage'));
@@ -181,15 +181,16 @@ const AuthAwareLanding: React.FC = () => {
     if (isLoading) {
         return <div className="flex h-screen w-screen items-center justify-center bg-gray-100"><Spinner size="lg" /></div>;
     }
+    const isSaaS = isSaaSDomain();
     if (isAuthenticated) {
-        return <Navigate to={user?.isSuperAdmin ? "/saas/dashboard" : "/app/dashboard"} replace />;
+        return <Navigate to={user?.isSuperAdmin && isSaaS ? "/saas/dashboard" : "/app/dashboard"} replace />;
     }
     // On the native mobile app, skip the marketing landing page and go straight to login.
     // Web visitors (and dev-preview via ?native=1) still see LandingPage below.
     if (isNative) {
         return <Navigate to="/login" replace />;
     }
-    return <LandingPage />;
+    return <React.Suspense fallback={<div className="flex h-screen w-screen items-center justify-center bg-gray-100"><Spinner size="lg" /></div>}><LandingPage /></React.Suspense>;
 }
 
 const AuthSwitchWrapper: React.FC<{ mode: 'login' | 'register' }> = ({ mode }) => {
@@ -517,8 +518,8 @@ const AppContent: React.FC = () => {
             </Route>
             
             {/* Auth Routes */}
-            <Route path="/login" element={isAuthenticated ? <Navigate to={user?.isSuperAdmin ? "/saas/dashboard" : "/app/dashboard"} replace /> : <AuthSwitchWrapper mode="login" />} />
-            <Route path="/register" element={isAuthenticated ? <Navigate to={user?.isSuperAdmin ? "/saas/dashboard" : "/app/dashboard"} replace /> : <AuthSwitchWrapper mode="register" />} />
+            <Route path="/login" element={isAuthenticated ? <Navigate to={user?.isSuperAdmin && isSaaS ? "/saas/dashboard" : "/app/dashboard"} replace /> : <AuthSwitchWrapper mode="login" />} />
+            <Route path="/register" element={isAuthenticated ? <Navigate to={user?.isSuperAdmin && isSaaS ? "/saas/dashboard" : "/app/dashboard"} replace /> : <AuthSwitchWrapper mode="register" />} />
 
             <Route
                 path="/saas/login"

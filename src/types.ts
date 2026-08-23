@@ -864,6 +864,38 @@ export interface SaasCallToAction {
     buttonText: string;
 }
 
+export interface SaasFaqItem {
+    id: string;
+    question: string;
+    answer: string;
+}
+
+export interface SaasBenefit {
+    id: string;
+    icon: string;
+    title: string;
+    description: string;
+}
+
+export interface SaasVideoSection {
+    title: string;
+    subtitle: string;
+    imageUrl: string;
+    videoUrl?: string;
+}
+
+export interface SaasShowcase {
+    badge: string;
+    title: string;
+    subtitle: string;
+    imageUrl: string;
+    features: {
+        id: string;
+        title: string;
+        description: string;
+    }[];
+}
+
 export interface SaasTestimonial {
     id: string;
     storeName: string;
@@ -973,6 +1005,10 @@ export interface SaasWebsiteContent {
     testimonials: SaasTestimonial[];
     blogPosts: SaasPost[];
     productsShop: SaasProductsShopContent;
+    faq: SaasFaqItem[];
+    benefits: SaasBenefit[];
+    videoSection: SaasVideoSection;
+    showcase: SaasShowcase;
 }
 
 export type PlanFeatureKey =
@@ -1309,13 +1345,10 @@ export interface RestaurantDataContextType {
 
     // Recipes & Ingredient Mapping
     recipes: Recipe[];
-    addRecipe: (recipeData: Omit<Recipe, 'id'>) => Recipe;
+    addRecipe: (recipeData: Omit<Recipe, 'id'>) => Promise<Recipe>;
     updateRecipe: (recipe: Recipe) => void;
     deleteRecipe: (recipeId: string) => void;
-    checkStockAvailability: (menuItemId: string, orderQuantity?: number) => { available: boolean; recipe: Recipe | null; shortages: Array<{ stockItemId: string; stockItemName: string; required: number; available: number; unit: string }> };
-    deductStockForOrder: (sale: Sale) => void;
-    restoreStockForOrder: (sale: Sale) => void;
-    autoIncreaseStockOnPurchase: (purchase: Purchase) => void;
+    checkStockAvailability: (menuItemId: string, orderQuantity?: number, variationName?: string) => { available: boolean; recipe: Recipe | null; shortages: Array<{ stockItemId: string; stockItemName: string; required: number; available: number; unit: string }> };
     autoDecreaseStockOnWaste: (wasteRecord: WasteRecord) => void;
 
     suppliers: Supplier[];

@@ -25,19 +25,26 @@ router.get('/public/:tableId', async (req, res) => {
       res.status(404).json({ message: 'Table not found' });
       return;
     }
-    const outlet = await prisma.outlet.findUnique({
-      where: { id: table.outletId },
-      select: {
-        id: true,
-        name: true,
-        slug: true,
-        restaurantName: true,
-        logoUrl: true,
-        address: true,
-        phone: true,
-      },
-    });
-    res.json({ table, outlet });
+    const [outlet, selfOrderRecord] = await Promise.all([
+      prisma.outlet.findUnique({
+        where: { id: table.outletId },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          restaurantName: true,
+          logoUrl: true,
+          address: true,
+          phone: true,
+        },
+      }),
+      prisma.outletAppData.findUnique({
+        where: { outletId_key: { outletId: table.outletId, key: 'isSelfOrderEnabled' } },
+        select: { data: true },
+      }),
+    ]);
+    const isSelfOrderEnabled = selfOrderRecord?.data === true;
+    res.json({ table, outlet, isSelfOrderEnabled });
   } catch (error) {
     console.error('[public table] error', error);
     res.status(500).json({ message: 'Server error' });

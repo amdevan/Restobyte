@@ -403,7 +403,36 @@ const getDefaultContent = () => ({
       date: '2025-03-15',
       imageUrl: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&q=80&w=2070'
     }
-  ]
+  ],
+  faq: [
+    { id: 'faq1', question: 'How long does setup take?', answer: 'Most restaurants are up and running within 24-48 hours with our guided onboarding process.' },
+    { id: 'faq2', question: 'Do you provide customer support?', answer: 'Yes, we offer 24/7 dedicated support via chat, email, and phone for all our plans.' },
+    { id: 'faq3', question: 'Can I manage multiple restaurant locations?', answer: 'Absolutely. Our Growth and Enterprise plans are designed for multi-location management with centralized reporting.' },
+    { id: 'faq4', question: 'Is there a free trial?', answer: 'Yes, we offer a 14-day free trial on our Essential and Growth plans so you can explore all features before committing.' },
+    { id: 'faq5', question: 'Is there a free trial setup within 24 hours?', answer: 'Yes! Our team works quickly to get your basic setup ready so you can start testing the platform almost immediately.' }
+  ],
+  benefits: [
+    { id: 'b1', icon: 'FiCheckCircle', title: 'Reduce errors & miscommunication', description: 'Track management workflow with our intuitive and easy to use software systems.' },
+    { id: 'b2', icon: 'FiGlobe', title: 'Centralized Control, Anywhere', description: 'Update menu, prices, and availability instantly across all channels.' },
+    { id: 'b3', icon: 'FiClock', title: 'Save Time on Daily Operations', description: 'Automate repetitive tasks and focus on what matters: serving your guests.' },
+    { id: 'b4', icon: 'FiBarChart2', title: 'Increase Revenue with Insights', description: 'Use data-driven insights to optimize your menu and pricing strategy.' }
+  ],
+  videoSection: {
+    title: 'See RestoByte in Action',
+    subtitle: 'Watch how our platform transforms restaurant operations',
+    imageUrl: 'https://images.unsplash.com/photo-1590846406792-0adc7f938f1d?auto=format&fit=crop&q=80&w=2000',
+    videoUrl: ''
+  },
+  showcase: {
+    badge: 'Efficiency First',
+    title: 'Engineered for the Rush Hour',
+    subtitle: 'Stop wrestling with legacy systems that slow you down when it matters most. RestoByte\'s zero-latency interface ensures that from the moment an order is placed to the moment it hits the table, every second is optimized.',
+    imageUrl: 'https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&q=80&w=1000',
+    features: [
+      { id: 'sf1', title: '4x Faster Checkout', description: 'Proprietary "One-Tap" billing flow reduces table turnaround time by 25%.' },
+      { id: 'sf2', title: 'Offline Mode', description: 'Internet down? No problem. Keep taking orders and sync automatically when you\'re back.' }
+    ]
+  }
 });
 
 export const getPublicSaasWebsiteContent = async (req: Request, res: Response) => {

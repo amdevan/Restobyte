@@ -323,6 +323,26 @@ export const deleteOutlet = async (req: Request, res: Response) => {
   }
 };
 
+export const getOutletWebsiteSettings = async (req: Request, res: Response) => {
+  const { outletId } = req.params;
+  if (!outletId) {
+    res.status(400).json({ message: 'outletId is required' });
+    return;
+  }
+
+  try {
+    const record = await prisma.outletAppData.findUnique({
+      where: { outletId_key: { outletId, key: 'websiteSettings' } },
+      select: { data: true },
+    });
+
+    const data = (record?.data as Record<string, any>) || {};
+    res.json({ orderEnabled: data.orderEnabled !== false });
+  } catch (err) {
+    res.json({ orderEnabled: true });
+  }
+};
+
 export const getOutletBySlug = async (req: Request, res: Response) => {
   const { slug } = req.params;
   if (!slug) {

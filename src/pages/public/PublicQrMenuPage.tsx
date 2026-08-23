@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useSearchParams, Link } from 'react-router-dom';
-import { FiSearch, FiGrid, FiAlertTriangle, FiX, FiPlus, FiMinus, FiShoppingBag, FiCheck, FiClock, FiLoader, FiChevronDown, FiChevronUp, FiPackage } from 'react-icons/fi';
+import { FiSearch, FiGrid, FiAlertTriangle, FiX, FiPlus, FiMinus, FiShoppingBag, FiCheck, FiClock, FiLoader, FiChevronDown, FiChevronUp, FiPackage, FiPhone } from 'react-icons/fi';
 import { API_BASE_URL } from '@/config';
 
 interface MenuItem {
@@ -379,6 +379,7 @@ const PublicQrMenuPage: React.FC = () => {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selfOrderDisabled, setSelfOrderDisabled] = useState(false);
   const [activeCategory, setActiveCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
@@ -446,8 +447,14 @@ const PublicQrMenuPage: React.FC = () => {
         const tableData = await tableRes.json();
         setTable(tableData.table);
         setOutlet(tableData.outlet);
+        // Check if self-ordering is enabled
+        if (tableData.isSelfOrderEnabled === false) {
+          setSelfOrderDisabled(true);
+          setLoading(false);
+          return;
+        }
         const outletIdForMenu = queryOutletId || tableData.outlet.id;
-        const menuRes = await fetch(`${API_BASE_URL}/menu-items?outletId=${outletIdForMenu}`);
+        const menuRes = await fetch(`${API_BASE_URL}/menu-items?outletId=${outletIdForMenu}&availableOnly=true`);
         if (menuRes.ok) setMenuItems(await menuRes.json());
       } catch { setError('Unable to connect to the server. Please try again.'); }
       finally { setLoading(false); }
@@ -496,10 +503,18 @@ const PublicQrMenuPage: React.FC = () => {
 
   const cartCount = cart.reduce((s, c) => s + c.quantity, 0);
 
-  // Get cart qty for a specific item
-  const getItemCartQty = useCallback((itemId: string) => {
-    return cart.filter(c => c.menuItem.id === itemId).reduce((s, c) => s + c.quantity, 0);
+  // Pre-compute cart quantities per item for O(1) lookup
+  const cartQtyMap = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const c of cart) {
+      map.set(c.menuItem.id, (map.get(c.menuItem.id) || 0) + c.quantity);
+    }
+    return map;
   }, [cart]);
+
+  const getItemCartQty = useCallback((itemId: string) => {
+    return cartQtyMap.get(itemId) || 0;
+  }, [cartQtyMap]);
 
   // ── Place Order ──
   const placeOrder = useCallback(async (customerName: string, customerPhone: string, note: string) => {
@@ -565,6 +580,24 @@ const PublicQrMenuPage: React.FC = () => {
             <Link to="/" className="inline-block bg-orange-500 text-white px-6 py-2.5 rounded-lg text-sm font-semibold hover:bg-orange-600 transition-colors">
               Go to Homepage
             </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Self-Order Disabled ──
+  if (selfOrderDisabled) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+        <div className="max-w-md w-full text-center">
+          <div className="bg-white rounded-2xl shadow-lg p-8">
+            <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <FiPhone size={32} className="text-amber-500" />
+            </div>
+            <h1 className="text-xl font-bold text-gray-800 mb-2">Self-Ordering is Disabled</h1>
+            <p className="text-gray-600 text-sm mb-2">Please contact the counter or call a waiter to place your order.</p>
+            {table && <p className="text-gray-400 text-xs">Table: {table.name}</p>}
           </div>
         </div>
       </div>

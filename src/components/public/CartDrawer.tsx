@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useCart } from '../../hooks/useCart';
-import { FiX, FiTrash2, FiPlus, FiMinus, FiShoppingBag, FiCheck } from 'react-icons/fi';
+import { FiX, FiTrash2, FiPlus, FiMinus, FiShoppingBag, FiCheck, FiPhone } from 'react-icons/fi';
 import { formatMoney } from '@/utils/currency';
 import type { Currency, ApplicationSettings } from '@/types';
 
@@ -14,6 +14,7 @@ interface CartDrawerProps {
   currency?: Currency;
   applicationSettings: ApplicationSettings;
   onCheckout?: () => Promise<void> | void;
+  orderDisabled?: boolean;
 }
 
 const CartDrawer: React.FC<CartDrawerProps> = ({ 
@@ -26,6 +27,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({
     currency,
     applicationSettings,
     onCheckout,
+    orderDisabled,
 }) => {
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [checkoutSuccess, setCheckoutSuccess] = useState(false);
@@ -136,6 +138,15 @@ const CartDrawer: React.FC<CartDrawerProps> = ({
             {/* Footer */}
             {cart.length > 0 && (
                 <div className="border-t border-gray-100 p-6 bg-white sticky bottom-0 z-10 shadow-[0_-10px_40px_-10px_rgba(0,0,0,0.05)]">
+                    {orderDisabled ? (
+                        <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4">
+                            <FiPhone size={20} className="text-amber-500 flex-shrink-0" />
+                            <div>
+                                <p className="text-sm font-bold text-amber-700">Online Ordering Disabled</p>
+                                <p className="text-xs text-amber-600">Please contact the counter or call a waiter to place your order.</p>
+                            </div>
+                        </div>
+                    ) : null}
                     <div className="space-y-3 mb-6">
                         <div className="flex justify-between text-sm text-gray-600">
                             <span>Subtotal</span>
@@ -152,7 +163,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({
                     </div>
                     <button 
                         onClick={handleCheckout}
-                        disabled={isCheckingOut || checkoutSuccess || !onCheckout}
+                        disabled={isCheckingOut || checkoutSuccess || !onCheckout || orderDisabled}
                         className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-4 rounded-xl shadow-lg shadow-orange-500/30 transition-all transform active:scale-95 flex justify-between px-6 items-center group disabled:opacity-50"
                     >
                         <span>{checkoutSuccess ? 'Order Placed!' : (isCheckingOut ? 'Placing...' : 'Checkout')}</span>

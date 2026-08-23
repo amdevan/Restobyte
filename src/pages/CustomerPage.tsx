@@ -9,7 +9,7 @@ import Card from '@/components/common/Card';
 import Modal from '@/components/common/Modal';
 import Input from '@/components/common/Input';
 import CustomerForm from '@/components/customer/CustomerForm';
-import { FiPlusCircle, FiEdit, FiTrash2, FiUsers, FiSearch, FiPhone, FiMail, FiMapPin, FiCalendar, FiBriefcase, FiHash, FiEye } from 'react-icons/fi';
+import { FiPlusCircle, FiEdit, FiTrash2, FiUsers, FiSearch, FiPhone, FiMail, FiMapPin, FiEye } from 'react-icons/fi';
 
 const CustomerPage: React.FC = () => {
   const navigate = useNavigate();

@@ -2,13 +2,13 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useOutletContext, useNavigate } from 'react-router-dom';
 import { useRestaurantData } from '@/hooks/useRestaurantData';
 import { getMenuItems } from '@/services/api';
-import { FiSmartphone, FiTruck, FiAward, FiStar, FiShoppingBag, FiHeart, FiArrowRight, FiCoffee, FiGift } from 'react-icons/fi';
+import { FiSmartphone, FiTruck, FiAward, FiStar, FiShoppingBag, FiHeart, FiArrowRight, FiCoffee, FiGift, FiPhone } from 'react-icons/fi';
 import type { WebsiteSettings } from '@/types';
 import { formatMoney, getDefaultCurrency } from '@/utils/currency';
 
 const PublicHomePage: React.FC = () => {
   const navigate = useNavigate();
-  const { outlet, baseUrl, addToCart, websiteSettings, applicationSettings } = useOutletContext<{ outlet: any, baseUrl: string, addToCart: (item: any) => void, websiteSettings: WebsiteSettings, applicationSettings: any }>();
+  const { outlet, baseUrl, addToCart, websiteSettings, applicationSettings, orderEnabled } = useOutletContext<{ outlet: any, baseUrl: string, addToCart: (item: any) => void, websiteSettings: WebsiteSettings, applicationSettings: any, orderEnabled: boolean }>();
   const { preMadeFoodItems, currencies } = useRestaurantData();
   const defaultCurrency = useMemo(() => getDefaultCurrency(currencies), [currencies]);
   const accent = useMemo(() => websiteSettings.whiteLabel?.primaryColor || '#f97316', [websiteSettings.whiteLabel?.primaryColor]);
@@ -90,9 +90,11 @@ const PublicHomePage: React.FC = () => {
               <button onClick={() => navigate(`${baseUrl}/menu`)} className="text-white px-8 py-3 rounded-full font-semibold shadow-lg transition-all transform hover:-translate-y-1" style={{ backgroundColor: accent }}>
                 Check Menu
               </button>
-              <button onClick={() => navigate(`${baseUrl}/menu`)} className="bg-white hover:bg-gray-50 text-gray-800 px-8 py-3 rounded-full font-semibold shadow-md border border-gray-100 transition-all flex items-center gap-2">
-                <span className="p-1 rounded-full" style={{ backgroundColor: `${accent}22`, color: accent }}><FiShoppingBag /></span> Order Now
-              </button>
+              {orderEnabled !== false && (
+                <button onClick={() => navigate(`${baseUrl}/menu`)} className="bg-white hover:bg-gray-50 text-gray-800 px-8 py-3 rounded-full font-semibold shadow-md border border-gray-100 transition-all flex items-center gap-2">
+                  <span className="p-1 rounded-full" style={{ backgroundColor: `${accent}22`, color: accent }}><FiShoppingBag /></span> Order Now
+                </button>
+              )}
             </div>
           </div>
           <div className="relative z-10">
@@ -192,9 +194,11 @@ const PublicHomePage: React.FC = () => {
                                             <FiStar fill="currentColor" size={10} />
                                             <span className="text-gray-400 ml-1">4.5</span>
                                         </div>
-                                        <button onClick={() => addToCart(item)} className="bg-orange-600 hover:bg-orange-500 text-white rounded-full p-1.5 transition-colors shadow-sm" title="Add to Cart">
-                                            <FiArrowRight size={12} />
-                                        </button>
+                                        {orderEnabled !== false && (
+                                            <button onClick={() => addToCart(item)} className="bg-orange-600 hover:bg-orange-500 text-white rounded-full p-1.5 transition-colors shadow-sm" title="Add to Cart">
+                                                <FiArrowRight size={12} />
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
                             </div>

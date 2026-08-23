@@ -12,7 +12,7 @@ import Button from '@/components/common/Button';
 import Modal from '@/components/common/Modal';
 import ViewPurchaseDetailsModal from '@/components/purchase/ViewPurchaseDetailsModal';
 import DownloadReportButton from '@/components/common/DownloadReportButton';
-import { FiSearch, FiCalendar, FiFilter, FiXCircle, FiEye, FiPlusCircle, FiDollarSign, FiArchive, FiShoppingCart, FiArrowLeft } from 'react-icons/fi';
+import { FiSearch, FiCalendar, FiXCircle, FiEye, FiArchive, FiShoppingCart, FiArrowLeft } from 'react-icons/fi';
 import Money from '@/components/common/Money';
 
 const PurchaseReportPage: React.FC = () => {

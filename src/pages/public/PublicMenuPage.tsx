@@ -2,12 +2,12 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useOutletContext, Link } from 'react-router-dom';
 import { useRestaurantData } from '@/hooks/useRestaurantData';
 import { getMenuItems } from '@/services/api';
-import { FiStar, FiArrowRight, FiShoppingBag } from 'react-icons/fi';
+import { FiStar, FiArrowRight, FiShoppingBag, FiPhone } from 'react-icons/fi';
 import type { WebsiteSettings } from '@/types';
 import { formatMoney, getDefaultCurrency } from '@/utils/currency';
 
 const PublicMenuPage: React.FC = () => {
-  const { outlet, baseUrl, websiteSettings, addToCart, applicationSettings } = useOutletContext<{ outlet: any; baseUrl: string; websiteSettings: WebsiteSettings; addToCart: (item: any) => void; applicationSettings: any }>();
+  const { outlet, baseUrl, websiteSettings, addToCart, applicationSettings, orderEnabled } = useOutletContext<{ outlet: any; baseUrl: string; websiteSettings: WebsiteSettings; addToCart: (item: any) => void; applicationSettings: any; orderEnabled: boolean }>();
   const { preMadeFoodItems, currencies } = useRestaurantData();
 
   const defaultCurrency = useMemo(() => getDefaultCurrency(currencies), [currencies]);
@@ -77,6 +77,15 @@ const PublicMenuPage: React.FC = () => {
       {/* Menu Section */}
       <section className="py-24 px-4 bg-white">
         <div className="container mx-auto">
+            {orderEnabled === false && (
+                <div className="max-w-md mx-auto mb-8 flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl p-4">
+                    <FiPhone size={20} className="text-amber-500 flex-shrink-0" />
+                    <div>
+                        <p className="text-sm font-bold text-amber-700">Online Ordering Disabled</p>
+                        <p className="text-xs text-amber-600">Please contact the counter or call a waiter to place your order.</p>
+                    </div>
+                </div>
+            )}
             <div className="text-center mb-12">
                 <span className="text-orange-500 font-medium tracking-widest uppercase text-sm mb-2 block">Our Menu</span>
                 <h2 className="text-3xl md:text-5xl font-serif font-bold text-gray-900">Our Regular Menu Pack</h2>
@@ -138,9 +147,11 @@ const PublicMenuPage: React.FC = () => {
                                         <span className="text-[11px] font-semibold text-gray-400">{defaultCurrency.code}</span>
                                     )}
                                 </div>
-                                <button onClick={() => addToCart(item)} className="p-2.5 bg-orange-100 rounded-xl text-orange-600 hover:bg-orange-500 hover:text-white transition-colors shadow-sm" title="Add to Cart">
-                                    <FiShoppingBag size={16} />
-                                </button>
+                                {orderEnabled !== false && (
+                                    <button onClick={() => addToCart(item)} className="p-2.5 bg-orange-100 rounded-xl text-orange-600 hover:bg-orange-500 hover:text-white transition-colors shadow-sm" title="Add to Cart">
+                                        <FiShoppingBag size={16} />
+                                    </button>
+                                )}
                             </div>
                         </div>
                     ))

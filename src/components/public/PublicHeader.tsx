@@ -41,8 +41,6 @@ const PublicHeader: React.FC<PublicHeaderProps> = ({ onLoginClick, onRegisterCli
     }
   };
 
-  // const brand = ( ... ) // Removed as it's now inline
-  
   return (
     <header className="bg-white/80 backdrop-blur-md sticky top-0 z-50 shadow-sm">
       <div className="container mx-auto px-4 py-3 flex justify-between items-center">

@@ -14,6 +14,10 @@ import CMSTrustedByForm from '@/components/saas/CMSTrustedByForm';
 import CMSStatisticsForm from '@/components/saas/CMSStatisticsForm';
 import CMSCTAForm from '@/components/saas/CMSCTAForm';
 import CMSTestimonialsForm from '@/components/saas/CMSTestimonialsForm';
+import CMSFaqForm from '@/components/saas/CMSFaqForm';
+import CMSBenefitsForm from '@/components/saas/CMSBenefitsForm';
+import CMSVideoSectionForm from '@/components/saas/CMSVideoSectionForm';
+import CMSShowcaseForm from '@/components/saas/CMSShowcaseForm';
 import { FiSave, FiCheckCircle, FiArrowUp, FiArrowDown, FiRefreshCcw, FiPlus, FiTrash2 } from 'react-icons/fi';
 import { useLocation } from 'react-router-dom';
 
@@ -112,7 +116,11 @@ const HomePageContentPage: React.FC<{ initialSection?: string; productsOnly?: bo
                                     'statistics',
                                     'cta',
                                     'features',
+                                    'showcase',
                                     'pricing',
+                                    'videoSection',
+                                    'benefits',
+                                    'faq',
                                     'testimonials',
                                     'blogPosts',
                                 ]
@@ -129,7 +137,11 @@ const HomePageContentPage: React.FC<{ initialSection?: string; productsOnly?: bo
                                 statistics: 'Statistics',
                                 cta: 'Call to Action',
                                 features: 'Features',
+                                showcase: 'Showcase (Dashboard)',
                                 pricing: 'Pricing',
+                                videoSection: 'Video Section',
+                                benefits: 'Benefits (Why Us)',
+                                faq: 'FAQ',
                                 testimonials: 'Testimonials',
                                 blogPosts: 'Blog Posts',
                             };
@@ -173,7 +185,7 @@ const HomePageContentPage: React.FC<{ initialSection?: string; productsOnly?: bo
             {!productsOnly && (
             <Card title="Section Visibility">
                 <div className="p-4 space-y-2">
-                    {['hero','trustedByLogos','statistics','cta','features','pricing','testimonials','blogPosts'].map((key) => {
+                    {['hero','trustedByLogos','statistics','cta','features','showcase','pricing','videoSection','benefits','faq','testimonials','blogPosts'].map((key) => {
                         const isEnabled = localContent.sectionOrder.includes(key);
                         const toggle = () => {
                             if (isEnabled) {
@@ -190,7 +202,11 @@ const HomePageContentPage: React.FC<{ initialSection?: string; productsOnly?: bo
                             statistics: 'Statistics',
                             cta: 'Call to Action',
                             features: 'Features',
+                            showcase: 'Showcase (Dashboard)',
                             pricing: 'Pricing',
+                            videoSection: 'Video Section',
+                            benefits: 'Benefits (Why Us)',
+                            faq: 'FAQ',
                             testimonials: 'Testimonials',
                             blogPosts: 'Blog Posts',
                         };
@@ -262,6 +278,42 @@ const HomePageContentPage: React.FC<{ initialSection?: string; productsOnly?: bo
                 <CMSPricingForm
                     pricingPlans={localContent.pricing}
                     onUpdate={pricing => handleUpdate(prev => ({...prev, pricing}))}
+                />
+            </Card>
+            )}
+
+            {!productsOnly && (
+            <Card title="Showcase (Dashboard Built for Speed)">
+                <CMSShowcaseForm
+                    showcase={localContent.showcase}
+                    onUpdate={showcase => handleUpdate(prev => ({...prev, showcase}))}
+                />
+            </Card>
+            )}
+
+            {!productsOnly && (
+            <Card title="Video Section">
+                <CMSVideoSectionForm
+                    videoSection={localContent.videoSection}
+                    onUpdate={videoSection => handleUpdate(prev => ({...prev, videoSection}))}
+                />
+            </Card>
+            )}
+
+            {!productsOnly && (
+            <Card title="Benefits (Why Top Restaurants Choose Us)">
+                <CMSBenefitsForm
+                    benefits={localContent.benefits}
+                    onUpdate={benefits => handleUpdate(prev => ({...prev, benefits}))}
+                />
+            </Card>
+            )}
+
+            {!productsOnly && (
+            <Card title="FAQ Section">
+                <CMSFaqForm
+                    faq={localContent.faq}
+                    onUpdate={faq => handleUpdate(prev => ({...prev, faq}))}
                 />
             </Card>
             )}

@@ -90,22 +90,29 @@ export const upsertAppData = async (req: Request, res: Response) => {
     return;
   }
   if (!(await canAccessOutlet(user, outletId))) {
+    console.error(`[appData] upsertAppData ACCESS DENIED: user=${user.id} outletId=${outletId} key=${key}`);
     res.status(403).json({ message: 'Unauthorized' });
     return;
   }
 
-  const record = await withRetry(() => prisma.outletAppData.upsert({
-    where: { outletId_key: { outletId, key } },
-    update: { data },
-    create: { outletId, key, data },
-  }));
+  try {
+    const record = await withRetry(() => prisma.outletAppData.upsert({
+      where: { outletId_key: { outletId, key } },
+      update: { data },
+      create: { outletId, key, data },
+    }));
 
-  res.json({
-    key,
-    outletId,
-    data: record.data,
-    updatedAt: record.updatedAt,
-  });
+    console.log(`[appData] upsertAppData OK: user=${user.id} outletId=${outletId} key=${key} dataLength=${JSON.stringify(data).length}`);
+    res.json({
+      key,
+      outletId,
+      data: record.data,
+      updatedAt: record.updatedAt,
+    });
+  } catch (err) {
+    console.error(`[appData] upsertAppData ERROR: user=${user.id} outletId=${outletId} key=${key}`, err);
+    res.status(500).json({ message: 'Failed to save app data' });
+  }
 };
 
 export const getUserAppData = async (req: Request, res: Response) => {

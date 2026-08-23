@@ -6,7 +6,7 @@ import {
     Supplier, Customer, AreaFloor, Kitchen, Printer, PrinterType, PrinterInterfaceType, PaperSize, Counter, Waiter,
     Currency, Denomination, Purchase, PurchaseItem, ExpenseCategory, Expense, WasteRecord, Employee,
     AttendanceRecord, AttendanceStatus, ReservationSettings, ReservationAvailability, WebsiteSettings,
-    PaymentMethod, Outlet, User, Role, ApplicationSettings, Tax, SaleTaxDetail, DeliveryPartner, Split, CustomerPayment, RestaurantDataContextType, SaasWebsiteContent, SaasPost, SaleReturn,
+    PaymentMethod, Outlet, User, Role, ApplicationSettings, Tax, SaleTaxDetail, DeliveryPartner, Split, CustomerPayment, RestaurantDataContextType, SaasWebsiteContent, SaleReturn,
     Plan, AddonGroup, Recipe, PayrollRecord, SaaSSettings, SoundSettings, TenantEntitlements, PlanFeatureKey, PermissionKey
 } from '../types';
 import { INITIAL_TABLES_COUNT } from '../constants';
@@ -668,7 +668,35 @@ const initialSaasWebsiteContent: SaasWebsiteContent = {
                 highlights: ['Quick scan', 'Comfort grip', 'Plug & play']
             }
         ]
-    }
+    },
+    faq: [
+        { id: 'faq1', question: 'How long does setup take?', answer: 'Most restaurants are up and running within 24-48 hours with our guided onboarding process.' },
+        { id: 'faq2', question: 'Do you provide customer support?', answer: 'Yes, we offer 24/7 dedicated support via chat, email, and phone for all our plans.' },
+        { id: 'faq3', question: 'Can I manage multiple restaurant locations?', answer: 'Absolutely. Our Growth and Enterprise plans are designed for multi-location management with centralized reporting.' },
+        { id: 'faq4', question: 'Is there a free trial?', answer: 'Yes, we offer a 14-day free trial on our Essential and Growth plans so you can explore all features before committing.' },
+    ],
+    benefits: [
+        { id: 'ben1', icon: 'FiCheckCircle', title: 'Reduce errors & miscommunication', description: 'Track management workflow with our intuitive and easy to use software systems.' },
+        { id: 'ben2', icon: 'FiGlobe', title: 'Centralized Control, Anywhere', description: 'Update menu, prices, and availability instantly across all channels.' },
+        { id: 'ben3', icon: 'FiClock', title: 'Save Time on Daily Operations', description: 'Automate repetitive tasks and focus on what matters: serving your guests.' },
+        { id: 'ben4', icon: 'FiBarChart2', title: 'Increase Revenue with Insights', description: 'Use data-driven insights to optimize your menu and pricing strategy.' },
+    ],
+    videoSection: {
+        title: 'See RestoByte in Action',
+        subtitle: 'Watch how our platform transforms restaurant operations',
+        imageUrl: 'https://images.unsplash.com/photo-1590846406792-0adc7f938f1d?auto=format&fit=crop&q=80&w=2000',
+        videoUrl: '',
+    },
+    showcase: {
+        badge: 'Efficiency First',
+        title: 'Engineered for the Rush Hour',
+        subtitle: 'Stop wrestling with legacy systems that slow you down when it matters most.',
+        imageUrl: 'https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&q=80&w=1000',
+        features: [
+            { id: 'sf1', title: '4x Faster Checkout', description: 'Proprietary "One-Tap" billing flow reduces table turnaround time by 25%.' },
+            { id: 'sf2', title: 'Offline Mode', description: 'Internet down? No problem. Keep taking orders and sync automatically when you\'re back.' },
+        ],
+    },
 };
 
 const useLocalStorage = <T,>(key: string, initialValue: T): [T, React.Dispatch<React.SetStateAction<T>>] => {
@@ -694,7 +722,6 @@ const useLocalStorage = <T,>(key: string, initialValue: T): [T, React.Dispatch<R
             if (backupItem) {
               try {
                 const backupData = JSON.parse(backupItem);
-                console.log(`Restored ${key} from backup`);
                 // Restore backup to primary
                 window.localStorage.setItem(key, backupItem);
                 return backupData;
@@ -825,7 +852,6 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                     const currentValue = localStorage.getItem(newKey);
                     if (currentValue === null) {
                         localStorage.setItem(newKey, legacyValue);
-                        console.log(`Migrated ${baseKey} from legacy key ${legacyKey} to new key ${newKey}`);
                     }
                     // Don't remove legacy key yet, just in case
                 }
@@ -1479,11 +1505,11 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
 
             if (!res.ok) {
                 const err = await res.json().catch(() => null);
-                console.error(`Failed to persist app data for ${key}:`, err?.message || res.statusText);
+                console.error(`[appData] FAILED to persist ${key}: status=${res.status}`, err?.message || res.statusText);
                 failedOutletSavesRef.current.push({ key, outletId, data });
             }
         } catch (err) {
-            console.error(`Failed to persist app data for ${key}:`, err);
+            console.error(`[appData] FAILED to persist ${key}:`, err);
             failedOutletSavesRef.current.push({ key, outletId, data });
         }
     }, [isAuthenticated, logout]);
@@ -2183,7 +2209,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             const res = await fetch(`${API_BASE_URL}/stock/recipes`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                body: JSON.stringify({ outletId, menuItemId: recipe.menuItemId, variationName: recipe.variationName, yieldQuantity: recipe.yieldQuantity, ingredients: recipe.ingredients }),
+                body: JSON.stringify({ outletId, menuItemId: recipe.menuItemId, variationName: recipe.variationName, yieldQuantity: recipe.yieldQuantity, yieldUnit: recipe.yieldUnit, notes: recipe.notes, ingredients: recipe.ingredients }),
             });
             if (res.status === 401) { logout(); return null; }
             if (!res.ok) return null;
@@ -2436,9 +2462,11 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
 
                 const hasData = loaded !== null && loaded !== undefined;
                 if (hasData) {
+                    console.log(`[appData] Loaded ${key} from server for outlet ${selectedDataOutletId}`);
                     outletAppDataSerializedRef.current[scopeKey] = JSON.stringify(loaded);
                     setValue(loaded);
                 } else {
+                    console.log(`[appData] No server data for ${key}, using fallback (not persisting)`);
                     // API returned null — use fallback in-memory only, do NOT persist to backend
                     // (persisting fallback would overwrite previously saved data)
                     outletAppDataSerializedRef.current[scopeKey] = JSON.stringify(fallback);
@@ -2952,6 +2980,43 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         const sectionOrderRaw = Array.isArray(safeObj.sectionOrder) ? safeObj.sectionOrder : [];
         const sectionOrder = sectionOrderRaw.filter((k: any) => typeof k === 'string') as string[];
 
+        const faqRaw = Array.isArray(safeObj.faq) ? safeObj.faq : [];
+        const faq = faqRaw.map((f: any) => ({
+            id: typeof f?.id === 'string' && f.id.trim() ? f.id : generateId(),
+            question: typeof f?.question === 'string' ? f.question : '',
+            answer: typeof f?.answer === 'string' ? f.answer : '',
+        })).filter((f: any) => f.question.trim());
+
+        const benefitsRaw = Array.isArray(safeObj.benefits) ? safeObj.benefits : [];
+        const benefits = benefitsRaw.map((b: any) => ({
+            id: typeof b?.id === 'string' && b.id.trim() ? b.id : generateId(),
+            icon: typeof b?.icon === 'string' ? b.icon : 'FiCheckCircle',
+            title: typeof b?.title === 'string' ? b.title : '',
+            description: typeof b?.description === 'string' ? b.description : '',
+        })).filter((b: any) => b.title.trim());
+
+        const videoSectionRaw = safeObj.videoSection && typeof safeObj.videoSection === 'object' ? safeObj.videoSection : {};
+        const videoSection = {
+            title: typeof videoSectionRaw.title === 'string' ? videoSectionRaw.title : '',
+            subtitle: typeof videoSectionRaw.subtitle === 'string' ? videoSectionRaw.subtitle : '',
+            imageUrl: typeof videoSectionRaw.imageUrl === 'string' ? videoSectionRaw.imageUrl : '',
+            videoUrl: typeof videoSectionRaw.videoUrl === 'string' ? videoSectionRaw.videoUrl : '',
+        };
+
+        const showcaseRaw = safeObj.showcase && typeof safeObj.showcase === 'object' ? safeObj.showcase : {};
+        const showcaseFeaturesRaw = Array.isArray(showcaseRaw.features) ? showcaseRaw.features : [];
+        const showcase = {
+            badge: typeof showcaseRaw.badge === 'string' ? showcaseRaw.badge : '',
+            title: typeof showcaseRaw.title === 'string' ? showcaseRaw.title : '',
+            subtitle: typeof showcaseRaw.subtitle === 'string' ? showcaseRaw.subtitle : '',
+            imageUrl: typeof showcaseRaw.imageUrl === 'string' ? showcaseRaw.imageUrl : '',
+            features: showcaseFeaturesRaw.map((sf: any) => ({
+                id: typeof sf?.id === 'string' && sf.id.trim() ? sf.id : generateId(),
+                title: typeof sf?.title === 'string' ? sf.title : '',
+                description: typeof sf?.description === 'string' ? sf.description : '',
+            })).filter((sf: any) => sf.title.trim()),
+        };
+
         return {
             sectionOrder: sectionOrder.length > 0 ? sectionOrder : initialSaasWebsiteContent.sectionOrder,
             header: {
@@ -2978,6 +3043,10 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             testimonials,
             blogPosts,
             productsShop,
+            faq: faq.length > 0 ? faq : initialSaasWebsiteContent.faq,
+            benefits: benefits.length > 0 ? benefits : initialSaasWebsiteContent.benefits,
+            videoSection,
+            showcase,
         };
     };
 
@@ -3588,37 +3657,39 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
     // --- Stock Management Helpers ---
     // NOTE: Stock deductions for orders are handled by the backend (orderController).
     // Frontend does NOT modify stock for orders to avoid double-counting.
-    const deductStockForOrder = useCallback((_sale: Sale) => {
-        // No-op: backend handles stock deduction for orders
-    }, []);
 
-    const restoreStockForOrder = useCallback((_sale: Sale) => {
-        // No-op: backend handles stock restoration for order deletion
-    }, []);
-
-    const restoreStockForReturn = useCallback((_returnItems: { id: string; quantity: number; variationName?: string }[]) => {
-        // No-op: backend handles stock restoration for returns
-    }, []);
-
-    const autoIncreaseStockOnPurchase = useCallback((_purchase: Purchase) => {
-        // No-op: backend handles stock increment for purchases
-    }, []);
-
-    const autoDecreaseStockOnWaste = useCallback((wasteRecord: WasteRecord) => {
-        let updatedStock = [...stockItemsRef.current];
-        for (const item of wasteRecord.items) {
-            updatedStock = updatedStock.map(si =>
-                si.id === item.stockItemId
-                    ? { ...si, quantity: Math.max(0, si.quantity - item.quantityWasted) }
-                    : si
-            );
+    const autoDecreaseStockOnWaste = useCallback(async (wasteRecord: WasteRecord) => {
+      const oid = selectedDataOutletId;
+      if (!oid) return;
+      try {
+        const token = localStorage.getItem('authToken');
+        if (!token) return;
+        const res = await fetch(`${API_BASE_URL}/stock/deduct-waste`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({
+            outletId: oid,
+            items: wasteRecord.items.map(item => ({
+              stockItemId: item.stockItemId,
+              quantityWasted: item.quantityWasted,
+            })),
+          }),
+        });
+        if (res.ok) {
+          // Refresh stock items from server to stay in sync
+          const stockRes = await fetch(`${API_BASE_URL}/stock/items?outletId=${oid}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (stockRes.ok) {
+            const updatedItems = await stockRes.json();
+            stockItemsRef.current = updatedItems;
+            setStockItems(updatedItems);
+            void persistStockItems(oid, updatedItems);
+          }
         }
-        stockItemsRef.current = updatedStock;
-        setStockItems(updatedStock);
-        const oid = selectedDataOutletId;
-        if (oid) {
-            void persistStockItems(oid, updatedStock);
-        }
+      } catch (error) {
+        console.error('Failed to deduct waste stock:', error);
+      }
     }, [selectedDataOutletId, persistStockItems]);
 
     const contextValue: RestaurantDataContextType = useMemo(() => ({
@@ -3920,9 +3991,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             const newSale = { ...saleData, isClosed, id: `sale-${Date.now()}`, saleDate: new Date().toISOString() };
             const savedSale = await persistSaleToBackend(newSale, 'create');
             // Use original sale (with variationName) for stock deduction, not the mapped backend response
-            if (savedSale) {
-                deductStockForOrder(newSale);
-            }
+            // Stock deduction is handled by the backend (orderController)
             return savedSale;
         },
         updateSale: async (updatedSale) => {
@@ -3934,11 +4003,8 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 console.warn('[SaleUpdate] persistSaleToBackend returned null - save may have failed');
                 return null;
             }
-            console.log('[SaleUpdate] Backend saved. paymentMethod:', savedSale.paymentMethod, 'calling fetchSales...');
-
             // Re-fetch all sales from server to ensure complete sync
             await fetchSales();
-            console.log('[SaleUpdate] fetchSales complete. Sales count after refetch:', sales.length);
 
             if (updatedSale.orderType === 'Dine In' && updatedSale.assignedTableId) {
                 const wasClosed = Boolean(existing?.isClosed ?? existing?.isSettled);
@@ -3946,16 +4012,15 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
 
                 if (!wasClosed && nextClosed) {
                     void setAndPersistTableStatus(updatedSale.assignedTableId, TableStatus.Free);
-                    // Use original sale items (with variationName) for stock deduction
-                    deductStockForOrder(normalized);
+                    // Stock deduction is handled by the backend (orderController)
                 } else if (wasClosed && !nextClosed) {
                     void setAndPersistTableStatus(updatedSale.assignedTableId, TableStatus.Occupied);
                 }
             } else {
-                // Non-dine-in orders: deduct on first finalize
+                // Non-dine-in orders: stock deduction handled by backend
                 const wasClosed = Boolean(existing?.isClosed ?? existing?.isSettled);
                 if (!wasClosed && isClosed) {
-                    deductStockForOrder(normalized);
+                    // Stock deduction is handled by the backend (orderController)
                 }
             }
             return savedSale;
@@ -4000,7 +4065,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                     return { success: false, message: err?.message || `Failed to delete sale (${res.status})` };
                 }
                 setSales(prev => prev.filter(s => s.id !== saleId));
-                restoreStockForOrder(sale);
+                // Stock restoration is handled by the backend (orderController)
                 return { success: true, message: 'Sale deleted successfully.' };
             } catch (err) {
                 console.error('Failed to delete sale:', err);
@@ -4070,8 +4135,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                         }
                         autoDecreaseStockOnWaste(newWasteRecord);
                     } else {
-                        // Default: Stock Return - restore inventory
-                        restoreStockForReturn(returnData.items.map(item => ({ id: item.id, quantity: item.quantity, variationName: item.variationName })));
+                        // Default: Stock Return - restoration handled by backend
                     }
                 }
                 return { success: true, message: 'Return processed successfully.', sale: savedReturn?.sale };
@@ -5073,7 +5137,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         
         paymentMethods,
         updatePaymentMethod: (method) => {
-            const outletId = selectedDataOutletId;
+            const outletId = resolveOutletDataId(selectedDataOutletId);
             const next = paymentMethodsRef.current.map(p => p.id === method.id ? method : p);
             paymentMethodsRef.current = next;
             setPaymentMethods(next);
@@ -5081,7 +5145,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             else { pendingOutletSavesRef.current.push({ key: 'paymentMethods', outletId: 'pending', data: next }); }
         },
         addPaymentMethod: (name: string) => {
-            const outletId = selectedDataOutletId;
+            const outletId = resolveOutletDataId(selectedDataOutletId);
             const newMethod: PaymentMethod = { id: `pm-${Date.now()}`, name, isEnabled: true };
             const next = [...paymentMethodsRef.current, newMethod];
             paymentMethodsRef.current = next;
@@ -5159,7 +5223,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         },
         applicationSettings,
         updateApplicationSettings: (settings) => {
-            const outletId = selectedDataOutletId;
+            const outletId = resolveOutletDataId(selectedDataOutletId);
             const next = { ...applicationSettings, ...settings };
             setApplicationSettings(next);
             if (outletId) {
@@ -5879,9 +5943,11 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             setRecipes(nextRecipes);
         },
 
-        checkStockAvailability: (menuItemId, orderQuantity = 1) => {
-            // Prefer variation-specific recipe, fall back to base, then any match
-            const recipe = recipes.find(r => r.menuItemId === menuItemId && r.variationName)
+        checkStockAvailability: (menuItemId, orderQuantity = 1, variationName) => {
+            // Prefer variation-specific recipe if variationName provided, fall back to base, then any match
+            const recipe = (variationName
+                ? recipes.find(r => r.menuItemId === menuItemId && r.variationName === variationName)
+                : null)
                 || recipes.find(r => r.menuItemId === menuItemId && (!r.variationName || r.variationName === ''))
                 || recipes.find(r => r.menuItemId === menuItemId);
             if (!recipe) return { available: true, recipe: null, shortages: [] };
@@ -5908,9 +5974,6 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             };
         },
 
-        deductStockForOrder,
-        restoreStockForOrder,
-        autoIncreaseStockOnPurchase,
         autoDecreaseStockOnWaste,
 
         // Live data refresh — re-pull the order/table sources so a "Live" view
@@ -5932,7 +5995,7 @@ export const RestaurantDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         soundSettings, roles, users, saasWebsiteContent, plans, tenantEntitlements,
         saasSettings, addonGroups, recipes, activeOutletIds, outlets, user,
         refreshData,
-        deductStockForOrder, restoreStockForOrder, autoIncreaseStockOnPurchase, autoDecreaseStockOnWaste
+        autoDecreaseStockOnWaste
     ]);
 
     const pollValue = useMemo<PollDataContextType>(

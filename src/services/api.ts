@@ -57,6 +57,15 @@ export async function getCategories(): Promise<BackendCategory[]> {
   return fetchJson<BackendCategory[]>('/categories');
 }
 
+export async function getOutletOrderEnabled(outletId: string): Promise<boolean> {
+  try {
+    const data = await fetchJson<{ orderEnabled: boolean }>(`/outlets/${outletId}/website-settings`);
+    return data.orderEnabled;
+  } catch {
+    return true;
+  }
+}
+
 // Generic fetchers for broader website access data
 export type BackendCustomer = {
   id: string;

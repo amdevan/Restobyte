@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import Spinner from '../../components/common/Spinner';
 import { API_BASE_URL } from '../../config';
-import html2pdf from 'html2pdf.js';
 import { QRCodeSVG } from 'qrcode.react';
 const mapBackendInvoiceToSale = (invoice: any) => {
   const items = invoice?.items || [];
@@ -118,7 +117,7 @@ const PublicInvoicePage: React.FC = () => {
         setTimeout(() => reject(new Error('PDF generation timed out')), 15000)
       );
       await Promise.race([
-        html2pdf().set(options).from(element).save(),
+        (await import('html2pdf.js')).default().set(options).from(element).save(),
         timeoutPromise
       ]);
     } catch (err) {
